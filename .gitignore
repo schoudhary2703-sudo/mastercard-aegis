@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Environment
+.env
+.env.local
+
+# Data - never commit datasets or generated corpora
+data/raw/*
+data/interim/*
+data/processed/*
+data/synthetic/*
+data/external/*
+!data/**/.gitkeep
+!data/**/README.md
+
+# Model + run artifacts
+artifacts/
+models/
+mlruns/
+runs/
+*.pkl
+*.joblib
+*.parquet
+*.csv
+!tests/**/*.csv
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

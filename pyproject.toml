@@ -1,0 +1,106 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aegis"
+version = "0.1.0"
+description = "AEGIS - closed-loop AI red-team / blue-team payment security system (Mastercard Innovation Challenge 2026)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Team AEGIS" }]
+keywords = ["fraud", "payments", "red-team", "blue-team", "adversarial"]
+
+# Runtime dependencies are deliberately minimal at foundation stage.
+# ML / generative libraries are added by the workstream that needs them.
+dependencies = [
+    "pydantic>=2.7,<3",
+    "numpy>=1.24",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+# Placeholder extras. NOT installed by default and NOT implemented yet.
+api = ["fastapi>=0.110", "uvicorn>=0.29"]
+viz = ["matplotlib>=3.8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aegis"]
+
+# ----------------------------------------------------------------------------
+# pytest
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-ra -q --strict-markers"
+markers = [
+    "slow: long-running test, excluded from the default fast loop",
+    "contract: verifies a frozen cross-team contract",
+]
+
+# ----------------------------------------------------------------------------
+# ruff (lint + format)
+# ----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ANN"]
+ignore = [
+    "ANN401",  # allow typing.Any where contracts are intentionally open
+    "B008",
+    "N803",    # `X`, `X_train`: the fit/score signature is fixed by the brief
+    "N806",    # `X` as a local feature matrix, same convention
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
+"scripts/*" = ["ANN"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["aegis"]
+
+# ----------------------------------------------------------------------------
+# mypy
+# ----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.10"
+files = ["src", "tests", "scripts"]
+mypy_path = "src"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+show_error_codes = true
+
+# Tests and scripts are checked, but not held to strict-mode ceremony: the test
+# doubles in conftest deliberately mirror loose ML signatures.
+[[tool.mypy.overrides]]
+module = ["tests.*", "verify_setup"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+
+# pandas/numpy stubs are optional; the contracts do not depend on their types.
+[[tool.mypy.overrides]]
+module = ["pandas.*", "numpy.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_typed = true
+warn_required_dynamic_aliases = true
