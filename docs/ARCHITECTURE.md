@@ -92,9 +92,10 @@ docs/            architecture, contracts, rules
 collide on a top-level package name and an editable install behaves like a real
 one.
 
-## What is deliberately absent
+## Current implementation boundary
 
-No model, no generator, no orchestration, no UI, no metric computation, no
-dataset, no database, no auth, no Docker. The foundation is contracts and
-interfaces. Anything else is a Phase 1+ decision that belongs to the workstream
-that owns the module.
+Phase 1 workstreams add implementations only inside their owned packages.
+Canonical PaySim preparation and one deterministic Red Team generator
+(synthetic identity / bust-out) are implemented; see
+`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`. The other Red Team families, adaptive
+mutation, and closed-loop orchestration remain later-phase work.

@@ -24,6 +24,13 @@ from aegis.generate.paysim import (
     prepare_paysim,
     validate_paysim_schema,
 )
+from aegis.generate.synthetic_identity import (
+    BustOutFidelitySummary,
+    PaySimReferenceProfile,
+    SyntheticIdentityBustOutGenerator,
+    SyntheticIdentityConfigurationError,
+    write_synthetic_identity_artifacts,
+)
 
 __all__ = [
     "DEFAULT_PAYSIM_CURRENCY",
@@ -31,14 +38,19 @@ __all__ = [
     "PAYSIM_REQUIRED_COLUMNS",
     "BaseGenerator",
     "BlueprintNotSupportedError",
+    "BustOutFidelitySummary",
     "GenerationConfig",
     "PaySimPreparationConfig",
     "PaySimPreparationError",
     "PaySimPreparationResult",
+    "PaySimReferenceProfile",
     "PaySimRowError",
     "PaySimSchemaError",
     "PaySimSplitMode",
+    "SyntheticIdentityBustOutGenerator",
+    "SyntheticIdentityConfigurationError",
     "map_paysim_row",
     "prepare_paysim",
     "validate_paysim_schema",
+    "write_synthetic_identity_artifacts",
 ]

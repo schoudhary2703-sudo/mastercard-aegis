@@ -7,6 +7,8 @@ root with no arguments, or with `--help` explaining what it needs.
 | --- | --- |
 | `verify_setup.py` | Smoke-check the install, contracts and interfaces. |
 | `prepare_paysim.py` | Prepare a local PaySim CSV into canonical split JSONL artifacts. |
+| `train_baseline_detector.py` | Train/tune/evaluate the Blue Team XGBoost baseline detector on a processed PaySim run. |
+| `generate_bustout.py` | Generate one deterministic synthetic-identity bust-out scenario. |
 
 Rules:
 

@@ -11,10 +11,10 @@ back as training signal.
 IDENTIFY -> GENERATE -> DEFEND -> EVALUATE -> EVOLVE -> RETRAIN
 ```
 
-> **Status: foundation only.** This repository currently contains contracts,
-> interfaces, tests and rules. There is no fraud generator, no detector, no ML
-> training, no closed-loop algorithm and no UI. That is deliberate - see
-> [Non-goals](#non-goals).
+> **Status: Phase 1 workstreams active.** Contracts and canonical PaySim
+> preparation are complete, and the first deterministic Red Team family
+> (synthetic identity / bust-out) is implemented. Workstream boundaries and
+> evaluation rules remain binding; see [Non-goals](#non-goals).
 
 ## Scope
 
@@ -143,10 +143,11 @@ ML and generative libraries are added by the workstream that needs them.
 | [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Using or changing a shared type. |
 | [`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) | Producing any number. Binding. |
 | [`docs/DATA_STRATEGY.md`](docs/DATA_STRATEGY.md) | Touching a dataset. Locked. |
+| [`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`](docs/SYNTHETIC_IDENTITY_BUSTOUT.md) | Generating the first Red Team family. |
 
 ## Non-goals
 
-Not in this repository, and not to be added without an explicit decision:
-fraud generation logic, trained models, XGBoost / LightGBM, SDV / CTGAN,
-LangGraph, GRPO, TGN / GNN, Streamlit / React, the closed-loop algorithm, cloud
-infrastructure, authentication, databases, Docker.
+Not added by this Red Team phase: the other two attack generators, adaptive
+detector-aware mutation, SDV / CTGAN, LangGraph, GRPO, or the closed-loop
+algorithm. Cross-workstream components remain governed by `AGENTS.md`; cloud
+infrastructure, authentication, databases, and Docker remain out of scope.
