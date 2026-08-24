@@ -9,6 +9,7 @@ root with no arguments, or with `--help` explaining what it needs.
 | `prepare_paysim.py` | Prepare a local PaySim CSV into canonical split JSONL artifacts. |
 | `train_baseline_detector.py` | Train/tune/evaluate the Blue Team XGBoost baseline detector on a processed PaySim run. |
 | `generate_bustout.py` | Generate one deterministic synthetic-identity bust-out scenario. |
+| `run_bustout_confrontation.py` | Train the baseline and score one fresh bust-out scenario without adaptation. |
 
 Rules:
 
