@@ -18,6 +18,10 @@ dependencies = [
     "pydantic>=2.7,<3",
     "numpy>=1.24",
     "pandas>=2.0",
+    # Blue Team baseline detector (Phase 1): gradient-boosted trees are the
+    # standard strong baseline for tabular fraud detection. Used via the
+    # low-level Booster API only, so no scikit-learn is needed alongside it.
+    "xgboost>=2.1,<4",
 ]
 
 [project.optional-dependencies]
@@ -77,7 +81,8 @@ known-first-party = ["aegis"]
 [tool.mypy]
 python_version = "3.10"
 files = ["src", "tests", "scripts"]
-mypy_path = "src"
+mypy_path = "src:."
+explicit_package_bases = true
 strict = true
 plugins = ["pydantic.mypy"]
 warn_unused_configs = true
@@ -90,7 +95,7 @@ show_error_codes = true
 # Tests and scripts are checked, but not held to strict-mode ceremony: the test
 # doubles in conftest deliberately mirror loose ML signatures.
 [[tool.mypy.overrides]]
-module = ["tests.*", "verify_setup"]
+module = ["tests.*", "scripts.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 disallow_untyped_calls = false

@@ -10,5 +10,7 @@ This package must not import from `defend/`, `generate/` or `loop/`.
 from __future__ import annotations
 
 from aegis.features.base import BaseFeatureExtractor
+from aegis.features.io import load_transactions_jsonl
+from aegis.features.temporal import TemporalBaselineFeatureExtractor
 
-__all__ = ["BaseFeatureExtractor"]
+__all__ = ["BaseFeatureExtractor", "TemporalBaselineFeatureExtractor", "load_transactions_jsonl"]

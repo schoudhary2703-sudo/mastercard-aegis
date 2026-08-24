@@ -10,5 +10,12 @@ from __future__ import annotations
 
 from aegis.defend.base import BaseDetector, NotFittedError
 from aegis.defend.policy import DEFAULT_ACTION_POLICY, ActionPolicy
+from aegis.defend.xgboost_detector import XGBoostDetector
 
-__all__ = ["DEFAULT_ACTION_POLICY", "ActionPolicy", "BaseDetector", "NotFittedError"]
+__all__ = [
+    "DEFAULT_ACTION_POLICY",
+    "ActionPolicy",
+    "BaseDetector",
+    "NotFittedError",
+    "XGBoostDetector",
+]
