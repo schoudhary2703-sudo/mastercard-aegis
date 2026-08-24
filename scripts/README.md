@@ -6,6 +6,7 @@ root with no arguments, or with `--help` explaining what it needs.
 | Script | Purpose |
 | --- | --- |
 | `verify_setup.py` | Smoke-check the install, contracts and interfaces. |
+| `prepare_paysim.py` | Prepare a local PaySim CSV into canonical split JSONL artifacts. |
 
 Rules:
 

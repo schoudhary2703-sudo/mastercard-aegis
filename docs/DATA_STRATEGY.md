@@ -19,6 +19,9 @@ project needs and card-transaction datasets lack - **account-to-account edges**
   `oldbalanceOrg`/`newbalanceOrig` -> `source_balance_before`/`_after`,
   `isFraud` -> `label`. The `step` column becomes `timestamp` via a fixed
   epoch offset chosen once and recorded.
+* Preparation command, complete mapping, artifacts, default temporal split and
+  optional entity-isolated robustness split are documented in
+  [`PAYSIM_PREPARATION.md`](PAYSIM_PREPARATION.md).
 
 ## Secondary: IEEE-CIS (later, as a feature reference)
 
