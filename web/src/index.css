@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+
+  /* Neutrals -- the page is built from these, not from color. */
+  --color-canvas: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f8f9fb;
+  --color-border: #e2e6ec;
+  --color-border-strong: #ccd2dc;
+  --color-ink: #101827;
+  --color-ink-muted: #4b5568;
+  --color-ink-faint: #8b95a7;
+
+  /* Structural navy -- shell chrome only, never body content. */
+  --color-navy-950: #0b1220;
+  --color-navy-900: #101a2e;
+  --color-navy-800: #16233c;
+  --color-navy-700: #22314f;
+  --color-navy-300: #93a3c2;
+
+  /* Single restrained accent for interactive / defense affordances. */
+  --color-accent-600: #1d5fd6;
+  --color-accent-500: #2f6fe8;
+  --color-accent-100: #e5edfd;
+
+  /* Attack vs. defend team language -- used ONLY for team attribution, never for risk. */
+  --color-attack-600: #b5540b;
+  --color-attack-500: #d1690f;
+  --color-attack-100: #fbe9d7;
+  --color-defend-600: #1d5fd6;
+  --color-defend-500: #2f6fe8;
+  --color-defend-100: #e5edfd;
+
+  /* Risk traffic-light -- used ONLY for transaction / detector risk state. */
+  --color-risk-low-600: #157a4a;
+  --color-risk-low-100: #e1f3ea;
+  --color-risk-medium-600: #b5790b;
+  --color-risk-medium-100: #fbf0d7;
+  --color-risk-high-600: #c22a2a;
+  --color-risk-high-100: #fbe2e2;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 39, 0.04), 0 1px 1px rgba(16, 24, 39, 0.03);
+  --shadow-elevated: 0 4px 16px rgba(16, 24, 39, 0.08), 0 1px 2px rgba(16, 24, 39, 0.04);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+}
+
+/* Restrained motion only -- state transitions, never decorative loops. */
+.transition-standard {
+  transition: all 160ms ease;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
