@@ -2,9 +2,9 @@
 
 IDENTIFY -> GENERATE -> DEFEND -> EVALUATE -> EVOLVE -> RETRAIN.
 
-Intentionally empty of logic at foundation stage. The orchestration algorithm,
-the mutation strategy and the retraining schedule are Phase 2 work and must not
-be written before both workstreams have working implementations.
+Adaptive evolution v1 mutates only the approved synthetic-identity blueprint
+and scores fresh variants against one frozen detector. Defender retraining is
+still deliberately absent.
 
 What is already fixed is the data flow, and it is entirely contract-based:
 
@@ -22,4 +22,38 @@ Team packages. Nothing may import from `loop/`.
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from aegis.loop.adaptive import (
+    AdaptiveCandidateResult,
+    AdaptiveEvolutionError,
+    AdaptiveRoundExecution,
+    AdaptiveRoundReport,
+    BlindSpotAnalysis,
+    MutationCandidate,
+    ParameterRegionEvidence,
+    RoundAttackMetrics,
+    RoundComparison,
+    analyze_blind_spots,
+    build_evasion_feedback,
+    calculate_attack_fitness,
+    compare_rounds,
+    evolve_bustout_round,
+    generate_mutation_candidates,
+)
+
+__all__ = [
+    "AdaptiveCandidateResult",
+    "AdaptiveEvolutionError",
+    "AdaptiveRoundExecution",
+    "AdaptiveRoundReport",
+    "BlindSpotAnalysis",
+    "MutationCandidate",
+    "ParameterRegionEvidence",
+    "RoundAttackMetrics",
+    "RoundComparison",
+    "analyze_blind_spots",
+    "build_evasion_feedback",
+    "calculate_attack_fitness",
+    "compare_rounds",
+    "evolve_bustout_round",
+    "generate_mutation_candidates",
+]

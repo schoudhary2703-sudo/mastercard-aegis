@@ -49,8 +49,10 @@ def test_contracts_public_surface():
     assert expected.issubset(set(contracts.__all__))
 
 
-def test_loop_has_no_logic_yet():
-    """`loop/` is a placeholder at foundation stage; guard against drift."""
+def test_loop_exposes_attacker_evolution_without_retraining():
+    """Phase 2 starts with attacker-only evolution; defender retraining stays absent."""
     import aegis.loop
 
-    assert aegis.loop.__all__ == []
+    assert "evolve_bustout_round" in aegis.loop.__all__
+    assert "AdaptiveRoundReport" in aegis.loop.__all__
+    assert not any("retrain" in name.lower() for name in aegis.loop.__all__)
