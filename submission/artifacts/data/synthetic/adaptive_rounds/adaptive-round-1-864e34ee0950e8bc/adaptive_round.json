@@ -1,0 +1,4262 @@
+{
+  "report_id": "adaptive-round-1-864e34ee0950e8bc",
+  "round_index": 1,
+  "seed": 20260102,
+  "model_version": "xgboost-baseline-20260101",
+  "detector_retrained": false,
+  "threshold_changed": false,
+  "integration_only": false,
+  "data_basis": "processed_paysim",
+  "parent_confrontation_id": "confrontation-416e606888de1ffa",
+  "parent_blueprint": {
+    "contract_version": "1.0.0",
+    "attack_id": "synthetic-identity-bustout-v1",
+    "attack_family": "synthetic_identity_bustout",
+    "name": "Synthetic identity trust build and bust-out",
+    "description": "A low-history synthetic persona establishes ordinary payment behaviour before a sudden, bounded series of high-value transfers and cash-outs.",
+    "objective": "Build sufficient legitimate-looking history to make the later behavioral transition a realistic bust-out stress case.",
+    "target_features": [
+      "temporal.account_age_days",
+      "temporal.velocity_24h",
+      "temporal.amount_ratio_to_history",
+      "behavioral.payee_diversity"
+    ],
+    "sequence": [
+      {
+        "step_id": "identity-onboarding",
+        "order": 0,
+        "action": "establish_low_history_persona",
+        "description": "Create a new synthetic persona with a bounded account-age proxy.",
+        "channel": "mobile",
+        "offset_seconds": 0.0,
+        "repeat": 1,
+        "amount_policy": {},
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "warmup-history",
+        "order": 1,
+        "action": "build_legitimate_payment_history",
+        "description": "Emit spaced, moderate, explicitly legitimate warm-up activity.",
+        "channel": "mobile",
+        "offset_seconds": 86400.0,
+        "repeat": 1,
+        "amount_policy": {
+          "distribution": "bounded_normal"
+        },
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "trust-transition",
+        "order": 2,
+        "action": "pause_after_warmup",
+        "description": "Leave a configurable delay before the behavioral transition.",
+        "channel": "mobile",
+        "offset_seconds": 1814400.0,
+        "repeat": 1,
+        "amount_policy": {},
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "bust-out",
+        "order": 3,
+        "action": "execute_bounded_bustout",
+        "description": "Concentrate elevated transfers and cash-outs into a short window.",
+        "channel": "mobile",
+        "offset_seconds": 1900800.0,
+        "repeat": 1,
+        "amount_policy": {
+          "distribution": "warmup_mean_multiplier"
+        },
+        "parameters": {},
+        "metadata": {}
+      }
+    ],
+    "parameters": {
+      "warmup_transaction_count": {
+        "name": "warmup_transaction_count",
+        "param_type": "int",
+        "default": 12,
+        "description": "Legitimate transactions used to establish behavioral history.",
+        "minimum": 4.0,
+        "maximum": 40.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "transactions"
+      },
+      "warmup_amount_mean": {
+        "name": "warmup_amount_mean",
+        "param_type": "float",
+        "default": 500.0,
+        "description": "Target mean for bounded warm-up amounts.",
+        "minimum": 10.0,
+        "maximum": 500.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "warmup_amount_stddev": {
+        "name": "warmup_amount_stddev",
+        "param_type": "float",
+        "default": 200.0,
+        "description": "Warm-up amount dispersion before realism clipping.",
+        "minimum": 1.0,
+        "maximum": 200.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "warmup_duration_days": {
+        "name": "warmup_duration_days",
+        "param_type": "int",
+        "default": 21,
+        "description": "",
+        "minimum": 7.0,
+        "maximum": 90.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "days"
+      },
+      "account_age_days": {
+        "name": "account_age_days",
+        "param_type": "int",
+        "default": 14,
+        "description": "History proxy at the beginning of observable warm-up activity.",
+        "minimum": 1.0,
+        "maximum": 60.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "days"
+      },
+      "bustout_amount_multiplier": {
+        "name": "bustout_amount_multiplier",
+        "param_type": "float",
+        "default": 8.0,
+        "description": "",
+        "minimum": 3.0,
+        "maximum": 20.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "ratio"
+      },
+      "bustout_transaction_count": {
+        "name": "bustout_transaction_count",
+        "param_type": "int",
+        "default": 3,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 8.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "transactions"
+      },
+      "bustout_window_hours": {
+        "name": "bustout_window_hours",
+        "param_type": "float",
+        "default": 6.0,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 24.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "hours"
+      },
+      "destination_diversity": {
+        "name": "destination_diversity",
+        "param_type": "int",
+        "default": 3,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 8.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "destinations"
+      },
+      "transition_delay_hours": {
+        "name": "transition_delay_hours",
+        "param_type": "float",
+        "default": 24.0,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 168.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "hours"
+      },
+      "warmup_transfer_probability": {
+        "name": "warmup_transfer_probability",
+        "param_type": "float",
+        "default": 0.25,
+        "description": "",
+        "minimum": 0.05,
+        "maximum": 0.75,
+        "choices": null,
+        "mutable": true,
+        "unit": "probability"
+      },
+      "randomness_seed_offset": {
+        "name": "randomness_seed_offset",
+        "param_type": "int",
+        "default": 0,
+        "description": "",
+        "minimum": 0.0,
+        "maximum": 1000000.0,
+        "choices": null,
+        "mutable": false,
+        "unit": "seed offset"
+      }
+    },
+    "realism_constraints": {
+      "min_amount": 1.0,
+      "max_amount": 10000.0,
+      "allowed_currencies": [
+        "XXX"
+      ],
+      "allowed_channels": [
+        "mobile"
+      ],
+      "max_transactions_per_account_per_day": 12,
+      "max_accounts_involved": 25,
+      "min_sequence_length": 5,
+      "max_sequence_length": 48,
+      "active_hours_utc": [],
+      "custom": {}
+    },
+    "parent_blueprint_id": null,
+    "generation": 0,
+    "source": "deterministic_template",
+    "created_at": "2026-01-01T00:00:00Z",
+    "metadata": {
+      "reference_basis": "processed_paysim_train",
+      "llm_prompt_template_available": true,
+      "simulator_version": "1.0.0"
+    }
+  },
+  "blind_spot_analysis": {
+    "analysis_id": "blind-spot-d46a84544bcd2bf2",
+    "parent_blueprint_id": "synthetic-identity-bustout-v1",
+    "detector_model_version": "xgboost-baseline-20260101",
+    "round_index": 0,
+    "original_parameters": {
+      "warmup_transaction_count": 12,
+      "warmup_amount_mean": 500.0,
+      "warmup_amount_stddev": 200.0,
+      "warmup_duration_days": 21,
+      "account_age_days": 14,
+      "bustout_amount_multiplier": 8.0,
+      "bustout_transaction_count": 3,
+      "bustout_window_hours": 6.0,
+      "destination_diversity": 3,
+      "transition_delay_hours": 24.0,
+      "warmup_transfer_probability": 0.25,
+      "randomness_seed_offset": 0
+    },
+    "evasion_count": 3,
+    "credible_evasion_count": 3,
+    "average_evasion_risk_score": 0.5632627705732981,
+    "lowest_evasion_risk_score": 0.11423835158348083,
+    "average_fidelity_score": 0.8289343799338861,
+    "hardest_evasion_ids": [
+      "bustout-ed290e12-20260101-0000-bustout-000",
+      "bustout-ed290e12-20260101-0000-bustout-001",
+      "bustout-ed290e12-20260101-0000-bustout-002"
+    ],
+    "feedback": [
+      {
+        "contract_version": "1.0.0",
+        "feedback_id": "feedback-a680478a3abfe612",
+        "attack_family": "synthetic_identity_bustout",
+        "attack_id": "synthetic-identity-bustout-v1",
+        "blueprint_id": "synthetic-identity-bustout-v1",
+        "scenario_id": "bustout-ed290e12-20260101-0000",
+        "original_parameters": {
+          "warmup_transaction_count": 12,
+          "warmup_amount_mean": 500.0,
+          "warmup_amount_stddev": 200.0,
+          "warmup_duration_days": 21,
+          "account_age_days": 14,
+          "bustout_amount_multiplier": 8.0,
+          "bustout_transaction_count": 3,
+          "bustout_window_hours": 6.0,
+          "destination_diversity": 3,
+          "transition_delay_hours": 24.0,
+          "warmup_transfer_probability": 0.25,
+          "randomness_seed_offset": 0
+        },
+        "detector_score": 0.11423835158348083,
+        "detector_model_version": "xgboost-baseline-20260101",
+        "threshold": 0.9885146021842957,
+        "evaded": true,
+        "realism_score": 0.8289343799338862,
+        "important_signals": [
+          {
+            "name": "temporal.amount",
+            "contribution": -1.7272090911865234,
+            "value": 4759.96,
+            "direction": "decreases_risk",
+            "rank": 0,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_balance_before",
+            "contribution": -1.2783070802688599,
+            "value": 500.0,
+            "direction": "decreases_risk",
+            "rank": 1,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_cash_out",
+            "contribution": -1.129412293434143,
+            "value": 0.0,
+            "direction": "decreases_risk",
+            "rank": 2,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_transfer",
+            "contribution": 1.1277589797973633,
+            "value": 1.0,
+            "direction": "increases_risk",
+            "rank": 3,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_balance_before",
+            "contribution": -0.8742257356643677,
+            "value": 16913.48,
+            "direction": "decreases_risk",
+            "rank": 4,
+            "description": ""
+          },
+          {
+            "name": "temporal.hour_of_day",
+            "contribution": 0.8602871298789978,
+            "value": 22.0,
+            "direction": "increases_risk",
+            "rank": 5,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_payment",
+            "contribution": 0.6554760932922363,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 6,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_cash_in",
+            "contribution": 0.1467791646718979,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 7,
+            "description": ""
+          },
+          {
+            "name": "temporal.seconds_since_destination_previous_txn",
+            "contribution": 0.06384063512086868,
+            "value": null,
+            "direction": "increases_risk",
+            "rank": 8,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_txn_count_before",
+            "contribution": -0.019292019307613373,
+            "value": 0.0,
+            "direction": "decreases_risk",
+            "rank": 9,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_velocity_1h",
+            "contribution": 0.0068232049234211445,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 10,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_debit",
+            "contribution": -0.0026892160531133413,
+            "value": 0.0,
+            "direction": "decreases_risk",
+            "rank": 11,
+            "description": ""
+          },
+          {
+            "name": "temporal.seconds_since_source_previous_txn",
+            "contribution": 0.001204078085720539,
+            "value": 214063.048451,
+            "direction": "increases_risk",
+            "rank": 12,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_avg_amount_before",
+            "contribution": -0.00006172295979922637,
+            "value": 475.6041666666667,
+            "direction": "decreases_risk",
+            "rank": 13,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_velocity_1h",
+            "contribution": 0.0,
+            "value": 0.0,
+            "direction": "neutral",
+            "rank": 14,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_txn_count_before",
+            "contribution": 0.0,
+            "value": 12.0,
+            "direction": "neutral",
+            "rank": 15,
+            "description": ""
+          },
+          {
+            "name": "temporal.amount_deviation_from_source_history",
+            "contribution": 0.0,
+            "value": 29.834033579082558,
+            "direction": "neutral",
+            "rank": 16,
+            "description": ""
+          },
+          {
+            "name": "temporal.has_destination",
+            "contribution": 0.0,
+            "value": 1.0,
+            "direction": "neutral",
+            "rank": 17,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_refund",
+            "contribution": 0.0,
+            "value": 0.0,
+            "direction": "neutral",
+            "rank": 18,
+            "description": ""
+          }
+        ],
+        "suggested_mutations": [],
+        "round_index": 0,
+        "generation": 0,
+        "transaction_ids": [
+          "bustout-ed290e12-20260101-0000-bustout-000"
+        ],
+        "created_at": "2026-08-25T03:02:26.153487Z",
+        "metadata": {
+          "source_confrontation_id": "confrontation-416e606888de1ffa",
+          "ground_truth_label": "FRAUD",
+          "hardest_evasion_rank": 1
+        }
+      },
+      {
+        "contract_version": "1.0.0",
+        "feedback_id": "feedback-45a382f2d2b4d12e",
+        "attack_family": "synthetic_identity_bustout",
+        "attack_id": "synthetic-identity-bustout-v1",
+        "blueprint_id": "synthetic-identity-bustout-v1",
+        "scenario_id": "bustout-ed290e12-20260101-0000",
+        "original_parameters": {
+          "warmup_transaction_count": 12,
+          "warmup_amount_mean": 500.0,
+          "warmup_amount_stddev": 200.0,
+          "warmup_duration_days": 21,
+          "account_age_days": 14,
+          "bustout_amount_multiplier": 8.0,
+          "bustout_transaction_count": 3,
+          "bustout_window_hours": 6.0,
+          "destination_diversity": 3,
+          "transition_delay_hours": 24.0,
+          "warmup_transfer_probability": 0.25,
+          "randomness_seed_offset": 0
+        },
+        "detector_score": 0.6784510016441345,
+        "detector_model_version": "xgboost-baseline-20260101",
+        "threshold": 0.9885146021842957,
+        "evaded": true,
+        "realism_score": 0.8289343799338862,
+        "important_signals": [
+          {
+            "name": "temporal.hour_of_day",
+            "contribution": 3.203057289123535,
+            "value": 1.0,
+            "direction": "increases_risk",
+            "rank": 0,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_cash_out",
+            "contribution": -1.4733290672302246,
+            "value": 0.0,
+            "direction": "decreases_risk",
+            "rank": 1,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_balance_before",
+            "contribution": -1.2818101644515991,
+            "value": 500.0,
+            "direction": "decreases_risk",
+            "rank": 2,
+            "description": ""
+          },
+          {
+            "name": "temporal.amount",
+            "contribution": -1.2438530921936035,
+            "value": 4393.12,
+            "direction": "decreases_risk",
+            "rank": 3,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_transfer",
+            "contribution": 0.8627974390983582,
+            "value": 1.0,
+            "direction": "increases_risk",
+            "rank": 4,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_payment",
+            "contribution": 0.5615320205688477,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 5,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_balance_before",
+            "contribution": -0.20460066199302673,
+            "value": 12153.52,
+            "direction": "decreases_risk",
+            "rank": 6,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_cash_in",
+            "contribution": 0.1337100863456726,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 7,
+            "description": ""
+          },
+          {
+            "name": "temporal.seconds_since_destination_previous_txn",
+            "contribution": 0.08716413378715515,
+            "value": null,
+            "direction": "increases_risk",
+            "rank": 8,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_txn_count_before",
+            "contribution": -0.030376575887203217,
+            "value": 0.0,
+            "direction": "decreases_risk",
+            "rank": 9,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_velocity_1h",
+            "contribution": 0.012617447413504124,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 10,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_debit",
+            "contribution": -0.0022511514835059643,
+            "value": 0.0,
+            "direction": "decreases_risk",
+            "rank": 11,
+            "description": ""
+          },
+          {
+            "name": "temporal.seconds_since_source_previous_txn",
+            "contribution": 0.0011989835184067488,
+            "value": 10800.0,
+            "direction": "increases_risk",
+            "rank": 12,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_avg_amount_before",
+            "contribution": -0.00006172295979922637,
+            "value": 805.17,
+            "direction": "decreases_risk",
+            "rank": 13,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_velocity_1h",
+            "contribution": 0.0,
+            "value": 0.0,
+            "direction": "neutral",
+            "rank": 14,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_txn_count_before",
+            "contribution": 0.0,
+            "value": 13.0,
+            "direction": "neutral",
+            "rank": 15,
+            "description": ""
+          },
+          {
+            "name": "temporal.amount_deviation_from_source_history",
+            "contribution": 0.0,
+            "value": 3.1200744021825964,
+            "direction": "neutral",
+            "rank": 16,
+            "description": ""
+          },
+          {
+            "name": "temporal.has_destination",
+            "contribution": 0.0,
+            "value": 1.0,
+            "direction": "neutral",
+            "rank": 17,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_refund",
+            "contribution": 0.0,
+            "value": 0.0,
+            "direction": "neutral",
+            "rank": 18,
+            "description": ""
+          }
+        ],
+        "suggested_mutations": [],
+        "round_index": 0,
+        "generation": 0,
+        "transaction_ids": [
+          "bustout-ed290e12-20260101-0000-bustout-001"
+        ],
+        "created_at": "2026-08-25T03:02:26.153602Z",
+        "metadata": {
+          "source_confrontation_id": "confrontation-416e606888de1ffa",
+          "ground_truth_label": "FRAUD",
+          "hardest_evasion_rank": 2
+        }
+      },
+      {
+        "contract_version": "1.0.0",
+        "feedback_id": "feedback-f69615c7628dd93f",
+        "attack_family": "synthetic_identity_bustout",
+        "attack_id": "synthetic-identity-bustout-v1",
+        "blueprint_id": "synthetic-identity-bustout-v1",
+        "scenario_id": "bustout-ed290e12-20260101-0000",
+        "original_parameters": {
+          "warmup_transaction_count": 12,
+          "warmup_amount_mean": 500.0,
+          "warmup_amount_stddev": 200.0,
+          "warmup_duration_days": 21,
+          "account_age_days": 14,
+          "bustout_amount_multiplier": 8.0,
+          "bustout_transaction_count": 3,
+          "bustout_window_hours": 6.0,
+          "destination_diversity": 3,
+          "transition_delay_hours": 24.0,
+          "warmup_transfer_probability": 0.25,
+          "randomness_seed_offset": 0
+        },
+        "detector_score": 0.897098958492279,
+        "detector_model_version": "xgboost-baseline-20260101",
+        "threshold": 0.9885146021842957,
+        "evaded": true,
+        "realism_score": 0.8289343799338862,
+        "important_signals": [
+          {
+            "name": "temporal.hour_of_day",
+            "contribution": 3.2725541591644287,
+            "value": 4.0,
+            "direction": "increases_risk",
+            "rank": 0,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_cash_out",
+            "contribution": -1.5299490690231323,
+            "value": 0.0,
+            "direction": "decreases_risk",
+            "rank": 1,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_balance_before",
+            "contribution": -1.4302245378494263,
+            "value": 500.0,
+            "direction": "decreases_risk",
+            "rank": 2,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_transfer",
+            "contribution": 1.0190356969833374,
+            "value": 1.0,
+            "direction": "increases_risk",
+            "rank": 3,
+            "description": ""
+          },
+          {
+            "name": "temporal.amount",
+            "contribution": -0.6311740279197693,
+            "value": 3990.28,
+            "direction": "decreases_risk",
+            "rank": 4,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_payment",
+            "contribution": 0.5712146162986755,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 5,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_balance_before",
+            "contribution": 0.5408018231391907,
+            "value": 7760.4,
+            "direction": "increases_risk",
+            "rank": 6,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_cash_in",
+            "contribution": 0.1334269493818283,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 7,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_txn_count_before",
+            "contribution": 0.06799463927745819,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 8,
+            "description": ""
+          },
+          {
+            "name": "temporal.seconds_since_destination_previous_txn",
+            "contribution": 0.023341059684753418,
+            "value": null,
+            "direction": "increases_risk",
+            "rank": 9,
+            "description": ""
+          },
+          {
+            "name": "temporal.destination_velocity_1h",
+            "contribution": 0.003271441673859954,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 10,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_debit",
+            "contribution": 0.0031026224605739117,
+            "value": 0.0,
+            "direction": "increases_risk",
+            "rank": 11,
+            "description": ""
+          },
+          {
+            "name": "temporal.seconds_since_source_previous_txn",
+            "contribution": 0.0011989835184067488,
+            "value": 10800.0,
+            "direction": "increases_risk",
+            "rank": 12,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_avg_amount_before",
+            "contribution": -0.00006172295979922637,
+            "value": 1061.4521428571427,
+            "direction": "decreases_risk",
+            "rank": 13,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_velocity_1h",
+            "contribution": 0.0,
+            "value": 0.0,
+            "direction": "neutral",
+            "rank": 14,
+            "description": ""
+          },
+          {
+            "name": "temporal.source_txn_count_before",
+            "contribution": 0.0,
+            "value": 14.0,
+            "direction": "neutral",
+            "rank": 15,
+            "description": ""
+          },
+          {
+            "name": "temporal.amount_deviation_from_source_history",
+            "contribution": 0.0,
+            "value": 2.0299035262800493,
+            "direction": "neutral",
+            "rank": 16,
+            "description": ""
+          },
+          {
+            "name": "temporal.has_destination",
+            "contribution": 0.0,
+            "value": 1.0,
+            "direction": "neutral",
+            "rank": 17,
+            "description": ""
+          },
+          {
+            "name": "temporal.type_refund",
+            "contribution": 0.0,
+            "value": 0.0,
+            "direction": "neutral",
+            "rank": 18,
+            "description": ""
+          }
+        ],
+        "suggested_mutations": [],
+        "round_index": 0,
+        "generation": 0,
+        "transaction_ids": [
+          "bustout-ed290e12-20260101-0000-bustout-002"
+        ],
+        "created_at": "2026-08-25T03:02:26.153694Z",
+        "metadata": {
+          "source_confrontation_id": "confrontation-416e606888de1ffa",
+          "ground_truth_label": "FRAUD",
+          "hardest_evasion_rank": 3
+        }
+      }
+    ],
+    "parameter_evidence": [
+      {
+        "parameter": "bustout_amount_multiplier",
+        "signals": [
+          "temporal.amount",
+          "temporal.amount_deviation_from_source_history"
+        ],
+        "observations": 6,
+        "mean_signed_contribution": -0.7612524641457701,
+        "risk_increasing_contribution": 0.0,
+        "direction_vote": 0.0,
+        "suggested_direction": null,
+        "evidence_type": "observed_signal_attribution",
+        "rationale": "Mapped signals temporal.amount, temporal.amount_deviation_from_source_history did not provide a consistent risk-increasing direction; no directional conclusion is asserted."
+      },
+      {
+        "parameter": "bustout_window_hours",
+        "signals": [
+          "temporal.seconds_since_source_previous_txn",
+          "temporal.source_velocity_1h"
+        ],
+        "observations": 6,
+        "mean_signed_contribution": 0.0006012138367814472,
+        "risk_increasing_contribution": 0.0006012138367814472,
+        "direction_vote": -0.0013059320626098176,
+        "suggested_direction": "decrease",
+        "evidence_type": "observed_signal_attribution",
+        "rationale": "Credible Round 0 evasions showed positive risk contribution from temporal.seconds_since_source_previous_txn, temporal.source_velocity_1h; test a bounded decrease move. Attribution supports exploration, not a causal efficacy claim."
+      },
+      {
+        "parameter": "destination_diversity",
+        "signals": [
+          "temporal.destination_velocity_1h"
+        ],
+        "observations": 3,
+        "mean_signed_contribution": 0.007966266571202984,
+        "risk_increasing_contribution": 0.007966266571202984,
+        "direction_vote": 0.008651998921319397,
+        "suggested_direction": "increase",
+        "evidence_type": "observed_signal_attribution",
+        "rationale": "Credible Round 0 evasions showed positive risk contribution from temporal.destination_velocity_1h; test a bounded increase move. Attribution supports exploration, not a causal efficacy claim."
+      },
+      {
+        "parameter": "warmup_amount_mean",
+        "signals": [
+          "temporal.source_avg_amount_before"
+        ],
+        "observations": 3,
+        "mean_signed_contribution": -0.00006172295979922637,
+        "risk_increasing_contribution": 0.0,
+        "direction_vote": 0.0,
+        "suggested_direction": null,
+        "evidence_type": "observed_signal_attribution",
+        "rationale": "Mapped signals temporal.source_avg_amount_before did not provide a consistent risk-increasing direction; no directional conclusion is asserted."
+      },
+      {
+        "parameter": "warmup_transaction_count",
+        "signals": [
+          "temporal.source_txn_count_before"
+        ],
+        "observations": 3,
+        "mean_signed_contribution": 0.0,
+        "risk_increasing_contribution": 0.0,
+        "direction_vote": 0.0,
+        "suggested_direction": null,
+        "evidence_type": "observed_signal_attribution",
+        "rationale": "Mapped signals temporal.source_txn_count_before did not provide a consistent risk-increasing direction; no directional conclusion is asserted."
+      }
+    ],
+    "directional_evidence_available": true,
+    "notes": [
+      "Round 0 contains one parent parameter region; signal attribution is associative, not a cross-region parameter correlation."
+    ]
+  },
+  "candidate_results": [
+    {
+      "fitness_rank": 1,
+      "candidate": {
+        "candidate_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+        "seed": 20260102,
+        "blueprint": {
+          "contract_version": "1.0.0",
+          "attack_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+          "attack_family": "synthetic_identity_bustout",
+          "name": "Synthetic identity trust build and bust-out",
+          "description": "A low-history synthetic persona establishes ordinary payment behaviour before a sudden, bounded series of high-value transfers and cash-outs.",
+          "objective": "Build sufficient legitimate-looking history to make the later behavioral transition a realistic bust-out stress case.",
+          "target_features": [
+            "temporal.account_age_days",
+            "temporal.velocity_24h",
+            "temporal.amount_ratio_to_history",
+            "behavioral.payee_diversity"
+          ],
+          "sequence": [
+            {
+              "step_id": "identity-onboarding",
+              "order": 0,
+              "action": "establish_low_history_persona",
+              "description": "Create a new synthetic persona with a bounded account-age proxy.",
+              "channel": "mobile",
+              "offset_seconds": 0.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "warmup-history",
+              "order": 1,
+              "action": "build_legitimate_payment_history",
+              "description": "Emit spaced, moderate, explicitly legitimate warm-up activity.",
+              "channel": "mobile",
+              "offset_seconds": 86400.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "bounded_normal"
+              },
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "trust-transition",
+              "order": 2,
+              "action": "pause_after_warmup",
+              "description": "Leave a configurable delay before the behavioral transition.",
+              "channel": "mobile",
+              "offset_seconds": 1814400.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "bust-out",
+              "order": 3,
+              "action": "execute_bounded_bustout",
+              "description": "Concentrate elevated transfers and cash-outs into a short window.",
+              "channel": "mobile",
+              "offset_seconds": 1900800.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "warmup_mean_multiplier"
+              },
+              "parameters": {},
+              "metadata": {}
+            }
+          ],
+          "parameters": {
+            "warmup_transaction_count": {
+              "name": "warmup_transaction_count",
+              "param_type": "int",
+              "default": 12,
+              "description": "Legitimate transactions used to establish behavioral history.",
+              "minimum": 4.0,
+              "maximum": 40.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "warmup_amount_mean": {
+              "name": "warmup_amount_mean",
+              "param_type": "float",
+              "default": 500.0,
+              "description": "Target mean for bounded warm-up amounts.",
+              "minimum": 10.0,
+              "maximum": 500.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_amount_stddev": {
+              "name": "warmup_amount_stddev",
+              "param_type": "float",
+              "default": 200.0,
+              "description": "Warm-up amount dispersion before realism clipping.",
+              "minimum": 1.0,
+              "maximum": 200.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_duration_days": {
+              "name": "warmup_duration_days",
+              "param_type": "int",
+              "default": 21,
+              "description": "",
+              "minimum": 7.0,
+              "maximum": 90.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "account_age_days": {
+              "name": "account_age_days",
+              "param_type": "int",
+              "default": 14,
+              "description": "History proxy at the beginning of observable warm-up activity.",
+              "minimum": 1.0,
+              "maximum": 60.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "bustout_amount_multiplier": {
+              "name": "bustout_amount_multiplier",
+              "param_type": "float",
+              "default": 8.0,
+              "description": "",
+              "minimum": 3.0,
+              "maximum": 20.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "ratio"
+            },
+            "bustout_transaction_count": {
+              "name": "bustout_transaction_count",
+              "param_type": "int",
+              "default": 3,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "bustout_window_hours": {
+              "name": "bustout_window_hours",
+              "param_type": "float",
+              "default": 6.0,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 24.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "destination_diversity": {
+              "name": "destination_diversity",
+              "param_type": "int",
+              "default": 5,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "destinations"
+            },
+            "transition_delay_hours": {
+              "name": "transition_delay_hours",
+              "param_type": "float",
+              "default": 24.0,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 168.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "warmup_transfer_probability": {
+              "name": "warmup_transfer_probability",
+              "param_type": "float",
+              "default": 0.25,
+              "description": "",
+              "minimum": 0.05,
+              "maximum": 0.75,
+              "choices": null,
+              "mutable": true,
+              "unit": "probability"
+            },
+            "randomness_seed_offset": {
+              "name": "randomness_seed_offset",
+              "param_type": "int",
+              "default": 0,
+              "description": "",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "choices": null,
+              "mutable": false,
+              "unit": "seed offset"
+            }
+          },
+          "realism_constraints": {
+            "min_amount": 1.0,
+            "max_amount": 10000.0,
+            "allowed_currencies": [
+              "XXX"
+            ],
+            "allowed_channels": [
+              "mobile"
+            ],
+            "max_transactions_per_account_per_day": 12,
+            "max_accounts_involved": 25,
+            "min_sequence_length": 5,
+            "max_sequence_length": 48,
+            "active_hours_utc": [],
+            "custom": {}
+          },
+          "parent_blueprint_id": "synthetic-identity-bustout-v1",
+          "generation": 1,
+          "source": "mutation",
+          "created_at": "2026-01-01T00:00:00Z",
+          "metadata": {
+            "reference_basis": "processed_paysim_train",
+            "llm_prompt_template_available": true,
+            "simulator_version": "1.0.0",
+            "mutation_seed": 20260102,
+            "changed_parameters": {
+              "destination_diversity": {
+                "from": 3,
+                "to": 5
+              }
+            }
+          }
+        },
+        "mutations": [
+          {
+            "parameter": "destination_diversity",
+            "direction": "increase",
+            "current_value": 3,
+            "proposed_value": 5,
+            "magnitude": 0.24,
+            "rationale": "Credible Round 0 evasions showed positive risk contribution from temporal.destination_velocity_1h; test a bounded increase move. Attribution supports exploration, not a causal efficacy claim.",
+            "confidence": 0.5579662665712031,
+            "priority": 0
+          }
+        ],
+        "changed_parameters": {
+          "destination_diversity": {
+            "from": 3,
+            "to": 5
+          }
+        },
+        "evidence_basis": "observed_signal_attribution"
+      },
+      "batch_id": "bustout-c5f31c2fdbca06dc",
+      "generation_seed": 20260105,
+      "model_version": "xgboost-baseline-20260101",
+      "metrics": {
+        "generated_scenario_count": 1,
+        "transaction_count": 15,
+        "fraud_count": 3,
+        "caught_count": 0,
+        "evaded_count": 3,
+        "fraud_recall": 0.0,
+        "average_fraud_risk_score": 0.558033953110377,
+        "fidelity_score": 0.9049320258269917,
+        "fitness": 0.3999492301585738,
+        "evaluation_result": {
+          "contract_version": "1.0.0",
+          "evaluation_id": "bustout-c5f31c2fdbca06dc-bustout-9e2ec3c1-20260105-0000",
+          "protocol": "static_holdout",
+          "model_version": "xgboost-baseline-20260101",
+          "dataset_id": "bustout-c5f31c2fdbca06dc",
+          "split": "test",
+          "overall": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "pr_auc": null,
+            "roc_auc": null,
+            "false_positive_rate": 0.0,
+            "false_negative_rate": 1.0,
+            "recall_at_fixed_fpr": {},
+            "alert_rate": 0.0,
+            "threshold": 0.9885146021842957,
+            "counts": {
+              "true_positives": 0,
+              "false_positives": 0,
+              "true_negatives": 12,
+              "false_negatives": 3
+            },
+            "support": 15,
+            "positive_support": 3
+          },
+          "per_attack_family": {
+            "synthetic_identity_bustout": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "pr_auc": null,
+              "roc_auc": null,
+              "false_positive_rate": 0.0,
+              "false_negative_rate": 1.0,
+              "recall_at_fixed_fpr": {},
+              "alert_rate": 0.0,
+              "threshold": 0.9885146021842957,
+              "counts": {
+                "true_positives": 0,
+                "false_positives": 0,
+                "true_negatives": 0,
+                "false_negatives": 3
+              },
+              "support": 3,
+              "positive_support": 3
+            }
+          },
+          "latency": null,
+          "fidelity": {
+            "marginal_distance": null,
+            "correlation_delta": null,
+            "discriminator_auc": null,
+            "constraint_violation_rate": 0.0,
+            "duplicate_rate": null,
+            "overall_fidelity_score": 0.9049320258269917,
+            "per_column": {},
+            "metadata": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 479.8041666666666,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 164.74888872343286,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7560490642189122,
+              "transaction_type_similarity": 0.838610978075061,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 7.4400006947278845,
+              "transition_multiplier_similarity": 0.9300000868409856,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.9049320258269917,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            }
+          },
+          "round_index": null,
+          "held_out_family": null,
+          "seed": 20260105,
+          "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+          "created_at": "2026-08-25T03:02:26.220151Z",
+          "metadata": {
+            "scenario_ids": [
+              "bustout-9e2ec3c1-20260105-0000"
+            ],
+            "integration_only": false,
+            "caught_definition": "ground-truth fraud predicted as FRAUD",
+            "adaptive_round": 1,
+            "candidate_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "average_fraud_risk_score": 0.558033953110377,
+            "fitness": 0.3999492301585738,
+            "changed_parameters": {
+              "destination_diversity": {
+                "from": 3,
+                "to": 5
+              }
+            },
+            "detector_retrained": false
+          }
+        }
+      },
+      "confrontation": {
+        "report_id": "confrontation-a6ded72181585b17",
+        "training_dataset_id": "paysim-16910f90577b-086de09508a4",
+        "training_transaction_count": 4463587,
+        "data_basis": "processed_paysim",
+        "integration_only": false,
+        "model_version": "xgboost-baseline-20260101",
+        "generated_batch_id": "bustout-c5f31c2fdbca06dc",
+        "scenario_reports": [
+          {
+            "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+            "split": "test",
+            "total_transactions": 15,
+            "legitimate_warmup_transaction_count": 12,
+            "fraudulent_bustout_count": 3,
+            "caught_fraud_count": 0,
+            "evaded_fraud_count": 3,
+            "fraud_recall": 0.0,
+            "fraudulent_events": [
+              {
+                "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-000",
+                "sequence_index": 12,
+                "risk_score": 0.45260801911354065,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-001",
+                "sequence_index": 13,
+                "risk_score": 0.8583946824073792,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-002",
+                "sequence_index": 14,
+                "risk_score": 0.3630991578102112,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              }
+            ],
+            "model_version": "xgboost-baseline-20260101",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "generation": 1,
+            "batch_id": "bustout-c5f31c2fdbca06dc",
+            "generator_name": "synthetic-identity-bustout",
+            "generator_version": "1.0.0",
+            "seed": 20260105,
+            "fidelity_summary": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 479.8041666666666,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 164.74888872343286,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7560490642189122,
+              "transaction_type_similarity": 0.838610978075061,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 7.4400006947278845,
+              "transition_multiplier_similarity": 0.9300000868409856,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.9049320258269917,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            },
+            "evaluation_result": {
+              "contract_version": "1.0.0",
+              "evaluation_id": "bustout-c5f31c2fdbca06dc-bustout-9e2ec3c1-20260105-0000",
+              "protocol": "static_holdout",
+              "model_version": "xgboost-baseline-20260101",
+              "dataset_id": "bustout-c5f31c2fdbca06dc",
+              "split": "test",
+              "overall": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "pr_auc": null,
+                "roc_auc": null,
+                "false_positive_rate": 0.0,
+                "false_negative_rate": 1.0,
+                "recall_at_fixed_fpr": {},
+                "alert_rate": 0.0,
+                "threshold": 0.9885146021842957,
+                "counts": {
+                  "true_positives": 0,
+                  "false_positives": 0,
+                  "true_negatives": 12,
+                  "false_negatives": 3
+                },
+                "support": 15,
+                "positive_support": 3
+              },
+              "per_attack_family": {
+                "synthetic_identity_bustout": {
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "f1": 0.0,
+                  "pr_auc": null,
+                  "roc_auc": null,
+                  "false_positive_rate": 0.0,
+                  "false_negative_rate": 1.0,
+                  "recall_at_fixed_fpr": {},
+                  "alert_rate": 0.0,
+                  "threshold": 0.9885146021842957,
+                  "counts": {
+                    "true_positives": 0,
+                    "false_positives": 0,
+                    "true_negatives": 0,
+                    "false_negatives": 3
+                  },
+                  "support": 3,
+                  "positive_support": 3
+                }
+              },
+              "latency": null,
+              "fidelity": {
+                "marginal_distance": null,
+                "correlation_delta": null,
+                "discriminator_auc": null,
+                "constraint_violation_rate": 0.0,
+                "duplicate_rate": null,
+                "overall_fidelity_score": 0.9049320258269917,
+                "per_column": {},
+                "metadata": {
+                  "reference_basis": "processed_paysim_train",
+                  "reference_sample_count": 4459944,
+                  "warmup_count": 12,
+                  "fraud_count": 3,
+                  "fraud_proportion": 0.2,
+                  "warmup_amount_mean": 479.8041666666666,
+                  "reference_amount_mean": 173828.28095812237,
+                  "warmup_amount_stddev": 164.74888872343286,
+                  "reference_amount_stddev": 619878.7537244804,
+                  "warmup_amount_similarity": 0.7560490642189122,
+                  "transaction_type_similarity": 0.838610978075061,
+                  "temporal_spacing_reasonableness": 1.0,
+                  "transition_sharpness": 7.4400006947278845,
+                  "transition_multiplier_similarity": 0.9300000868409856,
+                  "constraint_violation_rate": 0.0,
+                  "overall_fidelity_score": 0.9049320258269917,
+                  "assumptions": [
+                    "Reference moments were derived from legitimate prepared PaySim train rows only."
+                  ]
+                }
+              },
+              "round_index": null,
+              "held_out_family": null,
+              "seed": 20260105,
+              "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+              "created_at": "2026-08-25T03:02:26.220151Z",
+              "metadata": {
+                "scenario_ids": [
+                  "bustout-9e2ec3c1-20260105-0000"
+                ],
+                "integration_only": false,
+                "caught_definition": "ground-truth fraud predicted as FRAUD",
+                "adaptive_round": 1,
+                "candidate_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+                "average_fraud_risk_score": 0.558033953110377,
+                "fitness": 0.3999492301585738,
+                "changed_parameters": {
+                  "destination_diversity": {
+                    "from": 3,
+                    "to": 5
+                  }
+                },
+                "detector_retrained": false
+              }
+            }
+          }
+        ],
+        "successful_evasions": [
+          {
+            "rank": null,
+            "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+            "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.45260801911354065,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9049320258269917,
+            "credible_evasion": true,
+            "hardness_score": 0.4953525341850336
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+            "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.8583946824073792,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9049320258269917,
+            "credible_evasion": true,
+            "hardness_score": 0.12814318691696494
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+            "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.3630991578102112,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9049320258269917,
+            "credible_evasion": true,
+            "hardness_score": 0.5763519693737228
+          }
+        ],
+        "hardest_evasions": [
+          {
+            "rank": 1,
+            "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+            "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.3630991578102112,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9049320258269917,
+            "credible_evasion": true,
+            "hardness_score": 0.5763519693737228
+          },
+          {
+            "rank": 2,
+            "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+            "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.45260801911354065,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9049320258269917,
+            "credible_evasion": true,
+            "hardness_score": 0.4953525341850336
+          },
+          {
+            "rank": 3,
+            "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+            "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.8583946824073792,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9049320258269917,
+            "credible_evasion": true,
+            "hardness_score": 0.12814318691696494
+          }
+        ],
+        "metadata": {
+          "adaptive": false,
+          "retrained_after_scoring": false,
+          "ranking": "successful false negatives by descending (1-risk_score)*fidelity_score, then stable tie-breakers"
+        }
+      }
+    },
+    {
+      "fitness_rank": 2,
+      "candidate": {
+        "candidate_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+        "seed": 20260102,
+        "blueprint": {
+          "contract_version": "1.0.0",
+          "attack_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+          "attack_family": "synthetic_identity_bustout",
+          "name": "Synthetic identity trust build and bust-out",
+          "description": "A low-history synthetic persona establishes ordinary payment behaviour before a sudden, bounded series of high-value transfers and cash-outs.",
+          "objective": "Build sufficient legitimate-looking history to make the later behavioral transition a realistic bust-out stress case.",
+          "target_features": [
+            "temporal.account_age_days",
+            "temporal.velocity_24h",
+            "temporal.amount_ratio_to_history",
+            "behavioral.payee_diversity"
+          ],
+          "sequence": [
+            {
+              "step_id": "identity-onboarding",
+              "order": 0,
+              "action": "establish_low_history_persona",
+              "description": "Create a new synthetic persona with a bounded account-age proxy.",
+              "channel": "mobile",
+              "offset_seconds": 0.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "warmup-history",
+              "order": 1,
+              "action": "build_legitimate_payment_history",
+              "description": "Emit spaced, moderate, explicitly legitimate warm-up activity.",
+              "channel": "mobile",
+              "offset_seconds": 86400.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "bounded_normal"
+              },
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "trust-transition",
+              "order": 2,
+              "action": "pause_after_warmup",
+              "description": "Leave a configurable delay before the behavioral transition.",
+              "channel": "mobile",
+              "offset_seconds": 1814400.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "bust-out",
+              "order": 3,
+              "action": "execute_bounded_bustout",
+              "description": "Concentrate elevated transfers and cash-outs into a short window.",
+              "channel": "mobile",
+              "offset_seconds": 1900800.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "warmup_mean_multiplier"
+              },
+              "parameters": {},
+              "metadata": {}
+            }
+          ],
+          "parameters": {
+            "warmup_transaction_count": {
+              "name": "warmup_transaction_count",
+              "param_type": "int",
+              "default": 12,
+              "description": "Legitimate transactions used to establish behavioral history.",
+              "minimum": 4.0,
+              "maximum": 40.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "warmup_amount_mean": {
+              "name": "warmup_amount_mean",
+              "param_type": "float",
+              "default": 500.0,
+              "description": "Target mean for bounded warm-up amounts.",
+              "minimum": 10.0,
+              "maximum": 500.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_amount_stddev": {
+              "name": "warmup_amount_stddev",
+              "param_type": "float",
+              "default": 200.0,
+              "description": "Warm-up amount dispersion before realism clipping.",
+              "minimum": 1.0,
+              "maximum": 200.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_duration_days": {
+              "name": "warmup_duration_days",
+              "param_type": "int",
+              "default": 21,
+              "description": "",
+              "minimum": 7.0,
+              "maximum": 90.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "account_age_days": {
+              "name": "account_age_days",
+              "param_type": "int",
+              "default": 14,
+              "description": "History proxy at the beginning of observable warm-up activity.",
+              "minimum": 1.0,
+              "maximum": 60.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "bustout_amount_multiplier": {
+              "name": "bustout_amount_multiplier",
+              "param_type": "float",
+              "default": 8.0,
+              "description": "",
+              "minimum": 3.0,
+              "maximum": 20.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "ratio"
+            },
+            "bustout_transaction_count": {
+              "name": "bustout_transaction_count",
+              "param_type": "int",
+              "default": 3,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "bustout_window_hours": {
+              "name": "bustout_window_hours",
+              "param_type": "float",
+              "default": 6.0,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 24.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "destination_diversity": {
+              "name": "destination_diversity",
+              "param_type": "int",
+              "default": 4,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "destinations"
+            },
+            "transition_delay_hours": {
+              "name": "transition_delay_hours",
+              "param_type": "float",
+              "default": 24.0,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 168.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "warmup_transfer_probability": {
+              "name": "warmup_transfer_probability",
+              "param_type": "float",
+              "default": 0.25,
+              "description": "",
+              "minimum": 0.05,
+              "maximum": 0.75,
+              "choices": null,
+              "mutable": true,
+              "unit": "probability"
+            },
+            "randomness_seed_offset": {
+              "name": "randomness_seed_offset",
+              "param_type": "int",
+              "default": 0,
+              "description": "",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "choices": null,
+              "mutable": false,
+              "unit": "seed offset"
+            }
+          },
+          "realism_constraints": {
+            "min_amount": 1.0,
+            "max_amount": 10000.0,
+            "allowed_currencies": [
+              "XXX"
+            ],
+            "allowed_channels": [
+              "mobile"
+            ],
+            "max_transactions_per_account_per_day": 12,
+            "max_accounts_involved": 25,
+            "min_sequence_length": 5,
+            "max_sequence_length": 48,
+            "active_hours_utc": [],
+            "custom": {}
+          },
+          "parent_blueprint_id": "synthetic-identity-bustout-v1",
+          "generation": 1,
+          "source": "mutation",
+          "created_at": "2026-01-01T00:00:00Z",
+          "metadata": {
+            "reference_basis": "processed_paysim_train",
+            "llm_prompt_template_available": true,
+            "simulator_version": "1.0.0",
+            "mutation_seed": 20260102,
+            "changed_parameters": {
+              "destination_diversity": {
+                "from": 3,
+                "to": 4
+              }
+            }
+          }
+        },
+        "mutations": [
+          {
+            "parameter": "destination_diversity",
+            "direction": "increase",
+            "current_value": 3,
+            "proposed_value": 4,
+            "magnitude": 0.08,
+            "rationale": "Credible Round 0 evasions showed positive risk contribution from temporal.destination_velocity_1h; test a bounded increase move. Attribution supports exploration, not a causal efficacy claim.",
+            "confidence": 0.5579662665712031,
+            "priority": 0
+          }
+        ],
+        "changed_parameters": {
+          "destination_diversity": {
+            "from": 3,
+            "to": 4
+          }
+        },
+        "evidence_basis": "observed_signal_attribution"
+      },
+      "batch_id": "bustout-f5a6e52ff57f2153",
+      "generation_seed": 20260102,
+      "model_version": "xgboost-baseline-20260101",
+      "metrics": {
+        "generated_scenario_count": 1,
+        "transaction_count": 15,
+        "fraud_count": 3,
+        "caught_count": 0,
+        "evaded_count": 3,
+        "fraud_recall": 0.0,
+        "average_fraud_risk_score": 0.6796180109182993,
+        "fidelity_score": 0.8449932259813572,
+        "fitness": 0.2707206105004702,
+        "evaluation_result": {
+          "contract_version": "1.0.0",
+          "evaluation_id": "bustout-f5a6e52ff57f2153-bustout-ab5114f5-20260102-0000",
+          "protocol": "static_holdout",
+          "model_version": "xgboost-baseline-20260101",
+          "dataset_id": "bustout-f5a6e52ff57f2153",
+          "split": "test",
+          "overall": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "pr_auc": null,
+            "roc_auc": null,
+            "false_positive_rate": 0.0,
+            "false_negative_rate": 1.0,
+            "recall_at_fixed_fpr": {},
+            "alert_rate": 0.0,
+            "threshold": 0.9885146021842957,
+            "counts": {
+              "true_positives": 0,
+              "false_positives": 0,
+              "true_negatives": 12,
+              "false_negatives": 3
+            },
+            "support": 15,
+            "positive_support": 3
+          },
+          "per_attack_family": {
+            "synthetic_identity_bustout": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "pr_auc": null,
+              "roc_auc": null,
+              "false_positive_rate": 0.0,
+              "false_negative_rate": 1.0,
+              "recall_at_fixed_fpr": {},
+              "alert_rate": 0.0,
+              "threshold": 0.9885146021842957,
+              "counts": {
+                "true_positives": 0,
+                "false_positives": 0,
+                "true_negatives": 0,
+                "false_negatives": 3
+              },
+              "support": 3,
+              "positive_support": 3
+            }
+          },
+          "latency": null,
+          "fidelity": {
+            "marginal_distance": null,
+            "correlation_delta": null,
+            "discriminator_auc": null,
+            "constraint_violation_rate": 0.0,
+            "duplicate_rate": null,
+            "overall_fidelity_score": 0.8449932259813572,
+            "per_column": {},
+            "metadata": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 568.8308333333334,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 137.31048800956265,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7561576553930068,
+              "transaction_type_similarity": 0.6034999542595154,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 6.922468162034113,
+              "transition_multiplier_similarity": 0.8653085202542641,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.8449932259813572,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            }
+          },
+          "round_index": null,
+          "held_out_family": null,
+          "seed": 20260102,
+          "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+          "created_at": "2026-08-25T03:02:26.175373Z",
+          "metadata": {
+            "scenario_ids": [
+              "bustout-ab5114f5-20260102-0000"
+            ],
+            "integration_only": false,
+            "caught_definition": "ground-truth fraud predicted as FRAUD",
+            "adaptive_round": 1,
+            "candidate_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "average_fraud_risk_score": 0.6796180109182993,
+            "fitness": 0.2707206105004702,
+            "changed_parameters": {
+              "destination_diversity": {
+                "from": 3,
+                "to": 4
+              }
+            },
+            "detector_retrained": false
+          }
+        }
+      },
+      "confrontation": {
+        "report_id": "confrontation-0cea6f1d65651680",
+        "training_dataset_id": "paysim-16910f90577b-086de09508a4",
+        "training_transaction_count": 4463587,
+        "data_basis": "processed_paysim",
+        "integration_only": false,
+        "model_version": "xgboost-baseline-20260101",
+        "generated_batch_id": "bustout-f5a6e52ff57f2153",
+        "scenario_reports": [
+          {
+            "scenario_id": "bustout-ab5114f5-20260102-0000",
+            "split": "test",
+            "total_transactions": 15,
+            "legitimate_warmup_transaction_count": 12,
+            "fraudulent_bustout_count": 3,
+            "caught_fraud_count": 0,
+            "evaded_fraud_count": 3,
+            "fraud_recall": 0.0,
+            "fraudulent_events": [
+              {
+                "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-000",
+                "sequence_index": 12,
+                "risk_score": 0.44967207312583923,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-001",
+                "sequence_index": 13,
+                "risk_score": 0.9591023921966553,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-002",
+                "sequence_index": 14,
+                "risk_score": 0.6300795674324036,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              }
+            ],
+            "model_version": "xgboost-baseline-20260101",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "generation": 1,
+            "batch_id": "bustout-f5a6e52ff57f2153",
+            "generator_name": "synthetic-identity-bustout",
+            "generator_version": "1.0.0",
+            "seed": 20260102,
+            "fidelity_summary": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 568.8308333333334,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 137.31048800956265,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7561576553930068,
+              "transaction_type_similarity": 0.6034999542595154,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 6.922468162034113,
+              "transition_multiplier_similarity": 0.8653085202542641,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.8449932259813572,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            },
+            "evaluation_result": {
+              "contract_version": "1.0.0",
+              "evaluation_id": "bustout-f5a6e52ff57f2153-bustout-ab5114f5-20260102-0000",
+              "protocol": "static_holdout",
+              "model_version": "xgboost-baseline-20260101",
+              "dataset_id": "bustout-f5a6e52ff57f2153",
+              "split": "test",
+              "overall": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "pr_auc": null,
+                "roc_auc": null,
+                "false_positive_rate": 0.0,
+                "false_negative_rate": 1.0,
+                "recall_at_fixed_fpr": {},
+                "alert_rate": 0.0,
+                "threshold": 0.9885146021842957,
+                "counts": {
+                  "true_positives": 0,
+                  "false_positives": 0,
+                  "true_negatives": 12,
+                  "false_negatives": 3
+                },
+                "support": 15,
+                "positive_support": 3
+              },
+              "per_attack_family": {
+                "synthetic_identity_bustout": {
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "f1": 0.0,
+                  "pr_auc": null,
+                  "roc_auc": null,
+                  "false_positive_rate": 0.0,
+                  "false_negative_rate": 1.0,
+                  "recall_at_fixed_fpr": {},
+                  "alert_rate": 0.0,
+                  "threshold": 0.9885146021842957,
+                  "counts": {
+                    "true_positives": 0,
+                    "false_positives": 0,
+                    "true_negatives": 0,
+                    "false_negatives": 3
+                  },
+                  "support": 3,
+                  "positive_support": 3
+                }
+              },
+              "latency": null,
+              "fidelity": {
+                "marginal_distance": null,
+                "correlation_delta": null,
+                "discriminator_auc": null,
+                "constraint_violation_rate": 0.0,
+                "duplicate_rate": null,
+                "overall_fidelity_score": 0.8449932259813572,
+                "per_column": {},
+                "metadata": {
+                  "reference_basis": "processed_paysim_train",
+                  "reference_sample_count": 4459944,
+                  "warmup_count": 12,
+                  "fraud_count": 3,
+                  "fraud_proportion": 0.2,
+                  "warmup_amount_mean": 568.8308333333334,
+                  "reference_amount_mean": 173828.28095812237,
+                  "warmup_amount_stddev": 137.31048800956265,
+                  "reference_amount_stddev": 619878.7537244804,
+                  "warmup_amount_similarity": 0.7561576553930068,
+                  "transaction_type_similarity": 0.6034999542595154,
+                  "temporal_spacing_reasonableness": 1.0,
+                  "transition_sharpness": 6.922468162034113,
+                  "transition_multiplier_similarity": 0.8653085202542641,
+                  "constraint_violation_rate": 0.0,
+                  "overall_fidelity_score": 0.8449932259813572,
+                  "assumptions": [
+                    "Reference moments were derived from legitimate prepared PaySim train rows only."
+                  ]
+                }
+              },
+              "round_index": null,
+              "held_out_family": null,
+              "seed": 20260102,
+              "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+              "created_at": "2026-08-25T03:02:26.175373Z",
+              "metadata": {
+                "scenario_ids": [
+                  "bustout-ab5114f5-20260102-0000"
+                ],
+                "integration_only": false,
+                "caught_definition": "ground-truth fraud predicted as FRAUD",
+                "adaptive_round": 1,
+                "candidate_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+                "average_fraud_risk_score": 0.6796180109182993,
+                "fitness": 0.2707206105004702,
+                "changed_parameters": {
+                  "destination_diversity": {
+                    "from": 3,
+                    "to": 4
+                  }
+                },
+                "detector_retrained": false
+              }
+            }
+          }
+        ],
+        "successful_evasions": [
+          {
+            "rank": null,
+            "scenario_id": "bustout-ab5114f5-20260102-0000",
+            "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.44967207312583923,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8449932259813572,
+            "credible_evasion": true,
+            "hardness_score": 0.46502337027702956
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-ab5114f5-20260102-0000",
+            "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.9591023921966553,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8449932259813572,
+            "credible_evasion": true,
+            "hardness_score": 0.03455820155266859
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-ab5114f5-20260102-0000",
+            "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.6300795674324036,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8449932259813572,
+            "credible_evasion": true,
+            "hardness_score": 0.31258025967171243
+          }
+        ],
+        "hardest_evasions": [
+          {
+            "rank": 1,
+            "scenario_id": "bustout-ab5114f5-20260102-0000",
+            "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.44967207312583923,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8449932259813572,
+            "credible_evasion": true,
+            "hardness_score": 0.46502337027702956
+          },
+          {
+            "rank": 2,
+            "scenario_id": "bustout-ab5114f5-20260102-0000",
+            "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.6300795674324036,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8449932259813572,
+            "credible_evasion": true,
+            "hardness_score": 0.31258025967171243
+          },
+          {
+            "rank": 3,
+            "scenario_id": "bustout-ab5114f5-20260102-0000",
+            "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.9591023921966553,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8449932259813572,
+            "credible_evasion": true,
+            "hardness_score": 0.03455820155266859
+          }
+        ],
+        "metadata": {
+          "adaptive": false,
+          "retrained_after_scoring": false,
+          "ranking": "successful false negatives by descending (1-risk_score)*fidelity_score, then stable tie-breakers"
+        }
+      }
+    },
+    {
+      "fitness_rank": 3,
+      "candidate": {
+        "candidate_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+        "seed": 20260102,
+        "blueprint": {
+          "contract_version": "1.0.0",
+          "attack_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+          "attack_family": "synthetic_identity_bustout",
+          "name": "Synthetic identity trust build and bust-out",
+          "description": "A low-history synthetic persona establishes ordinary payment behaviour before a sudden, bounded series of high-value transfers and cash-outs.",
+          "objective": "Build sufficient legitimate-looking history to make the later behavioral transition a realistic bust-out stress case.",
+          "target_features": [
+            "temporal.account_age_days",
+            "temporal.velocity_24h",
+            "temporal.amount_ratio_to_history",
+            "behavioral.payee_diversity"
+          ],
+          "sequence": [
+            {
+              "step_id": "identity-onboarding",
+              "order": 0,
+              "action": "establish_low_history_persona",
+              "description": "Create a new synthetic persona with a bounded account-age proxy.",
+              "channel": "mobile",
+              "offset_seconds": 0.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "warmup-history",
+              "order": 1,
+              "action": "build_legitimate_payment_history",
+              "description": "Emit spaced, moderate, explicitly legitimate warm-up activity.",
+              "channel": "mobile",
+              "offset_seconds": 86400.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "bounded_normal"
+              },
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "trust-transition",
+              "order": 2,
+              "action": "pause_after_warmup",
+              "description": "Leave a configurable delay before the behavioral transition.",
+              "channel": "mobile",
+              "offset_seconds": 1814400.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "bust-out",
+              "order": 3,
+              "action": "execute_bounded_bustout",
+              "description": "Concentrate elevated transfers and cash-outs into a short window.",
+              "channel": "mobile",
+              "offset_seconds": 1900800.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "warmup_mean_multiplier"
+              },
+              "parameters": {},
+              "metadata": {}
+            }
+          ],
+          "parameters": {
+            "warmup_transaction_count": {
+              "name": "warmup_transaction_count",
+              "param_type": "int",
+              "default": 12,
+              "description": "Legitimate transactions used to establish behavioral history.",
+              "minimum": 4.0,
+              "maximum": 40.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "warmup_amount_mean": {
+              "name": "warmup_amount_mean",
+              "param_type": "float",
+              "default": 500.0,
+              "description": "Target mean for bounded warm-up amounts.",
+              "minimum": 10.0,
+              "maximum": 500.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_amount_stddev": {
+              "name": "warmup_amount_stddev",
+              "param_type": "float",
+              "default": 200.0,
+              "description": "Warm-up amount dispersion before realism clipping.",
+              "minimum": 1.0,
+              "maximum": 200.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_duration_days": {
+              "name": "warmup_duration_days",
+              "param_type": "int",
+              "default": 21,
+              "description": "",
+              "minimum": 7.0,
+              "maximum": 90.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "account_age_days": {
+              "name": "account_age_days",
+              "param_type": "int",
+              "default": 14,
+              "description": "History proxy at the beginning of observable warm-up activity.",
+              "minimum": 1.0,
+              "maximum": 60.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "bustout_amount_multiplier": {
+              "name": "bustout_amount_multiplier",
+              "param_type": "float",
+              "default": 8.0,
+              "description": "",
+              "minimum": 3.0,
+              "maximum": 20.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "ratio"
+            },
+            "bustout_transaction_count": {
+              "name": "bustout_transaction_count",
+              "param_type": "int",
+              "default": 3,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "bustout_window_hours": {
+              "name": "bustout_window_hours",
+              "param_type": "float",
+              "default": 3.24,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 24.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "destination_diversity": {
+              "name": "destination_diversity",
+              "param_type": "int",
+              "default": 3,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "destinations"
+            },
+            "transition_delay_hours": {
+              "name": "transition_delay_hours",
+              "param_type": "float",
+              "default": 24.0,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 168.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "warmup_transfer_probability": {
+              "name": "warmup_transfer_probability",
+              "param_type": "float",
+              "default": 0.25,
+              "description": "",
+              "minimum": 0.05,
+              "maximum": 0.75,
+              "choices": null,
+              "mutable": true,
+              "unit": "probability"
+            },
+            "randomness_seed_offset": {
+              "name": "randomness_seed_offset",
+              "param_type": "int",
+              "default": 0,
+              "description": "",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "choices": null,
+              "mutable": false,
+              "unit": "seed offset"
+            }
+          },
+          "realism_constraints": {
+            "min_amount": 1.0,
+            "max_amount": 10000.0,
+            "allowed_currencies": [
+              "XXX"
+            ],
+            "allowed_channels": [
+              "mobile"
+            ],
+            "max_transactions_per_account_per_day": 12,
+            "max_accounts_involved": 25,
+            "min_sequence_length": 5,
+            "max_sequence_length": 48,
+            "active_hours_utc": [],
+            "custom": {}
+          },
+          "parent_blueprint_id": "synthetic-identity-bustout-v1",
+          "generation": 1,
+          "source": "mutation",
+          "created_at": "2026-01-01T00:00:00Z",
+          "metadata": {
+            "reference_basis": "processed_paysim_train",
+            "llm_prompt_template_available": true,
+            "simulator_version": "1.0.0",
+            "mutation_seed": 20260102,
+            "changed_parameters": {
+              "bustout_window_hours": {
+                "from": 6.0,
+                "to": 3.24
+              }
+            }
+          }
+        },
+        "mutations": [
+          {
+            "parameter": "bustout_window_hours",
+            "direction": "decrease",
+            "current_value": 6.0,
+            "proposed_value": 3.24,
+            "magnitude": 0.12,
+            "rationale": "Credible Round 0 evasions showed positive risk contribution from temporal.seconds_since_source_previous_txn, temporal.source_velocity_1h; test a bounded decrease move. Attribution supports exploration, not a causal efficacy claim.",
+            "confidence": 0.5506012138367815,
+            "priority": 0
+          }
+        ],
+        "changed_parameters": {
+          "bustout_window_hours": {
+            "from": 6.0,
+            "to": 3.24
+          }
+        },
+        "evidence_basis": "observed_signal_attribution"
+      },
+      "batch_id": "bustout-7fc2492287d5e47a",
+      "generation_seed": 20260103,
+      "model_version": "xgboost-baseline-20260101",
+      "metrics": {
+        "generated_scenario_count": 1,
+        "transaction_count": 15,
+        "fraud_count": 3,
+        "caught_count": 0,
+        "evaded_count": 3,
+        "fraud_recall": 0.0,
+        "average_fraud_risk_score": 0.8792018493016561,
+        "fidelity_score": 0.9012378999910284,
+        "fitness": 0.10886787165817521,
+        "evaluation_result": {
+          "contract_version": "1.0.0",
+          "evaluation_id": "bustout-7fc2492287d5e47a-bustout-5e5bad7a-20260103-0000",
+          "protocol": "static_holdout",
+          "model_version": "xgboost-baseline-20260101",
+          "dataset_id": "bustout-7fc2492287d5e47a",
+          "split": "test",
+          "overall": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "pr_auc": null,
+            "roc_auc": null,
+            "false_positive_rate": 0.0,
+            "false_negative_rate": 1.0,
+            "recall_at_fixed_fpr": {},
+            "alert_rate": 0.0,
+            "threshold": 0.9885146021842957,
+            "counts": {
+              "true_positives": 0,
+              "false_positives": 0,
+              "true_negatives": 12,
+              "false_negatives": 3
+            },
+            "support": 15,
+            "positive_support": 3
+          },
+          "per_attack_family": {
+            "synthetic_identity_bustout": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "pr_auc": null,
+              "roc_auc": null,
+              "false_positive_rate": 0.0,
+              "false_negative_rate": 1.0,
+              "recall_at_fixed_fpr": {},
+              "alert_rate": 0.0,
+              "threshold": 0.9885146021842957,
+              "counts": {
+                "true_positives": 0,
+                "false_positives": 0,
+                "true_negatives": 0,
+                "false_negatives": 3
+              },
+              "support": 3,
+              "positive_support": 3
+            }
+          },
+          "latency": null,
+          "fidelity": {
+            "marginal_distance": null,
+            "correlation_delta": null,
+            "discriminator_auc": null,
+            "constraint_violation_rate": 0.0,
+            "duplicate_rate": null,
+            "overall_fidelity_score": 0.9012378999910284,
+            "per_column": {},
+            "metadata": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 488.7791666666667,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 179.0283847712085,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7560600108587728,
+              "transaction_type_similarity": 0.8368486241082848,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 8.759627302718508,
+              "transition_multiplier_similarity": 0.9132808649880845,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.9012378999910284,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            }
+          },
+          "round_index": null,
+          "held_out_family": null,
+          "seed": 20260103,
+          "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+          "created_at": "2026-08-25T03:02:26.190399Z",
+          "metadata": {
+            "scenario_ids": [
+              "bustout-5e5bad7a-20260103-0000"
+            ],
+            "integration_only": false,
+            "caught_definition": "ground-truth fraud predicted as FRAUD",
+            "adaptive_round": 1,
+            "candidate_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "average_fraud_risk_score": 0.8792018493016561,
+            "fitness": 0.10886787165817521,
+            "changed_parameters": {
+              "bustout_window_hours": {
+                "from": 6.0,
+                "to": 3.24
+              }
+            },
+            "detector_retrained": false
+          }
+        }
+      },
+      "confrontation": {
+        "report_id": "confrontation-cc4ea5bb961df6cd",
+        "training_dataset_id": "paysim-16910f90577b-086de09508a4",
+        "training_transaction_count": 4463587,
+        "data_basis": "processed_paysim",
+        "integration_only": false,
+        "model_version": "xgboost-baseline-20260101",
+        "generated_batch_id": "bustout-7fc2492287d5e47a",
+        "scenario_reports": [
+          {
+            "scenario_id": "bustout-5e5bad7a-20260103-0000",
+            "split": "test",
+            "total_transactions": 15,
+            "legitimate_warmup_transaction_count": 12,
+            "fraudulent_bustout_count": 3,
+            "caught_fraud_count": 0,
+            "evaded_fraud_count": 3,
+            "fraud_recall": 0.0,
+            "fraudulent_events": [
+              {
+                "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-000",
+                "sequence_index": 12,
+                "risk_score": 0.9515478610992432,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-001",
+                "sequence_index": 13,
+                "risk_score": 0.7056493759155273,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-002",
+                "sequence_index": 14,
+                "risk_score": 0.9804083108901978,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              }
+            ],
+            "model_version": "xgboost-baseline-20260101",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "generation": 1,
+            "batch_id": "bustout-7fc2492287d5e47a",
+            "generator_name": "synthetic-identity-bustout",
+            "generator_version": "1.0.0",
+            "seed": 20260103,
+            "fidelity_summary": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 488.7791666666667,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 179.0283847712085,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7560600108587728,
+              "transaction_type_similarity": 0.8368486241082848,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 8.759627302718508,
+              "transition_multiplier_similarity": 0.9132808649880845,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.9012378999910284,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            },
+            "evaluation_result": {
+              "contract_version": "1.0.0",
+              "evaluation_id": "bustout-7fc2492287d5e47a-bustout-5e5bad7a-20260103-0000",
+              "protocol": "static_holdout",
+              "model_version": "xgboost-baseline-20260101",
+              "dataset_id": "bustout-7fc2492287d5e47a",
+              "split": "test",
+              "overall": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "pr_auc": null,
+                "roc_auc": null,
+                "false_positive_rate": 0.0,
+                "false_negative_rate": 1.0,
+                "recall_at_fixed_fpr": {},
+                "alert_rate": 0.0,
+                "threshold": 0.9885146021842957,
+                "counts": {
+                  "true_positives": 0,
+                  "false_positives": 0,
+                  "true_negatives": 12,
+                  "false_negatives": 3
+                },
+                "support": 15,
+                "positive_support": 3
+              },
+              "per_attack_family": {
+                "synthetic_identity_bustout": {
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "f1": 0.0,
+                  "pr_auc": null,
+                  "roc_auc": null,
+                  "false_positive_rate": 0.0,
+                  "false_negative_rate": 1.0,
+                  "recall_at_fixed_fpr": {},
+                  "alert_rate": 0.0,
+                  "threshold": 0.9885146021842957,
+                  "counts": {
+                    "true_positives": 0,
+                    "false_positives": 0,
+                    "true_negatives": 0,
+                    "false_negatives": 3
+                  },
+                  "support": 3,
+                  "positive_support": 3
+                }
+              },
+              "latency": null,
+              "fidelity": {
+                "marginal_distance": null,
+                "correlation_delta": null,
+                "discriminator_auc": null,
+                "constraint_violation_rate": 0.0,
+                "duplicate_rate": null,
+                "overall_fidelity_score": 0.9012378999910284,
+                "per_column": {},
+                "metadata": {
+                  "reference_basis": "processed_paysim_train",
+                  "reference_sample_count": 4459944,
+                  "warmup_count": 12,
+                  "fraud_count": 3,
+                  "fraud_proportion": 0.2,
+                  "warmup_amount_mean": 488.7791666666667,
+                  "reference_amount_mean": 173828.28095812237,
+                  "warmup_amount_stddev": 179.0283847712085,
+                  "reference_amount_stddev": 619878.7537244804,
+                  "warmup_amount_similarity": 0.7560600108587728,
+                  "transaction_type_similarity": 0.8368486241082848,
+                  "temporal_spacing_reasonableness": 1.0,
+                  "transition_sharpness": 8.759627302718508,
+                  "transition_multiplier_similarity": 0.9132808649880845,
+                  "constraint_violation_rate": 0.0,
+                  "overall_fidelity_score": 0.9012378999910284,
+                  "assumptions": [
+                    "Reference moments were derived from legitimate prepared PaySim train rows only."
+                  ]
+                }
+              },
+              "round_index": null,
+              "held_out_family": null,
+              "seed": 20260103,
+              "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+              "created_at": "2026-08-25T03:02:26.190399Z",
+              "metadata": {
+                "scenario_ids": [
+                  "bustout-5e5bad7a-20260103-0000"
+                ],
+                "integration_only": false,
+                "caught_definition": "ground-truth fraud predicted as FRAUD",
+                "adaptive_round": 1,
+                "candidate_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+                "average_fraud_risk_score": 0.8792018493016561,
+                "fitness": 0.10886787165817521,
+                "changed_parameters": {
+                  "bustout_window_hours": {
+                    "from": 6.0,
+                    "to": 3.24
+                  }
+                },
+                "detector_retrained": false
+              }
+            }
+          }
+        ],
+        "successful_evasions": [
+          {
+            "rank": null,
+            "scenario_id": "bustout-5e5bad7a-20260103-0000",
+            "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.9515478610992432,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9012378999910284,
+            "credible_evasion": true,
+            "hardness_score": 0.04366690391299171
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-5e5bad7a-20260103-0000",
+            "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.7056493759155273,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9012378999910284,
+            "credible_evasion": true,
+            "hardness_score": 0.26527993831093877
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-5e5bad7a-20260103-0000",
+            "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.9804083108901978,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9012378999910284,
+            "credible_evasion": true,
+            "hardness_score": 0.017656772750595278
+          }
+        ],
+        "hardest_evasions": [
+          {
+            "rank": 1,
+            "scenario_id": "bustout-5e5bad7a-20260103-0000",
+            "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.7056493759155273,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9012378999910284,
+            "credible_evasion": true,
+            "hardness_score": 0.26527993831093877
+          },
+          {
+            "rank": 2,
+            "scenario_id": "bustout-5e5bad7a-20260103-0000",
+            "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.9515478610992432,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9012378999910284,
+            "credible_evasion": true,
+            "hardness_score": 0.04366690391299171
+          },
+          {
+            "rank": 3,
+            "scenario_id": "bustout-5e5bad7a-20260103-0000",
+            "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.9804083108901978,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.9012378999910284,
+            "credible_evasion": true,
+            "hardness_score": 0.017656772750595278
+          }
+        ],
+        "metadata": {
+          "adaptive": false,
+          "retrained_after_scoring": false,
+          "ranking": "successful false negatives by descending (1-risk_score)*fidelity_score, then stable tie-breakers"
+        }
+      }
+    },
+    {
+      "fitness_rank": 4,
+      "candidate": {
+        "candidate_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+        "seed": 20260102,
+        "blueprint": {
+          "contract_version": "1.0.0",
+          "attack_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+          "attack_family": "synthetic_identity_bustout",
+          "name": "Synthetic identity trust build and bust-out",
+          "description": "A low-history synthetic persona establishes ordinary payment behaviour before a sudden, bounded series of high-value transfers and cash-outs.",
+          "objective": "Build sufficient legitimate-looking history to make the later behavioral transition a realistic bust-out stress case.",
+          "target_features": [
+            "temporal.account_age_days",
+            "temporal.velocity_24h",
+            "temporal.amount_ratio_to_history",
+            "behavioral.payee_diversity"
+          ],
+          "sequence": [
+            {
+              "step_id": "identity-onboarding",
+              "order": 0,
+              "action": "establish_low_history_persona",
+              "description": "Create a new synthetic persona with a bounded account-age proxy.",
+              "channel": "mobile",
+              "offset_seconds": 0.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "warmup-history",
+              "order": 1,
+              "action": "build_legitimate_payment_history",
+              "description": "Emit spaced, moderate, explicitly legitimate warm-up activity.",
+              "channel": "mobile",
+              "offset_seconds": 86400.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "bounded_normal"
+              },
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "trust-transition",
+              "order": 2,
+              "action": "pause_after_warmup",
+              "description": "Leave a configurable delay before the behavioral transition.",
+              "channel": "mobile",
+              "offset_seconds": 1814400.0,
+              "repeat": 1,
+              "amount_policy": {},
+              "parameters": {},
+              "metadata": {}
+            },
+            {
+              "step_id": "bust-out",
+              "order": 3,
+              "action": "execute_bounded_bustout",
+              "description": "Concentrate elevated transfers and cash-outs into a short window.",
+              "channel": "mobile",
+              "offset_seconds": 1900800.0,
+              "repeat": 1,
+              "amount_policy": {
+                "distribution": "warmup_mean_multiplier"
+              },
+              "parameters": {},
+              "metadata": {}
+            }
+          ],
+          "parameters": {
+            "warmup_transaction_count": {
+              "name": "warmup_transaction_count",
+              "param_type": "int",
+              "default": 12,
+              "description": "Legitimate transactions used to establish behavioral history.",
+              "minimum": 4.0,
+              "maximum": 40.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "warmup_amount_mean": {
+              "name": "warmup_amount_mean",
+              "param_type": "float",
+              "default": 500.0,
+              "description": "Target mean for bounded warm-up amounts.",
+              "minimum": 10.0,
+              "maximum": 500.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_amount_stddev": {
+              "name": "warmup_amount_stddev",
+              "param_type": "float",
+              "default": 200.0,
+              "description": "Warm-up amount dispersion before realism clipping.",
+              "minimum": 1.0,
+              "maximum": 200.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "XXX"
+            },
+            "warmup_duration_days": {
+              "name": "warmup_duration_days",
+              "param_type": "int",
+              "default": 21,
+              "description": "",
+              "minimum": 7.0,
+              "maximum": 90.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "account_age_days": {
+              "name": "account_age_days",
+              "param_type": "int",
+              "default": 14,
+              "description": "History proxy at the beginning of observable warm-up activity.",
+              "minimum": 1.0,
+              "maximum": 60.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "days"
+            },
+            "bustout_amount_multiplier": {
+              "name": "bustout_amount_multiplier",
+              "param_type": "float",
+              "default": 8.0,
+              "description": "",
+              "minimum": 3.0,
+              "maximum": 20.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "ratio"
+            },
+            "bustout_transaction_count": {
+              "name": "bustout_transaction_count",
+              "param_type": "int",
+              "default": 3,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "transactions"
+            },
+            "bustout_window_hours": {
+              "name": "bustout_window_hours",
+              "param_type": "float",
+              "default": 1.4,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 24.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "destination_diversity": {
+              "name": "destination_diversity",
+              "param_type": "int",
+              "default": 3,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 8.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "destinations"
+            },
+            "transition_delay_hours": {
+              "name": "transition_delay_hours",
+              "param_type": "float",
+              "default": 24.0,
+              "description": "",
+              "minimum": 1.0,
+              "maximum": 168.0,
+              "choices": null,
+              "mutable": true,
+              "unit": "hours"
+            },
+            "warmup_transfer_probability": {
+              "name": "warmup_transfer_probability",
+              "param_type": "float",
+              "default": 0.25,
+              "description": "",
+              "minimum": 0.05,
+              "maximum": 0.75,
+              "choices": null,
+              "mutable": true,
+              "unit": "probability"
+            },
+            "randomness_seed_offset": {
+              "name": "randomness_seed_offset",
+              "param_type": "int",
+              "default": 0,
+              "description": "",
+              "minimum": 0.0,
+              "maximum": 1000000.0,
+              "choices": null,
+              "mutable": false,
+              "unit": "seed offset"
+            }
+          },
+          "realism_constraints": {
+            "min_amount": 1.0,
+            "max_amount": 10000.0,
+            "allowed_currencies": [
+              "XXX"
+            ],
+            "allowed_channels": [
+              "mobile"
+            ],
+            "max_transactions_per_account_per_day": 12,
+            "max_accounts_involved": 25,
+            "min_sequence_length": 5,
+            "max_sequence_length": 48,
+            "active_hours_utc": [],
+            "custom": {}
+          },
+          "parent_blueprint_id": "synthetic-identity-bustout-v1",
+          "generation": 1,
+          "source": "mutation",
+          "created_at": "2026-01-01T00:00:00Z",
+          "metadata": {
+            "reference_basis": "processed_paysim_train",
+            "llm_prompt_template_available": true,
+            "simulator_version": "1.0.0",
+            "mutation_seed": 20260102,
+            "changed_parameters": {
+              "bustout_window_hours": {
+                "from": 6.0,
+                "to": 1.4
+              }
+            }
+          }
+        },
+        "mutations": [
+          {
+            "parameter": "bustout_window_hours",
+            "direction": "decrease",
+            "current_value": 6.0,
+            "proposed_value": 1.4,
+            "magnitude": 0.2,
+            "rationale": "Credible Round 0 evasions showed positive risk contribution from temporal.seconds_since_source_previous_txn, temporal.source_velocity_1h; test a bounded decrease move. Attribution supports exploration, not a causal efficacy claim.",
+            "confidence": 0.5506012138367815,
+            "priority": 0
+          }
+        ],
+        "changed_parameters": {
+          "bustout_window_hours": {
+            "from": 6.0,
+            "to": 1.4
+          }
+        },
+        "evidence_basis": "observed_signal_attribution"
+      },
+      "batch_id": "bustout-d4282ba0e424f637",
+      "generation_seed": 20260104,
+      "model_version": "xgboost-baseline-20260101",
+      "metrics": {
+        "generated_scenario_count": 1,
+        "transaction_count": 15,
+        "fraud_count": 3,
+        "caught_count": 0,
+        "evaded_count": 3,
+        "fraud_recall": 0.0,
+        "average_fraud_risk_score": 0.933721125125885,
+        "fidelity_score": 0.8731995131024899,
+        "fitness": 0.05787468126905806,
+        "evaluation_result": {
+          "contract_version": "1.0.0",
+          "evaluation_id": "bustout-d4282ba0e424f637-bustout-8ae44905-20260104-0000",
+          "protocol": "static_holdout",
+          "model_version": "xgboost-baseline-20260101",
+          "dataset_id": "bustout-d4282ba0e424f637",
+          "split": "test",
+          "overall": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "pr_auc": null,
+            "roc_auc": null,
+            "false_positive_rate": 0.0,
+            "false_negative_rate": 1.0,
+            "recall_at_fixed_fpr": {},
+            "alert_rate": 0.0,
+            "threshold": 0.9885146021842957,
+            "counts": {
+              "true_positives": 0,
+              "false_positives": 0,
+              "true_negatives": 12,
+              "false_negatives": 3
+            },
+            "support": 15,
+            "positive_support": 3
+          },
+          "per_attack_family": {
+            "synthetic_identity_bustout": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "pr_auc": null,
+              "roc_auc": null,
+              "false_positive_rate": 0.0,
+              "false_negative_rate": 1.0,
+              "recall_at_fixed_fpr": {},
+              "alert_rate": 0.0,
+              "threshold": 0.9885146021842957,
+              "counts": {
+                "true_positives": 0,
+                "false_positives": 0,
+                "true_negatives": 0,
+                "false_negatives": 3
+              },
+              "support": 3,
+              "positive_support": 3
+            }
+          },
+          "latency": null,
+          "fidelity": {
+            "marginal_distance": null,
+            "correlation_delta": null,
+            "discriminator_auc": null,
+            "constraint_violation_rate": 0.0,
+            "duplicate_rate": null,
+            "overall_fidelity_score": 0.8731995131024899,
+            "per_column": {},
+            "metadata": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 481.46583333333325,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 194.86969676536228,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7560510909107526,
+              "transaction_type_similarity": 0.6348644736346465,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 8.204438182702477,
+              "transition_multiplier_similarity": 0.9750820009670502,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.8731995131024899,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            }
+          },
+          "round_index": null,
+          "held_out_family": null,
+          "seed": 20260104,
+          "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+          "created_at": "2026-08-25T03:02:26.205033Z",
+          "metadata": {
+            "scenario_ids": [
+              "bustout-8ae44905-20260104-0000"
+            ],
+            "integration_only": false,
+            "caught_definition": "ground-truth fraud predicted as FRAUD",
+            "adaptive_round": 1,
+            "candidate_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "average_fraud_risk_score": 0.933721125125885,
+            "fitness": 0.05787468126905806,
+            "changed_parameters": {
+              "bustout_window_hours": {
+                "from": 6.0,
+                "to": 1.4
+              }
+            },
+            "detector_retrained": false
+          }
+        }
+      },
+      "confrontation": {
+        "report_id": "confrontation-3d34b0ac58ffd06b",
+        "training_dataset_id": "paysim-16910f90577b-086de09508a4",
+        "training_transaction_count": 4463587,
+        "data_basis": "processed_paysim",
+        "integration_only": false,
+        "model_version": "xgboost-baseline-20260101",
+        "generated_batch_id": "bustout-d4282ba0e424f637",
+        "scenario_reports": [
+          {
+            "scenario_id": "bustout-8ae44905-20260104-0000",
+            "split": "test",
+            "total_transactions": 15,
+            "legitimate_warmup_transaction_count": 12,
+            "fraudulent_bustout_count": 3,
+            "caught_fraud_count": 0,
+            "evaded_fraud_count": 3,
+            "fraud_recall": 0.0,
+            "fraudulent_events": [
+              {
+                "transaction_id": "bustout-8ae44905-20260104-0000-bustout-000",
+                "sequence_index": 12,
+                "risk_score": 0.9447752237319946,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-8ae44905-20260104-0000-bustout-001",
+                "sequence_index": 13,
+                "risk_score": 0.9768975973129272,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              },
+              {
+                "transaction_id": "bustout-8ae44905-20260104-0000-bustout-002",
+                "sequence_index": 14,
+                "risk_score": 0.8794905543327332,
+                "predicted_label": 0,
+                "action": "approve",
+                "caught": false,
+                "ground_truth_label": 1,
+                "model_version": "xgboost-baseline-20260101"
+              }
+            ],
+            "model_version": "xgboost-baseline-20260101",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "generation": 1,
+            "batch_id": "bustout-d4282ba0e424f637",
+            "generator_name": "synthetic-identity-bustout",
+            "generator_version": "1.0.0",
+            "seed": 20260104,
+            "fidelity_summary": {
+              "reference_basis": "processed_paysim_train",
+              "reference_sample_count": 4459944,
+              "warmup_count": 12,
+              "fraud_count": 3,
+              "fraud_proportion": 0.2,
+              "warmup_amount_mean": 481.46583333333325,
+              "reference_amount_mean": 173828.28095812237,
+              "warmup_amount_stddev": 194.86969676536228,
+              "reference_amount_stddev": 619878.7537244804,
+              "warmup_amount_similarity": 0.7560510909107526,
+              "transaction_type_similarity": 0.6348644736346465,
+              "temporal_spacing_reasonableness": 1.0,
+              "transition_sharpness": 8.204438182702477,
+              "transition_multiplier_similarity": 0.9750820009670502,
+              "constraint_violation_rate": 0.0,
+              "overall_fidelity_score": 0.8731995131024899,
+              "assumptions": [
+                "Reference moments were derived from legitimate prepared PaySim train rows only."
+              ]
+            },
+            "evaluation_result": {
+              "contract_version": "1.0.0",
+              "evaluation_id": "bustout-d4282ba0e424f637-bustout-8ae44905-20260104-0000",
+              "protocol": "static_holdout",
+              "model_version": "xgboost-baseline-20260101",
+              "dataset_id": "bustout-d4282ba0e424f637",
+              "split": "test",
+              "overall": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "pr_auc": null,
+                "roc_auc": null,
+                "false_positive_rate": 0.0,
+                "false_negative_rate": 1.0,
+                "recall_at_fixed_fpr": {},
+                "alert_rate": 0.0,
+                "threshold": 0.9885146021842957,
+                "counts": {
+                  "true_positives": 0,
+                  "false_positives": 0,
+                  "true_negatives": 12,
+                  "false_negatives": 3
+                },
+                "support": 15,
+                "positive_support": 3
+              },
+              "per_attack_family": {
+                "synthetic_identity_bustout": {
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "f1": 0.0,
+                  "pr_auc": null,
+                  "roc_auc": null,
+                  "false_positive_rate": 0.0,
+                  "false_negative_rate": 1.0,
+                  "recall_at_fixed_fpr": {},
+                  "alert_rate": 0.0,
+                  "threshold": 0.9885146021842957,
+                  "counts": {
+                    "true_positives": 0,
+                    "false_positives": 0,
+                    "true_negatives": 0,
+                    "false_negatives": 3
+                  },
+                  "support": 3,
+                  "positive_support": 3
+                }
+              },
+              "latency": null,
+              "fidelity": {
+                "marginal_distance": null,
+                "correlation_delta": null,
+                "discriminator_auc": null,
+                "constraint_violation_rate": 0.0,
+                "duplicate_rate": null,
+                "overall_fidelity_score": 0.8731995131024899,
+                "per_column": {},
+                "metadata": {
+                  "reference_basis": "processed_paysim_train",
+                  "reference_sample_count": 4459944,
+                  "warmup_count": 12,
+                  "fraud_count": 3,
+                  "fraud_proportion": 0.2,
+                  "warmup_amount_mean": 481.46583333333325,
+                  "reference_amount_mean": 173828.28095812237,
+                  "warmup_amount_stddev": 194.86969676536228,
+                  "reference_amount_stddev": 619878.7537244804,
+                  "warmup_amount_similarity": 0.7560510909107526,
+                  "transaction_type_similarity": 0.6348644736346465,
+                  "temporal_spacing_reasonableness": 1.0,
+                  "transition_sharpness": 8.204438182702477,
+                  "transition_multiplier_similarity": 0.9750820009670502,
+                  "constraint_violation_rate": 0.0,
+                  "overall_fidelity_score": 0.8731995131024899,
+                  "assumptions": [
+                    "Reference moments were derived from legitimate prepared PaySim train rows only."
+                  ]
+                }
+              },
+              "round_index": null,
+              "held_out_family": null,
+              "seed": 20260104,
+              "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+              "created_at": "2026-08-25T03:02:26.205033Z",
+              "metadata": {
+                "scenario_ids": [
+                  "bustout-8ae44905-20260104-0000"
+                ],
+                "integration_only": false,
+                "caught_definition": "ground-truth fraud predicted as FRAUD",
+                "adaptive_round": 1,
+                "candidate_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+                "average_fraud_risk_score": 0.933721125125885,
+                "fitness": 0.05787468126905806,
+                "changed_parameters": {
+                  "bustout_window_hours": {
+                    "from": 6.0,
+                    "to": 1.4
+                  }
+                },
+                "detector_retrained": false
+              }
+            }
+          }
+        ],
+        "successful_evasions": [
+          {
+            "rank": null,
+            "scenario_id": "bustout-8ae44905-20260104-0000",
+            "transaction_id": "bustout-8ae44905-20260104-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.9447752237319946,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8731995131024899,
+            "credible_evasion": true,
+            "hardness_score": 0.04822224774841623
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-8ae44905-20260104-0000",
+            "transaction_id": "bustout-8ae44905-20260104-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.9768975973129272,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8731995131024899,
+            "credible_evasion": true,
+            "hardness_score": 0.020173006777849584
+          },
+          {
+            "rank": null,
+            "scenario_id": "bustout-8ae44905-20260104-0000",
+            "transaction_id": "bustout-8ae44905-20260104-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.8794905543327332,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8731995131024899,
+            "credible_evasion": true,
+            "hardness_score": 0.10522878928090837
+          }
+        ],
+        "hardest_evasions": [
+          {
+            "rank": 1,
+            "scenario_id": "bustout-8ae44905-20260104-0000",
+            "transaction_id": "bustout-8ae44905-20260104-0000-bustout-002",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "generation": 1,
+            "sequence_index": 14,
+            "detector_risk_score": 0.8794905543327332,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8731995131024899,
+            "credible_evasion": true,
+            "hardness_score": 0.10522878928090837
+          },
+          {
+            "rank": 2,
+            "scenario_id": "bustout-8ae44905-20260104-0000",
+            "transaction_id": "bustout-8ae44905-20260104-0000-bustout-000",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "generation": 1,
+            "sequence_index": 12,
+            "detector_risk_score": 0.9447752237319946,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8731995131024899,
+            "credible_evasion": true,
+            "hardness_score": 0.04822224774841623
+          },
+          {
+            "rank": 3,
+            "scenario_id": "bustout-8ae44905-20260104-0000",
+            "transaction_id": "bustout-8ae44905-20260104-0000-bustout-001",
+            "attack_family": "synthetic_identity_bustout",
+            "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+            "generation": 1,
+            "sequence_index": 13,
+            "detector_risk_score": 0.9768975973129272,
+            "action": "approve",
+            "detector_model_version": "xgboost-baseline-20260101",
+            "ground_truth_label": 1,
+            "fidelity_score": 0.8731995131024899,
+            "credible_evasion": true,
+            "hardness_score": 0.020173006777849584
+          }
+        ],
+        "metadata": {
+          "adaptive": false,
+          "retrained_after_scoring": false,
+          "ranking": "successful false negatives by descending (1-risk_score)*fidelity_score, then stable tie-breakers"
+        }
+      }
+    }
+  ],
+  "selected_candidate_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+  "selected_blueprint": {
+    "contract_version": "1.0.0",
+    "attack_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+    "attack_family": "synthetic_identity_bustout",
+    "name": "Synthetic identity trust build and bust-out",
+    "description": "A low-history synthetic persona establishes ordinary payment behaviour before a sudden, bounded series of high-value transfers and cash-outs.",
+    "objective": "Build sufficient legitimate-looking history to make the later behavioral transition a realistic bust-out stress case.",
+    "target_features": [
+      "temporal.account_age_days",
+      "temporal.velocity_24h",
+      "temporal.amount_ratio_to_history",
+      "behavioral.payee_diversity"
+    ],
+    "sequence": [
+      {
+        "step_id": "identity-onboarding",
+        "order": 0,
+        "action": "establish_low_history_persona",
+        "description": "Create a new synthetic persona with a bounded account-age proxy.",
+        "channel": "mobile",
+        "offset_seconds": 0.0,
+        "repeat": 1,
+        "amount_policy": {},
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "warmup-history",
+        "order": 1,
+        "action": "build_legitimate_payment_history",
+        "description": "Emit spaced, moderate, explicitly legitimate warm-up activity.",
+        "channel": "mobile",
+        "offset_seconds": 86400.0,
+        "repeat": 1,
+        "amount_policy": {
+          "distribution": "bounded_normal"
+        },
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "trust-transition",
+        "order": 2,
+        "action": "pause_after_warmup",
+        "description": "Leave a configurable delay before the behavioral transition.",
+        "channel": "mobile",
+        "offset_seconds": 1814400.0,
+        "repeat": 1,
+        "amount_policy": {},
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "bust-out",
+        "order": 3,
+        "action": "execute_bounded_bustout",
+        "description": "Concentrate elevated transfers and cash-outs into a short window.",
+        "channel": "mobile",
+        "offset_seconds": 1900800.0,
+        "repeat": 1,
+        "amount_policy": {
+          "distribution": "warmup_mean_multiplier"
+        },
+        "parameters": {},
+        "metadata": {}
+      }
+    ],
+    "parameters": {
+      "warmup_transaction_count": {
+        "name": "warmup_transaction_count",
+        "param_type": "int",
+        "default": 12,
+        "description": "Legitimate transactions used to establish behavioral history.",
+        "minimum": 4.0,
+        "maximum": 40.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "transactions"
+      },
+      "warmup_amount_mean": {
+        "name": "warmup_amount_mean",
+        "param_type": "float",
+        "default": 500.0,
+        "description": "Target mean for bounded warm-up amounts.",
+        "minimum": 10.0,
+        "maximum": 500.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "warmup_amount_stddev": {
+        "name": "warmup_amount_stddev",
+        "param_type": "float",
+        "default": 200.0,
+        "description": "Warm-up amount dispersion before realism clipping.",
+        "minimum": 1.0,
+        "maximum": 200.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "warmup_duration_days": {
+        "name": "warmup_duration_days",
+        "param_type": "int",
+        "default": 21,
+        "description": "",
+        "minimum": 7.0,
+        "maximum": 90.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "days"
+      },
+      "account_age_days": {
+        "name": "account_age_days",
+        "param_type": "int",
+        "default": 14,
+        "description": "History proxy at the beginning of observable warm-up activity.",
+        "minimum": 1.0,
+        "maximum": 60.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "days"
+      },
+      "bustout_amount_multiplier": {
+        "name": "bustout_amount_multiplier",
+        "param_type": "float",
+        "default": 8.0,
+        "description": "",
+        "minimum": 3.0,
+        "maximum": 20.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "ratio"
+      },
+      "bustout_transaction_count": {
+        "name": "bustout_transaction_count",
+        "param_type": "int",
+        "default": 3,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 8.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "transactions"
+      },
+      "bustout_window_hours": {
+        "name": "bustout_window_hours",
+        "param_type": "float",
+        "default": 6.0,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 24.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "hours"
+      },
+      "destination_diversity": {
+        "name": "destination_diversity",
+        "param_type": "int",
+        "default": 5,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 8.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "destinations"
+      },
+      "transition_delay_hours": {
+        "name": "transition_delay_hours",
+        "param_type": "float",
+        "default": 24.0,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 168.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "hours"
+      },
+      "warmup_transfer_probability": {
+        "name": "warmup_transfer_probability",
+        "param_type": "float",
+        "default": 0.25,
+        "description": "",
+        "minimum": 0.05,
+        "maximum": 0.75,
+        "choices": null,
+        "mutable": true,
+        "unit": "probability"
+      },
+      "randomness_seed_offset": {
+        "name": "randomness_seed_offset",
+        "param_type": "int",
+        "default": 0,
+        "description": "",
+        "minimum": 0.0,
+        "maximum": 1000000.0,
+        "choices": null,
+        "mutable": false,
+        "unit": "seed offset"
+      }
+    },
+    "realism_constraints": {
+      "min_amount": 1.0,
+      "max_amount": 10000.0,
+      "allowed_currencies": [
+        "XXX"
+      ],
+      "allowed_channels": [
+        "mobile"
+      ],
+      "max_transactions_per_account_per_day": 12,
+      "max_accounts_involved": 25,
+      "min_sequence_length": 5,
+      "max_sequence_length": 48,
+      "active_hours_utc": [],
+      "custom": {}
+    },
+    "parent_blueprint_id": "synthetic-identity-bustout-v1",
+    "generation": 1,
+    "source": "mutation",
+    "created_at": "2026-01-01T00:00:00Z",
+    "metadata": {
+      "reference_basis": "processed_paysim_train",
+      "llm_prompt_template_available": true,
+      "simulator_version": "1.0.0",
+      "mutation_seed": 20260102,
+      "changed_parameters": {
+        "destination_diversity": {
+          "from": 3,
+          "to": 5
+        }
+      }
+    }
+  },
+  "hardest_surviving_evasions": [
+    {
+      "rank": 1,
+      "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+      "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-002",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+      "generation": 1,
+      "sequence_index": 14,
+      "detector_risk_score": 0.3630991578102112,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.9049320258269917,
+      "credible_evasion": true,
+      "hardness_score": 0.5763519693737228
+    },
+    {
+      "rank": 2,
+      "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+      "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-000",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+      "generation": 1,
+      "sequence_index": 12,
+      "detector_risk_score": 0.45260801911354065,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.9049320258269917,
+      "credible_evasion": true,
+      "hardness_score": 0.4953525341850336
+    },
+    {
+      "rank": 3,
+      "scenario_id": "bustout-ab5114f5-20260102-0000",
+      "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-000",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+      "generation": 1,
+      "sequence_index": 12,
+      "detector_risk_score": 0.44967207312583923,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.8449932259813572,
+      "credible_evasion": true,
+      "hardness_score": 0.46502337027702956
+    },
+    {
+      "rank": 4,
+      "scenario_id": "bustout-ab5114f5-20260102-0000",
+      "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-002",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+      "generation": 1,
+      "sequence_index": 14,
+      "detector_risk_score": 0.6300795674324036,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.8449932259813572,
+      "credible_evasion": true,
+      "hardness_score": 0.31258025967171243
+    },
+    {
+      "rank": 5,
+      "scenario_id": "bustout-5e5bad7a-20260103-0000",
+      "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-001",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+      "generation": 1,
+      "sequence_index": 13,
+      "detector_risk_score": 0.7056493759155273,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.9012378999910284,
+      "credible_evasion": true,
+      "hardness_score": 0.26527993831093877
+    },
+    {
+      "rank": 6,
+      "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+      "transaction_id": "bustout-9e2ec3c1-20260105-0000-bustout-001",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+      "generation": 1,
+      "sequence_index": 13,
+      "detector_risk_score": 0.8583946824073792,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.9049320258269917,
+      "credible_evasion": true,
+      "hardness_score": 0.12814318691696494
+    },
+    {
+      "rank": 7,
+      "scenario_id": "bustout-8ae44905-20260104-0000",
+      "transaction_id": "bustout-8ae44905-20260104-0000-bustout-002",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+      "generation": 1,
+      "sequence_index": 14,
+      "detector_risk_score": 0.8794905543327332,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.8731995131024899,
+      "credible_evasion": true,
+      "hardness_score": 0.10522878928090837
+    },
+    {
+      "rank": 8,
+      "scenario_id": "bustout-8ae44905-20260104-0000",
+      "transaction_id": "bustout-8ae44905-20260104-0000-bustout-000",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+      "generation": 1,
+      "sequence_index": 12,
+      "detector_risk_score": 0.9447752237319946,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.8731995131024899,
+      "credible_evasion": true,
+      "hardness_score": 0.04822224774841623
+    },
+    {
+      "rank": 9,
+      "scenario_id": "bustout-5e5bad7a-20260103-0000",
+      "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-000",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+      "generation": 1,
+      "sequence_index": 12,
+      "detector_risk_score": 0.9515478610992432,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.9012378999910284,
+      "credible_evasion": true,
+      "hardness_score": 0.04366690391299171
+    },
+    {
+      "rank": 10,
+      "scenario_id": "bustout-ab5114f5-20260102-0000",
+      "transaction_id": "bustout-ab5114f5-20260102-0000-bustout-001",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-1c9b58f8cd3f",
+      "generation": 1,
+      "sequence_index": 13,
+      "detector_risk_score": 0.9591023921966553,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.8449932259813572,
+      "credible_evasion": true,
+      "hardness_score": 0.03455820155266859
+    },
+    {
+      "rank": 11,
+      "scenario_id": "bustout-8ae44905-20260104-0000",
+      "transaction_id": "bustout-8ae44905-20260104-0000-bustout-001",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-bb6aec898454",
+      "generation": 1,
+      "sequence_index": 13,
+      "detector_risk_score": 0.9768975973129272,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.8731995131024899,
+      "credible_evasion": true,
+      "hardness_score": 0.020173006777849584
+    },
+    {
+      "rank": 12,
+      "scenario_id": "bustout-5e5bad7a-20260103-0000",
+      "transaction_id": "bustout-5e5bad7a-20260103-0000-bustout-002",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-17ee53fcbf3c",
+      "generation": 1,
+      "sequence_index": 14,
+      "detector_risk_score": 0.9804083108901978,
+      "action": "approve",
+      "detector_model_version": "xgboost-baseline-20260101",
+      "ground_truth_label": 1,
+      "fidelity_score": 0.9012378999910284,
+      "credible_evasion": true,
+      "hardness_score": 0.017656772750595278
+    }
+  ],
+  "comparison": {
+    "round0": {
+      "generated_scenario_count": 1,
+      "transaction_count": 15,
+      "fraud_count": 3,
+      "caught_count": 0,
+      "evaded_count": 3,
+      "fraud_recall": 0.0,
+      "average_fraud_risk_score": 0.5632627705732981,
+      "fidelity_score": 0.8289343799338862,
+      "fitness": 0.36202650446886653,
+      "evaluation_result": {
+        "contract_version": "1.0.0",
+        "evaluation_id": "bustout-7333f8d0faec0358-bustout-ed290e12-20260101-0000",
+        "protocol": "static_holdout",
+        "model_version": "xgboost-baseline-20260101",
+        "dataset_id": "bustout-7333f8d0faec0358",
+        "split": "test",
+        "overall": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "pr_auc": null,
+          "roc_auc": null,
+          "false_positive_rate": 0.0,
+          "false_negative_rate": 1.0,
+          "recall_at_fixed_fpr": {},
+          "alert_rate": 0.0,
+          "threshold": 0.9885146021842957,
+          "counts": {
+            "true_positives": 0,
+            "false_positives": 0,
+            "true_negatives": 12,
+            "false_negatives": 3
+          },
+          "support": 15,
+          "positive_support": 3
+        },
+        "per_attack_family": {
+          "synthetic_identity_bustout": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "pr_auc": null,
+            "roc_auc": null,
+            "false_positive_rate": 0.0,
+            "false_negative_rate": 1.0,
+            "recall_at_fixed_fpr": {},
+            "alert_rate": 0.0,
+            "threshold": 0.9885146021842957,
+            "counts": {
+              "true_positives": 0,
+              "false_positives": 0,
+              "true_negatives": 0,
+              "false_negatives": 3
+            },
+            "support": 3,
+            "positive_support": 3
+          }
+        },
+        "latency": null,
+        "fidelity": {
+          "marginal_distance": null,
+          "correlation_delta": null,
+          "discriminator_auc": null,
+          "constraint_violation_rate": 0.0,
+          "duplicate_rate": null,
+          "overall_fidelity_score": 0.8289343799338862,
+          "per_column": {},
+          "metadata": {
+            "reference_basis": "processed_paysim_train",
+            "reference_sample_count": 4459944,
+            "warmup_count": 12,
+            "fraud_count": 3,
+            "fraud_proportion": 0.2,
+            "warmup_amount_mean": 475.60416666666674,
+            "reference_amount_mean": 173828.28095812237,
+            "warmup_amount_stddev": 149.99191150666837,
+            "reference_amount_stddev": 619878.7537244804,
+            "warmup_amount_similarity": 0.7560439416118004,
+            "transaction_type_similarity": 0.5201666209261819,
+            "temporal_spacing_reasonableness": 1.0,
+            "transition_sharpness": 9.211693898112049,
+            "transition_multiplier_similarity": 0.868461337131449,
+            "constraint_violation_rate": 0.0,
+            "overall_fidelity_score": 0.8289343799338862,
+            "assumptions": [
+              "Reference moments were derived from legitimate prepared PaySim train rows only."
+            ]
+          }
+        },
+        "round_index": null,
+        "held_out_family": null,
+        "seed": 20260101,
+        "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+        "created_at": "2026-08-25T02:00:34.352556Z",
+        "metadata": {
+          "scenario_ids": [
+            "bustout-ed290e12-20260101-0000"
+          ],
+          "integration_only": false,
+          "caught_definition": "ground-truth fraud predicted as FRAUD"
+        }
+      }
+    },
+    "round1": {
+      "generated_scenario_count": 1,
+      "transaction_count": 15,
+      "fraud_count": 3,
+      "caught_count": 0,
+      "evaded_count": 3,
+      "fraud_recall": 0.0,
+      "average_fraud_risk_score": 0.558033953110377,
+      "fidelity_score": 0.9049320258269917,
+      "fitness": 0.3999492301585738,
+      "evaluation_result": {
+        "contract_version": "1.0.0",
+        "evaluation_id": "bustout-c5f31c2fdbca06dc-bustout-9e2ec3c1-20260105-0000",
+        "protocol": "static_holdout",
+        "model_version": "xgboost-baseline-20260101",
+        "dataset_id": "bustout-c5f31c2fdbca06dc",
+        "split": "test",
+        "overall": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "pr_auc": null,
+          "roc_auc": null,
+          "false_positive_rate": 0.0,
+          "false_negative_rate": 1.0,
+          "recall_at_fixed_fpr": {},
+          "alert_rate": 0.0,
+          "threshold": 0.9885146021842957,
+          "counts": {
+            "true_positives": 0,
+            "false_positives": 0,
+            "true_negatives": 12,
+            "false_negatives": 3
+          },
+          "support": 15,
+          "positive_support": 3
+        },
+        "per_attack_family": {
+          "synthetic_identity_bustout": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "pr_auc": null,
+            "roc_auc": null,
+            "false_positive_rate": 0.0,
+            "false_negative_rate": 1.0,
+            "recall_at_fixed_fpr": {},
+            "alert_rate": 0.0,
+            "threshold": 0.9885146021842957,
+            "counts": {
+              "true_positives": 0,
+              "false_positives": 0,
+              "true_negatives": 0,
+              "false_negatives": 3
+            },
+            "support": 3,
+            "positive_support": 3
+          }
+        },
+        "latency": null,
+        "fidelity": {
+          "marginal_distance": null,
+          "correlation_delta": null,
+          "discriminator_auc": null,
+          "constraint_violation_rate": 0.0,
+          "duplicate_rate": null,
+          "overall_fidelity_score": 0.9049320258269917,
+          "per_column": {},
+          "metadata": {
+            "reference_basis": "processed_paysim_train",
+            "reference_sample_count": 4459944,
+            "warmup_count": 12,
+            "fraud_count": 3,
+            "fraud_proportion": 0.2,
+            "warmup_amount_mean": 479.8041666666666,
+            "reference_amount_mean": 173828.28095812237,
+            "warmup_amount_stddev": 164.74888872343286,
+            "reference_amount_stddev": 619878.7537244804,
+            "warmup_amount_similarity": 0.7560490642189122,
+            "transaction_type_similarity": 0.838610978075061,
+            "temporal_spacing_reasonableness": 1.0,
+            "transition_sharpness": 7.4400006947278845,
+            "transition_multiplier_similarity": 0.9300000868409856,
+            "constraint_violation_rate": 0.0,
+            "overall_fidelity_score": 0.9049320258269917,
+            "assumptions": [
+              "Reference moments were derived from legitimate prepared PaySim train rows only."
+            ]
+          }
+        },
+        "round_index": null,
+        "held_out_family": null,
+        "seed": 20260105,
+        "notes": "Fresh synthetic bust-out scored after validation-only tuning.",
+        "created_at": "2026-08-25T03:02:26.220151Z",
+        "metadata": {
+          "scenario_ids": [
+            "bustout-9e2ec3c1-20260105-0000"
+          ],
+          "integration_only": false,
+          "caught_definition": "ground-truth fraud predicted as FRAUD",
+          "adaptive_round": 1,
+          "candidate_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+          "average_fraud_risk_score": 0.558033953110377,
+          "fitness": 0.3999492301585738,
+          "changed_parameters": {
+            "destination_diversity": {
+              "from": 3,
+              "to": 5
+            }
+          },
+          "detector_retrained": false
+        }
+      }
+    },
+    "fraud_recall_delta": 0.0,
+    "average_fraud_risk_delta": -0.005228817462921143,
+    "fidelity_delta": 0.07599764589310554,
+    "fitness_delta": 0.03792272568970728,
+    "caught_count_delta": 0,
+    "evaded_count_delta": 0
+  },
+  "metadata": {
+    "attacker_evolution_only": true,
+    "detector_fit_called": false,
+    "selection": "highest (1-average_fraud_risk)*fidelity",
+    "evaluation_protocol": "static_holdout; no defender retrain occurred"
+  }
+}

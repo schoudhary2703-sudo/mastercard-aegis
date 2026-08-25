@@ -18,7 +18,9 @@ from aegis.api import settings as settings_module
 from aegis.api.app import app
 from tests.api_fixtures import (
     BASELINE_VERSION,
+    DEFENDER_V3_VERSION,
     HARDENED_VERSION,
+    add_defender_v3_and_loafo_fold,
     write_empty_fixture,
     write_full_fixture,
 )
@@ -27,6 +29,17 @@ from tests.api_fixtures import (
 @pytest.fixture
 def full_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     write_full_fixture(tmp_path)
+    monkeypatch.setenv("AEGIS_ARTIFACTS_ROOT", str(tmp_path))
+    settings_module.clear_settings_cache()
+    client = TestClient(app)
+    yield client
+    settings_module.clear_settings_cache()
+
+
+@pytest.fixture
+def v3_and_loafo_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    write_full_fixture(tmp_path)
+    add_defender_v3_and_loafo_fold(tmp_path)
     monkeypatch.setenv("AEGIS_ARTIFACTS_ROOT", str(tmp_path))
     settings_module.clear_settings_cache()
     client = TestClient(app)
@@ -74,6 +87,34 @@ class TestOverview:
         assert body["adaptive_round_count"] == 0
         assert body["hardest_evasions_preview"] == []
         assert body["regression"] is None
+
+    def test_loafo_fold_excluded_and_v3_is_current_model(
+        self, v3_and_loafo_client: TestClient
+    ) -> None:
+        r = v3_and_loafo_client.get("/api/overview")
+        assert r.status_code == 200
+        body = r.json()
+        versions = {m["model_version"] for m in body["models"]}
+        # Exactly the three core lineage models -- the LOAFO fold model does
+        # not count as a fourth "model trained".
+        assert versions == {BASELINE_VERSION, HARDENED_VERSION, DEFENDER_V3_VERSION}
+        assert body["current_model"] is not None
+        assert body["current_model"]["model_version"] == DEFENDER_V3_VERSION
+        assert body["current_model"]["role"] == "defender_v3"
+
+
+class TestEvolutionHardeningRunSelection:
+    def test_hardening_stage_ignores_loafo_fold_run(
+        self, v3_and_loafo_client: TestClient
+    ) -> None:
+        r = v3_and_loafo_client.get("/api/evolution")
+        assert r.status_code == 200
+        stages = {s["stage"]: s for s in r.json()["stages"]}
+        hardening = stages["defender_v2_hardening"]["hardening"]
+        assert hardening is not None
+        # Must resolve to the real Defender v2 hardening run, not the
+        # LOAFO-fold run whose id sorts later alphabetically.
+        assert hardening["run_id"] == "hard-positives-fixture"
 
 
 class TestAttacks:

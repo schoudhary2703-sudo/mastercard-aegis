@@ -1,0 +1,234 @@
+{
+  "contract_version": "1.0.0",
+  "attack_id": "synthetic-identity-bustout-v1-g1-301d88d1d561",
+  "attack_family": "synthetic_identity_bustout",
+  "name": "Synthetic identity trust build and bust-out",
+  "description": "A low-history synthetic persona establishes ordinary payment behaviour before a sudden, bounded series of high-value transfers and cash-outs.",
+  "objective": "Build sufficient legitimate-looking history to make the later behavioral transition a realistic bust-out stress case.",
+  "target_features": [
+    "temporal.account_age_days",
+    "temporal.velocity_24h",
+    "temporal.amount_ratio_to_history",
+    "behavioral.payee_diversity"
+  ],
+  "sequence": [
+    {
+      "step_id": "identity-onboarding",
+      "order": 0,
+      "action": "establish_low_history_persona",
+      "description": "Create a new synthetic persona with a bounded account-age proxy.",
+      "channel": "mobile",
+      "offset_seconds": 0.0,
+      "repeat": 1,
+      "amount_policy": {},
+      "parameters": {},
+      "metadata": {}
+    },
+    {
+      "step_id": "warmup-history",
+      "order": 1,
+      "action": "build_legitimate_payment_history",
+      "description": "Emit spaced, moderate, explicitly legitimate warm-up activity.",
+      "channel": "mobile",
+      "offset_seconds": 86400.0,
+      "repeat": 1,
+      "amount_policy": {
+        "distribution": "bounded_normal"
+      },
+      "parameters": {},
+      "metadata": {}
+    },
+    {
+      "step_id": "trust-transition",
+      "order": 2,
+      "action": "pause_after_warmup",
+      "description": "Leave a configurable delay before the behavioral transition.",
+      "channel": "mobile",
+      "offset_seconds": 1814400.0,
+      "repeat": 1,
+      "amount_policy": {},
+      "parameters": {},
+      "metadata": {}
+    },
+    {
+      "step_id": "bust-out",
+      "order": 3,
+      "action": "execute_bounded_bustout",
+      "description": "Concentrate elevated transfers and cash-outs into a short window.",
+      "channel": "mobile",
+      "offset_seconds": 1900800.0,
+      "repeat": 1,
+      "amount_policy": {
+        "distribution": "warmup_mean_multiplier"
+      },
+      "parameters": {},
+      "metadata": {}
+    }
+  ],
+  "parameters": {
+    "warmup_transaction_count": {
+      "name": "warmup_transaction_count",
+      "param_type": "int",
+      "default": 12,
+      "description": "Legitimate transactions used to establish behavioral history.",
+      "minimum": 4.0,
+      "maximum": 40.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "transactions"
+    },
+    "warmup_amount_mean": {
+      "name": "warmup_amount_mean",
+      "param_type": "float",
+      "default": 500.0,
+      "description": "Target mean for bounded warm-up amounts.",
+      "minimum": 10.0,
+      "maximum": 500.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "XXX"
+    },
+    "warmup_amount_stddev": {
+      "name": "warmup_amount_stddev",
+      "param_type": "float",
+      "default": 200.0,
+      "description": "Warm-up amount dispersion before realism clipping.",
+      "minimum": 1.0,
+      "maximum": 200.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "XXX"
+    },
+    "warmup_duration_days": {
+      "name": "warmup_duration_days",
+      "param_type": "int",
+      "default": 21,
+      "description": "",
+      "minimum": 7.0,
+      "maximum": 90.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "days"
+    },
+    "account_age_days": {
+      "name": "account_age_days",
+      "param_type": "int",
+      "default": 14,
+      "description": "History proxy at the beginning of observable warm-up activity.",
+      "minimum": 1.0,
+      "maximum": 60.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "days"
+    },
+    "bustout_amount_multiplier": {
+      "name": "bustout_amount_multiplier",
+      "param_type": "float",
+      "default": 5.96,
+      "description": "",
+      "minimum": 3.0,
+      "maximum": 20.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "ratio"
+    },
+    "bustout_transaction_count": {
+      "name": "bustout_transaction_count",
+      "param_type": "int",
+      "default": 3,
+      "description": "",
+      "minimum": 1.0,
+      "maximum": 8.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "transactions"
+    },
+    "bustout_window_hours": {
+      "name": "bustout_window_hours",
+      "param_type": "float",
+      "default": 6.0,
+      "description": "",
+      "minimum": 1.0,
+      "maximum": 24.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "hours"
+    },
+    "destination_diversity": {
+      "name": "destination_diversity",
+      "param_type": "int",
+      "default": 3,
+      "description": "",
+      "minimum": 1.0,
+      "maximum": 8.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "destinations"
+    },
+    "transition_delay_hours": {
+      "name": "transition_delay_hours",
+      "param_type": "float",
+      "default": 24.0,
+      "description": "",
+      "minimum": 1.0,
+      "maximum": 168.0,
+      "choices": null,
+      "mutable": true,
+      "unit": "hours"
+    },
+    "warmup_transfer_probability": {
+      "name": "warmup_transfer_probability",
+      "param_type": "float",
+      "default": 0.25,
+      "description": "",
+      "minimum": 0.05,
+      "maximum": 0.75,
+      "choices": null,
+      "mutable": true,
+      "unit": "probability"
+    },
+    "randomness_seed_offset": {
+      "name": "randomness_seed_offset",
+      "param_type": "int",
+      "default": 0,
+      "description": "",
+      "minimum": 0.0,
+      "maximum": 1000000.0,
+      "choices": null,
+      "mutable": false,
+      "unit": "seed offset"
+    }
+  },
+  "realism_constraints": {
+    "min_amount": 1.0,
+    "max_amount": 10000.0,
+    "allowed_currencies": [
+      "XXX"
+    ],
+    "allowed_channels": [
+      "mobile"
+    ],
+    "max_transactions_per_account_per_day": 12,
+    "max_accounts_involved": 25,
+    "min_sequence_length": 5,
+    "max_sequence_length": 48,
+    "active_hours_utc": [],
+    "custom": {}
+  },
+  "parent_blueprint_id": "synthetic-identity-bustout-v1",
+  "generation": 1,
+  "source": "mutation",
+  "created_at": "2026-01-01T00:00:00Z",
+  "metadata": {
+    "reference_basis": "processed_paysim_train",
+    "llm_prompt_template_available": true,
+    "simulator_version": "1.0.0",
+    "mutation_seed": 20260826,
+    "changed_parameters": {
+      "bustout_amount_multiplier": {
+        "from": 8.0,
+        "to": 5.96
+      }
+    }
+  }
+}

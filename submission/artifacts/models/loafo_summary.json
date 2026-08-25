@@ -1,0 +1,57 @@
+{
+  "defender_v3_recall_on_same_scenarios": {
+    "adaptive_detector_evasion": 1.0,
+    "mule_network_structuring": 0.4166666666666667,
+    "synthetic_identity_bustout": 1.0
+  },
+  "held_out_recall_per_family": {
+    "adaptive_detector_evasion": 0.75,
+    "mule_network_structuring": 0.0,
+    "synthetic_identity_bustout": 1.0
+  },
+  "mean_loafo_recall": 0.5833333333333334,
+  "methodology": "For each family, a LOAFO model trained WITHOUT that family's hard positives is scored on one fresh scenario of that family, never seen in training. Defender v3 (trained WITH all three families) is scored on the identical fresh scenario as a memorization reference. Both use each model's own validation-tuned threshold; neither evaluation informed any training decision.",
+  "notes": "Every number here comes from a STATIC_HOLDOUT (native PaySim test) or LEAVE_ONE_ATTACK_FAMILY_OUT (fresh held-out scenario) EvaluationResult (docs/EVALUATION_RULES.md). Each fold's fresh scenario is one real synthetic scenario, not a large sample - these numbers are directional, not statistically powered estimates.",
+  "per_family": {
+    "adaptive_detector_evasion": {
+      "defender_v3_recall_same_scenario": 1.0,
+      "fold_id": "fold-a-synth-mule",
+      "loafo_caught": 3,
+      "loafo_evaded": 1,
+      "loafo_precision": 1.0,
+      "loafo_recall": 0.75,
+      "training_families": [
+        "synthetic_identity_bustout",
+        "mule_network_structuring"
+      ],
+      "verdict": "strong"
+    },
+    "mule_network_structuring": {
+      "defender_v3_recall_same_scenario": 0.4166666666666667,
+      "fold_id": "fold-b-synth-adaptive",
+      "loafo_caught": 0,
+      "loafo_evaded": 12,
+      "loafo_precision": 0.0,
+      "loafo_recall": 0.0,
+      "training_families": [
+        "synthetic_identity_bustout",
+        "adaptive_detector_evasion"
+      ],
+      "verdict": "weak"
+    },
+    "synthetic_identity_bustout": {
+      "defender_v3_recall_same_scenario": 1.0,
+      "fold_id": "fold-c-mule-adaptive",
+      "loafo_caught": 3,
+      "loafo_evaded": 0,
+      "loafo_precision": 1.0,
+      "loafo_recall": 1.0,
+      "training_families": [
+        "mule_network_structuring",
+        "adaptive_detector_evasion"
+      ],
+      "verdict": "strong"
+    }
+  },
+  "verdict_rubric": "strong: LOAFO recall > 0 and >= 50% of Defender v3's recall on the same scenario. partial: LOAFO recall > 0 but below that. weak: LOAFO recall == 0."
+}

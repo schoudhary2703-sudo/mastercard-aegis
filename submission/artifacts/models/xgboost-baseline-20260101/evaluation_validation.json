@@ -1,0 +1,48 @@
+{
+  "contract_version": "1.0.0",
+  "evaluation_id": "xgboost-baseline-20260101-validation",
+  "protocol": "static_holdout",
+  "model_version": "xgboost-baseline-20260101",
+  "dataset_id": "paysim-16910f90577b-086de09508a4",
+  "split": "validation",
+  "overall": {
+    "precision": 0.7710196779964222,
+    "recall": 0.7696428571428572,
+    "f1": 0.7703306523681859,
+    "pr_auc": 0.8022826439018512,
+    "roc_auc": 0.9993470286795039,
+    "false_positive_rate": 0.00013577602895423817,
+    "false_negative_rate": 0.23035714285714284,
+    "recall_at_fixed_fpr": {
+      "0.001": 0.8535714285714285,
+      "0.005": 0.9642857142857143,
+      "0.01": 0.9892857142857143
+    },
+    "alert_rate": 0.0005926073557520548,
+    "threshold": 0.9885146021842957,
+    "counts": {
+      "true_positives": 431,
+      "false_positives": 128,
+      "true_negatives": 942601,
+      "false_negatives": 129
+    },
+    "support": 943289,
+    "positive_support": 560
+  },
+  "per_attack_family": {},
+  "latency": {
+    "mean_ms": 6.795543000007456,
+    "p50_ms": 6.786099999771977,
+    "p95_ms": 7.722164999540835,
+    "p99_ms": 9.129818000164958,
+    "max_ms": 11.193999998795334,
+    "samples": 200
+  },
+  "fidelity": null,
+  "round_index": null,
+  "held_out_family": null,
+  "seed": 20260101,
+  "notes": "Threshold tuned on this split (maximize F1). low_memory=True.",
+  "created_at": "2026-08-24T22:13:02.292149Z",
+  "metadata": {}
+}

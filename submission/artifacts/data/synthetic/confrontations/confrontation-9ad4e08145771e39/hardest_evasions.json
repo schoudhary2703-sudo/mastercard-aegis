@@ -1,0 +1,18 @@
+[
+  {
+    "action": "approve",
+    "attack_family": "synthetic_identity_bustout",
+    "blueprint_id": "synthetic-identity-bustout-v1",
+    "credible_evasion": true,
+    "detector_model_version": "xgboost-hardened-r1-20260201",
+    "detector_risk_score": 0.8860564827919006,
+    "fidelity_score": 0.8745748810431927,
+    "generation": 0,
+    "ground_truth_label": 1,
+    "hardness_score": 0.09965213800791649,
+    "rank": 1,
+    "scenario_id": "bustout-ed290e12-20260825-0000",
+    "sequence_index": 12,
+    "transaction_id": "bustout-ed290e12-20260825-0000-bustout-000"
+  }
+]

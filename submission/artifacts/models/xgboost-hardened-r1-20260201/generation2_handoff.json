@@ -1,0 +1,32 @@
+{
+  "defender_version": "xgboost-hardened-r1-20260201",
+  "excluded_scenario_ids": [
+    "bustout-9e2ec3c1-20260105-0000",
+    "bustout-ed290e12-20260101-0000"
+  ],
+  "excluded_transaction_ids": [
+    "bustout-ed290e12-20260101-0000-bustout-000",
+    "bustout-ed290e12-20260101-0000-bustout-001",
+    "bustout-ed290e12-20260101-0000-bustout-002",
+    "bustout-9e2ec3c1-20260105-0000-bustout-000",
+    "bustout-9e2ec3c1-20260105-0000-bustout-001",
+    "bustout-9e2ec3c1-20260105-0000-bustout-002"
+  ],
+  "instructions": "Confront Defender v2 with a genuinely fresh attack, not a re-score of what it was hardened against: (1) python scripts/run_bustout_confrontation.py <processed_dir> --reuse-model-dir models\\xgboost-hardened-r1-20260201 --output-dir data/synthetic/confrontations --seed <fresh-seed>; (2) python scripts/run_adaptive_bustout_round.py <processed_dir> <new_confrontation_dir> models\\xgboost-hardened-r1-20260201 --seed <fresh-seed>. Generation-2 candidates must not reuse excluded_transaction_ids or excluded_scenario_ids above, and must use a seed that was not used for round-0 or adaptive-round-1.",
+  "model_dir": "models\\xgboost-hardened-r1-20260201",
+  "rules": "docs/EVALUATION_RULES.md SS2-4",
+  "trained_on": {
+    "hard_positive_sources": [
+      {
+        "artifact_dir": "data\\synthetic\\confrontations\\confrontation-416e606888de1ffa",
+        "source_round": "round-0"
+      },
+      {
+        "artifact_dir": "data\\synthetic\\adaptive_rounds\\adaptive-round-1-864e34ee0950e8bc\\candidates\\synthetic-identity-bustout-v1-g1-93aad9875685",
+        "source_round": "adaptive-round-1"
+      }
+    ],
+    "processed_dir": "data\\processed\\paysim\\paysim-16910f90577b-086de09508a4"
+  },
+  "tuned_threshold": 0.9896106719970703
+}

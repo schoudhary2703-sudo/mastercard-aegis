@@ -7,7 +7,10 @@ from pathlib import Path
 from aegis.api.index import ArtifactIndex
 from tests.api_fixtures import (
     BASELINE_VERSION,
+    DEFENDER_V3_VERSION,
     HARDENED_VERSION,
+    LOAFO_FOLD_VERSION,
+    add_defender_v3_and_loafo_fold,
     write_empty_fixture,
     write_full_fixture,
 )
@@ -90,6 +93,42 @@ class TestFullFixtureDiscovery:
         index = ArtifactIndex(tmp_path)
         assert len(index.hardening_runs) == 1
         assert index.hardening_runs[0].hard_positive_count == 4
+
+
+class TestLoafoFoldsExcludedFromCoreModels:
+    def test_loafo_fold_dir_is_not_a_core_model(self, tmp_path: Path) -> None:
+        write_full_fixture(tmp_path)
+        add_defender_v3_and_loafo_fold(tmp_path)
+        index = ArtifactIndex(tmp_path)
+        versions = {m.model_version for m in index.models}
+        # Only the three core lineage models -- the LOAFO fold model dir
+        # (which also has a metadata.json) must not appear here.
+        assert versions == {BASELINE_VERSION, HARDENED_VERSION, DEFENDER_V3_VERSION}
+        assert LOAFO_FOLD_VERSION not in versions
+
+    def test_model_role_classifies_all_three_generations(self, tmp_path: Path) -> None:
+        write_full_fixture(tmp_path)
+        add_defender_v3_and_loafo_fold(tmp_path)
+        index = ArtifactIndex(tmp_path)
+        roles = {m.model_version: m.role for m in index.models}
+        assert roles[BASELINE_VERSION] == "baseline_v1"
+        assert roles[HARDENED_VERSION] == "defender_v2"
+        assert roles[DEFENDER_V3_VERSION] == "defender_v3"
+
+    def test_current_defender_model_is_v3_when_present(self, tmp_path: Path) -> None:
+        write_full_fixture(tmp_path)
+        add_defender_v3_and_loafo_fold(tmp_path)
+        index = ArtifactIndex(tmp_path)
+        current = index.current_defender_model()
+        assert current is not None
+        assert current.model_version == DEFENDER_V3_VERSION
+
+    def test_current_defender_model_falls_back_without_v3(self, tmp_path: Path) -> None:
+        write_full_fixture(tmp_path)
+        index = ArtifactIndex(tmp_path)
+        current = index.current_defender_model()
+        assert current is not None
+        assert current.model_version == HARDENED_VERSION
 
 
 class TestMalformedArtifactTolerance:

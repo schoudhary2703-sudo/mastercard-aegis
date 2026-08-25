@@ -15,6 +15,8 @@ from typing import Any
 
 BASELINE_VERSION = "xgboost-baseline-fixture"
 HARDENED_VERSION = "xgboost-hardened-fixture"
+DEFENDER_V3_VERSION = "xgboost-hardened-v3-fixture"
+LOAFO_FOLD_VERSION = "loafo-fixture-fold"
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -512,6 +514,78 @@ def write_full_fixture(root: Path) -> None:
                 }
             ],
         },
+    )
+
+
+def add_defender_v3_and_loafo_fold(root: Path) -> None:
+    """Layer a Defender v3 model, one LOAFO fold model, and one LOAFO-fold
+    hardening run on top of `write_full_fixture`'s baseline/hardened pair --
+    exercises that LOAFO fold artifacts are excluded from core model/
+    hardening-run classification (`aegis.api.index`, `aegis.api.service`)."""
+    _write_json(
+        root / "models" / DEFENDER_V3_VERSION / "metadata.json",
+        {
+            "action_policy": {
+                "decline_at": 0.9997,
+                "label_threshold": 0.9899,
+                "policy_version": "policy-v0",
+                "review_at": 0.995,
+                "step_up_at": 0.9899,
+            },
+            "contract_version": "1.0.0",
+            "detector_name": "xgboost-baseline",
+            "feature_names": ["temporal.amount"],
+            "model_version": DEFENDER_V3_VERSION,
+            "saved_at": "2026-03-01T00:00:00Z",
+            "seed": 3,
+        },
+    )
+    _write_json(
+        root / "models" / DEFENDER_V3_VERSION / "evaluation_test.json",
+        _evaluation_result(
+            model_version=DEFENDER_V3_VERSION, split="test", precision=0.94, recall=0.78
+        ),
+    )
+    _write_json(
+        root / "models" / DEFENDER_V3_VERSION / "evaluation_validation.json",
+        _evaluation_result(
+            model_version=DEFENDER_V3_VERSION, split="validation", precision=0.8, recall=0.76
+        ),
+    )
+    _write_json(
+        root / "models" / DEFENDER_V3_VERSION / "regression_vs_v1_v2.json",
+        {"notes": "fixture cross-family regression"},
+    )
+
+    # A LOAFO fold model dir carries its own metadata.json (like the real
+    # repo's `models/loafo-*/`) -- it must still be excluded from
+    # `ArtifactIndex.models` despite looking like a model directory.
+    _write_json(
+        root / "models" / LOAFO_FOLD_VERSION / "metadata.json",
+        {
+            "contract_version": "1.0.0",
+            "detector_name": "xgboost-baseline",
+            "model_version": LOAFO_FOLD_VERSION,
+            "saved_at": "2026-04-01T00:00:00Z",
+            "seed": 4,
+        },
+    )
+    _write_json(
+        root / "models" / LOAFO_FOLD_VERSION / "loafo_fold_report.json",
+        {"fold_id": "fold-fixture", "held_out_family": "mule_network_structuring"},
+    )
+
+    # A LOAFO-fold hardening run whose id sorts *after* the core
+    # "hard-positives-fixture" run -- proves the core run is still selected
+    # by role, not by "last id alphabetically".
+    loafo_hardening_dir = root / "data" / "hardening" / "loafo-fold-z-fixture"
+    _write_jsonl(
+        loafo_hardening_dir / "hard_positives.jsonl",
+        [{"transaction_id": f"loafo-hard-{i}", "label": 0} for i in range(2)],
+    )
+    _write_json(
+        loafo_hardening_dir / "provenance.json",
+        {"fraud_count": 99, "fraud_transaction_ids": [], "row_count": 2, "scenarios": []},
     )
 
 

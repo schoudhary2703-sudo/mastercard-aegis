@@ -29,40 +29,79 @@ never calls `.fit()` or `.predict()`, and never writes to `models/` or
   `train.jsonl`/`validation.jsonl`/`test.jsonl` splits (`data/processed/`,
   `data/raw/` -- multi-GB) at all.
 
+## Clean-clone quick start
+
+A fresh `git clone` of this repo has no `data/` or `models/` (both
+git-ignored, ~9GB in a working tree that has run the full pipeline). This
+repo tracks a small, real, minimal **demo-artifact bundle** at
+[`submission/artifacts/`](../submission/artifacts) instead -- just the JSON
+evidence the API actually reads (models' `metadata.json`/`evaluation_*.json`/
+regression reports, LOAFO fold reports, confrontation and adaptive-round
+reports, hardening provenance; **no** `model.json`, no `features/`, no raw
+or processed PaySim). It is exempted from the `data/`/`models/`/`artifacts/`
+`.gitignore` rules (see the "Curated, tracked demo/judge artifact bundle"
+entry at the bottom of `.gitignore`) so it survives a clean clone.
+
+```bash
+python -m pip install -e ".[api]"
+AEGIS_ARTIFACTS_ROOT=submission/artifacts uvicorn aegis.api.app:app --reload --port 8000
+# in another terminal
+cd web && npm install && npm run dev
+```
+
+`GET /api/benchmark` and `GET /api/overview` return real numbers immediately
+-- no PaySim download, no training run. This is the fastest path to a
+working demo from a clean clone. If a section's artifact is missing, the API
+returns that section as empty/null (`aegis.api.reader.read_json` -> `None`
+on a missing file) rather than inventing a number; the UI shows an explicit
+empty state, never a mock number silently standing in for real data (see
+"Fallback: local-only demo" below for what the UI does when the API itself
+is unreachable).
+
 ## Artifact expectations
 
 The API reads everything under one directory, `AEGIS_ARTIFACTS_ROOT`
 (`src/aegis/api/settings.py`), defaulting to the repository root. For a
 deployment, point it at a **curated bundle** instead of the full working
-tree:
+tree -- `submission/artifacts/` (above) already is one; this is the general
+structure if you rebuild it yourself from a fresh pipeline run:
 
 ```
 <artifacts-root>/
   models/
-    <model-version>/
+    <baseline-v1 | defender-v2 | defender-v3 dir>/
       metadata.json
       evaluation_test.json
       evaluation_validation.json
       regression_vs_baseline.json        # Defender v2 only
-      regression_vs_v1_v2.json           # Defender v3 only
       generation2_handoff.json           # Defender v2 only
-      codex_handoff.json                 # Defender v3 only
-      loafo_fold_report.json             # LOAFO fold models only
+      regression_vs_v1_v2.json           # Defender v3 only
+    <loafo fold dir>/
+      loafo_fold_report.json             # the only file read for these dirs
     loafo_summary.json
   data/
-    reports/final_benchmark_summary.json
-    synthetic/                           # confrontations, adaptive_rounds,
-                                          # mule_confrontations,
-                                          # adaptive_evasion_confrontations,
-                                          # loafo_evaluations
-    hardening/                           # hard_positives.jsonl + provenance.json
+    reports/final_benchmark_summary.json                # optional, not read by the API
+    synthetic/
+      confrontations/<id>/               # confrontation.json, blueprint.json,
+                                          # hardest_evasions.json, *.jsonl
+      adaptive_rounds/<id>/               # adaptive_round.json,
+                                          # candidates/<id>/{blueprint,confrontation}.json
+    hardening/<id>/                       # provenance.json, hard_positives.jsonl
 ```
+
+**LOAFO fold model directories (`models/loafo-*/`) need only
+`loafo_fold_report.json`.** They are excluded from `aegis.api.index`'s core
+model discovery entirely (`ModelArtifact` role classification,
+`aegis.api.index.LOAFO_FOLD_PREFIX`) -- their `metadata.json` /
+`evaluation_*.json`, if present, are never read. `models/*/codex_handoff.json`
+(a human handoff note, not consumed by any API route) is likewise optional.
 
 **Excluded, deliberately:** every `models/*/model.json` (trained weights)
 and every `models/*/features/` directory (materialized feature arrays --
 in this repo's own run, ~700MB per model, ~4.3GB total across six models).
-Neither is read by any API route. Building the curated bundle from this
-repo's own real artifacts:
+Neither is read by any API route. Rebuilding a full curated bundle (not the
+strict-minimal `submission/artifacts/`, but a byte-for-byte copy of every
+file an API route *could* read) from this repo's own real artifacts:
 
 ```bash
 mkdir -p deploy-artifacts/models deploy-artifacts/data
@@ -75,9 +114,9 @@ du -sh deploy-artifacts   # this repo's real bundle: well under 5 MB
 the same exclusions works identically -- the exclusion list, not the tool,
 is what matters.)
 
-**Do not require the multi-GB PaySim files for the live demo.** The curated
-bundle above never includes `data/raw/`, `data/processed/`, or any
-`features/` directory.
+**Do not require the multi-GB PaySim files for the live demo.** Neither
+`submission/artifacts/` nor the rebuilt bundle above ever includes
+`data/raw/`, `data/processed/`, or any `features/` directory.
 
 **Do not retrain in production.** No deploy step should run
 `train_baseline_detector.py`, `harden_defender.py`,

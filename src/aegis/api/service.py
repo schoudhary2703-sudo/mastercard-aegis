@@ -50,6 +50,7 @@ from aegis.api.index import (
     ADAPTIVE_ROUNDS_DIR,
     CONFRONTATIONS_DIR,
     HARDENING_DIR,
+    LOAFO_FOLD_PREFIX,
     MODELS_DIR,
     AdaptiveRoundArtifact,
     ArtifactIndex,
@@ -140,6 +141,7 @@ def _model_summary(m: ModelArtifact) -> ModelSummaryDTO:
         trained_at=metadata.get("saved_at"),
         seed=metadata.get("seed"),
         is_hardened=m.is_hardened,
+        role=m.role,
         source_artifact=f"{MODELS_DIR}/{m.source_artifact}",
         evaluation_test=_evaluation_summary(
             m.evaluation_test, f"{MODELS_DIR}/{m.source_artifact}/evaluation_test.json"
@@ -351,11 +353,17 @@ def _adaptive_round_source_round(index: ArtifactIndex, a: AdaptiveRoundArtifact)
 
 
 def _match_hardening_run(index: ArtifactIndex) -> HardeningArtifact | None:
-    if not index.hardening_runs:
+    # LOAFO fold hardening runs (`data/hardening/loafo-fold-*`) promote hard
+    # positives for a fold model, not for the core Defender v2 hardening
+    # story this stage narrates -- exclude them so a fold run never gets
+    # picked over the real `hard-positives-r1-*` run just because its id
+    # happens to sort later.
+    core_runs = [r for r in index.hardening_runs if not r.run_id.startswith(LOAFO_FOLD_PREFIX)]
+    if not core_runs:
         return None
     # Only one hardening round exists at foundation stage; take the most
     # recently named run if more ever appear.
-    return sorted(index.hardening_runs, key=lambda h: h.run_id)[-1]
+    return sorted(core_runs, key=lambda h: h.run_id)[-1]
 
 
 def _all_hardest_evasions(index: ArtifactIndex) -> list[HardestEvasionDTO]:
@@ -383,6 +391,7 @@ def _all_hardest_evasions(index: ArtifactIndex) -> list[HardestEvasionDTO]:
 
 def build_overview(index: ArtifactIndex, settings: Settings) -> OverviewResponseDTO:
     models = [_model_summary(m) for m in sorted(index.models, key=_saved_at_key)]
+    current = index.current_defender_model()
     regression = None
     for m in index.models:
         if m.regression_vs_baseline:
@@ -394,6 +403,7 @@ def build_overview(index: ArtifactIndex, settings: Settings) -> OverviewResponse
     return OverviewResponseDTO(
         attack_families_in_scope=[f.value for f in AttackFamily],
         models=models,
+        current_model=_model_summary(current) if current else None,
         regression=regression,
         confrontation_count=len(index.confrontations),
         adaptive_round_count=len(index.adaptive_rounds),

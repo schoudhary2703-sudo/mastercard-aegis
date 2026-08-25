@@ -1,0 +1,64 @@
+{
+  "fraud_count": 16,
+  "fraud_transaction_ids": [
+    "mule-9ace6643-20260835-0000-source_allocation-014",
+    "mule-9ace6643-20260835-0000-source_allocation-015",
+    "mule-9ace6643-20260835-0000-source_allocation-016",
+    "mule-9ace6643-20260835-0000-layering-017",
+    "mule-9ace6643-20260835-0000-layering-018",
+    "mule-9ace6643-20260835-0000-layering-019",
+    "mule-9ace6643-20260835-0000-layering-020",
+    "mule-9ace6643-20260835-0000-layering-021",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-022",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-023",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-024",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-025",
+    "adaptive-3363437d-20260838-0000-adversarial-000",
+    "adaptive-3363437d-20260838-0000-adversarial-001",
+    "adaptive-3363437d-20260838-0000-adversarial-002",
+    "adaptive-3363437d-20260838-0000-adversarial-003"
+  ],
+  "row_count": 37,
+  "scenarios": [
+    {
+      "artifact_dir": "data\\synthetic\\mule_confrontations\\mule-confrontation-fc18c9ba3c66912f",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "fraud_transaction_count": 12,
+      "fraud_transaction_ids": [
+        "mule-9ace6643-20260835-0000-source_allocation-014",
+        "mule-9ace6643-20260835-0000-source_allocation-015",
+        "mule-9ace6643-20260835-0000-source_allocation-016",
+        "mule-9ace6643-20260835-0000-layering-017",
+        "mule-9ace6643-20260835-0000-layering-018",
+        "mule-9ace6643-20260835-0000-layering-019",
+        "mule-9ace6643-20260835-0000-layering-020",
+        "mule-9ace6643-20260835-0000-layering-021",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-022",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-023",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-024",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-025"
+      ],
+      "generation": 0,
+      "scenario_id": "mule-9ace6643-20260835-0000",
+      "source_round": "mule-confrontation-1",
+      "warmup_transaction_count": 14
+    },
+    {
+      "artifact_dir": "data\\synthetic\\adaptive_evasion_confrontations\\adaptive-evasion-confrontation-1c0b165066cd2c9b",
+      "attack_family": "adaptive_detector_evasion",
+      "blueprint_id": "adaptive-detector-evasion-v1-g1-94d51eb6a842",
+      "fraud_transaction_count": 4,
+      "fraud_transaction_ids": [
+        "adaptive-3363437d-20260838-0000-adversarial-000",
+        "adaptive-3363437d-20260838-0000-adversarial-001",
+        "adaptive-3363437d-20260838-0000-adversarial-002",
+        "adaptive-3363437d-20260838-0000-adversarial-003"
+      ],
+      "generation": 1,
+      "scenario_id": "adaptive-3363437d-20260838-0000",
+      "source_round": "adaptive-evasion-confrontation-1",
+      "warmup_transaction_count": 7
+    }
+  ]
+}

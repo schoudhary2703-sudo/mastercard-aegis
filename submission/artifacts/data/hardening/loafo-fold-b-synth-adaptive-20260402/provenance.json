@@ -1,0 +1,64 @@
+{
+  "fraud_count": 10,
+  "fraud_transaction_ids": [
+    "adaptive-3363437d-20260838-0000-adversarial-000",
+    "adaptive-3363437d-20260838-0000-adversarial-001",
+    "adaptive-3363437d-20260838-0000-adversarial-002",
+    "adaptive-3363437d-20260838-0000-adversarial-003",
+    "bustout-ed290e12-20260101-0000-bustout-000",
+    "bustout-ed290e12-20260101-0000-bustout-001",
+    "bustout-ed290e12-20260101-0000-bustout-002",
+    "bustout-9e2ec3c1-20260105-0000-bustout-000",
+    "bustout-9e2ec3c1-20260105-0000-bustout-001",
+    "bustout-9e2ec3c1-20260105-0000-bustout-002"
+  ],
+  "row_count": 41,
+  "scenarios": [
+    {
+      "artifact_dir": "data\\synthetic\\confrontations\\confrontation-416e606888de1ffa",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1",
+      "fraud_transaction_count": 3,
+      "fraud_transaction_ids": [
+        "bustout-ed290e12-20260101-0000-bustout-000",
+        "bustout-ed290e12-20260101-0000-bustout-001",
+        "bustout-ed290e12-20260101-0000-bustout-002"
+      ],
+      "generation": 0,
+      "scenario_id": "bustout-ed290e12-20260101-0000",
+      "source_round": "round-0",
+      "warmup_transaction_count": 12
+    },
+    {
+      "artifact_dir": "data\\synthetic\\adaptive_rounds\\adaptive-round-1-864e34ee0950e8bc\\candidates\\synthetic-identity-bustout-v1-g1-93aad9875685",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+      "fraud_transaction_count": 3,
+      "fraud_transaction_ids": [
+        "bustout-9e2ec3c1-20260105-0000-bustout-000",
+        "bustout-9e2ec3c1-20260105-0000-bustout-001",
+        "bustout-9e2ec3c1-20260105-0000-bustout-002"
+      ],
+      "generation": 1,
+      "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+      "source_round": "adaptive-round-1",
+      "warmup_transaction_count": 12
+    },
+    {
+      "artifact_dir": "data\\synthetic\\adaptive_evasion_confrontations\\adaptive-evasion-confrontation-1c0b165066cd2c9b",
+      "attack_family": "adaptive_detector_evasion",
+      "blueprint_id": "adaptive-detector-evasion-v1-g1-94d51eb6a842",
+      "fraud_transaction_count": 4,
+      "fraud_transaction_ids": [
+        "adaptive-3363437d-20260838-0000-adversarial-000",
+        "adaptive-3363437d-20260838-0000-adversarial-001",
+        "adaptive-3363437d-20260838-0000-adversarial-002",
+        "adaptive-3363437d-20260838-0000-adversarial-003"
+      ],
+      "generation": 1,
+      "scenario_id": "adaptive-3363437d-20260838-0000",
+      "source_round": "adaptive-evasion-confrontation-1",
+      "warmup_transaction_count": 7
+    }
+  ]
+}

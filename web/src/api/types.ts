@@ -65,6 +65,8 @@ export interface EvaluationSummaryDTO {
   source_artifact: string;
 }
 
+export type ModelRole = "baseline_v1" | "defender_v2" | "defender_v3";
+
 export interface ModelSummaryDTO {
   model_version: string;
   detector_name: string | null;
@@ -73,6 +75,7 @@ export interface ModelSummaryDTO {
   trained_at: string | null;
   seed: number | null;
   is_hardened: boolean;
+  role: ModelRole;
   source_artifact: string;
   evaluation_test: EvaluationSummaryDTO | null;
   evaluation_validation: EvaluationSummaryDTO | null;
@@ -198,6 +201,7 @@ export interface DetectionRecordDTO {
 export interface OverviewResponseDTO {
   attack_families_in_scope: string[];
   models: ModelSummaryDTO[];
+  current_model: ModelSummaryDTO | null;
   regression: RegressionComparisonDTO | null;
   confrontation_count: number;
   adaptive_round_count: number;

@@ -1,0 +1,48 @@
+{
+  "contract_version": "1.0.0",
+  "evaluation_id": "xgboost-hardened-crossfamily-20260301-test",
+  "protocol": "static_holdout",
+  "model_version": "xgboost-hardened-crossfamily-20260301",
+  "dataset_id": "paysim-16910f90577b-086de09508a4",
+  "split": "test",
+  "overall": {
+    "precision": 0.9381381381381382,
+    "recall": 0.7790523690773067,
+    "f1": 0.8512261580381472,
+    "pr_auc": 0.9035743547093338,
+    "roc_auc": 0.9987740299479202,
+    "false_positive_rate": 0.0002164470324691563,
+    "false_negative_rate": 0.22094763092269326,
+    "recall_at_fixed_fpr": {
+      "0.001": 0.8523690773067332,
+      "0.005": 0.9326683291770573,
+      "0.01": 0.9598503740648379
+    },
+    "alert_rate": 0.0034841966049486057,
+    "threshold": 0.9894014000892639,
+    "counts": {
+      "true_positives": 3124,
+      "false_positives": 206,
+      "true_negatives": 951528,
+      "false_negatives": 886
+    },
+    "support": 955744,
+    "positive_support": 4010
+  },
+  "per_attack_family": {},
+  "latency": {
+    "mean_ms": 6.659154499920987,
+    "p50_ms": 6.662750000032247,
+    "p95_ms": 7.379344997752923,
+    "p99_ms": 8.592663999261276,
+    "max_ms": 11.63500000257045,
+    "samples": 200
+  },
+  "fidelity": null,
+  "round_index": null,
+  "held_out_family": null,
+  "seed": 20260301,
+  "notes": "Final reported figure; threshold fixed from validation only. low_memory=True.",
+  "created_at": "2026-08-25T18:47:38.875263Z",
+  "metadata": {}
+}

@@ -22,9 +22,14 @@ unless something changed since; re-check anything you touched.
 - [ ] Run `git status --short` one final time immediately before
   committing -- confirm nothing unexpected is staged (a stray local
   `.env`, a personal scratch file, an editor swap file).
-- [ ] Confirm the default branch judges will see is the one you intend
-  (`main` per this repo's convention) and that it is up to date with
-  whatever branch you've been working on.
+- [ ] Confirm the default branch judges will see is the one you intend, and
+  that it is up to date with whatever branch you've been working on. This
+  repository does not have a documented requirement from the challenge brief
+  pinning the branch name to `main` -- work has been happening on `master`
+  (`git branch --show-current`). Either rename/push to whatever branch name
+  your actual submission process expects, or record the branch name
+  explicitly in item 9 below; do not assume `main` is required without
+  checking the submission instructions you were given.
 
 ## 2. Secrets scan
 
@@ -53,6 +58,12 @@ unless something changed since; re-check anything you touched.
 - [ ] Push to the remote and confirm the pushed commit is what CI (if
   configured) or a fresh `git clone` actually builds and tests clean --
   a local-only pass that never made it to the remote does not count.
+
+Items 4-6 below are external packaging steps -- producing a hosted URL, a
+`.docx` writeup, and screenshot files -- not code in this repository. They
+are marked **pending** because they have not been produced yet, not because
+anything in the codebase is broken; the API and UI they depend on are
+verified working (item 8).
 
 ## 4. Deployed demo URL -- **pending**
 
@@ -123,7 +134,9 @@ a verification pass on an earlier commit.
 
 Collect in one place before submitting:
 
-- [ ] Repository URL (and branch/tag, if not `main`).
+- [ ] Repository URL and the exact branch/tag/commit judges should check
+  out (this repo has no fixed branch-name requirement -- state whichever one
+  you are actually submitting).
 - [ ] Deployed demo URL (item 4).
 - [ ] Walkthrough `.docx` (item 5).
 - [ ] Screenshots (item 6), or the slide deck/folder containing them.

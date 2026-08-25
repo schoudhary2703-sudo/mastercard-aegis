@@ -31,7 +31,10 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
 ]
-# Placeholder extras. NOT installed by default and NOT implemented yet.
+# `api` powers the implemented read-only FastAPI service (`src/aegis/api/`,
+# `uvicorn aegis.api.app:app`); not installed by default so the minimal
+# training/generation path stays dependency-light. `viz` is a placeholder
+# extra with no current use in this repo.
 api = ["fastapi>=0.110", "uvicorn>=0.29"]
 viz = ["matplotlib>=3.8"]
 

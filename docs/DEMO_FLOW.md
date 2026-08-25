@@ -26,8 +26,10 @@ Open `/` (Overview).
 
 Point at the **Real pipeline status** card.
 
-> "This isn't a mockup -- it's calling a live API right now. Two real models
-> trained, three real confrontations run, three real adaptive rounds."
+> "This isn't a mockup -- it's calling a live API right now. Three real
+> core defenders trained -- baseline v1, Defender v2, Defender v3 -- three
+> real confrontations run, two real adaptive rounds. The current model is
+> Defender v3."
 
 Point at **Hardest surviving evasions** underneath.
 

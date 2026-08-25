@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from aegis.api.paths import resolve_within, safe_child_dirs
 from aegis.api.reader import count_jsonl_rows, read_json
@@ -22,6 +22,17 @@ MODELS_DIR = "models"
 CONFRONTATIONS_DIR = "data/synthetic/confrontations"
 ADAPTIVE_ROUNDS_DIR = "data/synthetic/adaptive_rounds"
 HARDENING_DIR = "data/hardening"
+
+ModelRole = Literal["baseline_v1", "defender_v2", "defender_v3"]
+
+# LOAFO fold models (`models/loafo-*/`) are evaluation/generalization
+# artifacts -- each is a detector trained with one attack family withheld, to
+# measure whether hardening transfers to an unseen family. They are not part
+# of the core baseline-v1 -> Defender-v2 -> Defender-v3 lineage, so they are
+# excluded from `ArtifactIndex.models` entirely; `aegis.api.benchmark`
+# discovers them separately (by the same prefix) for the LOAFO section of
+# the final benchmark.
+LOAFO_FOLD_PREFIX = "loafo-"
 
 
 @dataclass(frozen=True)
@@ -41,6 +52,21 @@ class ModelArtifact:
     @property
     def is_hardened(self) -> bool:
         return self.generation2_handoff is not None
+
+    @property
+    def role(self) -> ModelRole:
+        """`baseline_v1` / `defender_v2` / `defender_v3`, classified the same
+        way `aegis.api.benchmark` classifies them: by which regression report
+        the model directory carries, not by directory name -- so a reseeded
+        rerun under a different `model_version` is still classified
+        correctly. `defender_v3` (cross-family hardening) is checked first
+        because it also satisfies the `defender_v2` condition were the
+        pipeline ever rerun with both reports present."""
+        if (self.dir_path / "regression_vs_v1_v2.json").is_file():
+            return "defender_v3"
+        if (self.dir_path / "regression_vs_baseline.json").is_file():
+            return "defender_v2"
+        return "baseline_v1"
 
 
 @dataclass(frozen=True)
@@ -145,6 +171,14 @@ class ArtifactIndex:
             return None
         return min(candidates, key=lambda m: _saved_at(m))
 
+    def current_defender_model(self) -> ModelArtifact | None:
+        """The most-evolved core defender available: Defender v3 if it has
+        been trained, else Defender v2, else baseline v1."""
+        by_role = {m.role: m for m in self.models}
+        return by_role.get("defender_v3") or by_role.get("defender_v2") or by_role.get(
+            "baseline_v1"
+        )
+
     def model_by_version(self, model_version: str) -> ModelArtifact | None:
         for m in self.models:
             if m.model_version == model_version:
@@ -195,6 +229,9 @@ def _saved_at(model: ModelArtifact) -> str:
 def _discover_models(root: Path) -> list[ModelArtifact]:
     out: list[ModelArtifact] = []
     for dir_path in safe_child_dirs(root, MODELS_DIR):
+        if dir_path.name.startswith(LOAFO_FOLD_PREFIX):
+            # Evaluation/generalization fold model, not core defender lineage.
+            continue
         try:
             metadata = read_json(resolve_within(root, MODELS_DIR, dir_path.name, "metadata.json"))
             if not isinstance(metadata, dict):

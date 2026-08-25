@@ -1,0 +1,80 @@
+{
+  "fraud_count": 18,
+  "fraud_transaction_ids": [
+    "mule-9ace6643-20260835-0000-source_allocation-014",
+    "mule-9ace6643-20260835-0000-source_allocation-015",
+    "mule-9ace6643-20260835-0000-source_allocation-016",
+    "mule-9ace6643-20260835-0000-layering-017",
+    "mule-9ace6643-20260835-0000-layering-018",
+    "mule-9ace6643-20260835-0000-layering-019",
+    "mule-9ace6643-20260835-0000-layering-020",
+    "mule-9ace6643-20260835-0000-layering-021",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-022",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-023",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-024",
+    "mule-9ace6643-20260835-0000-fan_in_cashout-025",
+    "bustout-ed290e12-20260101-0000-bustout-000",
+    "bustout-ed290e12-20260101-0000-bustout-001",
+    "bustout-ed290e12-20260101-0000-bustout-002",
+    "bustout-9e2ec3c1-20260105-0000-bustout-000",
+    "bustout-9e2ec3c1-20260105-0000-bustout-001",
+    "bustout-9e2ec3c1-20260105-0000-bustout-002"
+  ],
+  "row_count": 56,
+  "scenarios": [
+    {
+      "artifact_dir": "data\\synthetic\\confrontations\\confrontation-416e606888de1ffa",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1",
+      "fraud_transaction_count": 3,
+      "fraud_transaction_ids": [
+        "bustout-ed290e12-20260101-0000-bustout-000",
+        "bustout-ed290e12-20260101-0000-bustout-001",
+        "bustout-ed290e12-20260101-0000-bustout-002"
+      ],
+      "generation": 0,
+      "scenario_id": "bustout-ed290e12-20260101-0000",
+      "source_round": "round-0",
+      "warmup_transaction_count": 12
+    },
+    {
+      "artifact_dir": "data\\synthetic\\adaptive_rounds\\adaptive-round-1-864e34ee0950e8bc\\candidates\\synthetic-identity-bustout-v1-g1-93aad9875685",
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1-g1-93aad9875685",
+      "fraud_transaction_count": 3,
+      "fraud_transaction_ids": [
+        "bustout-9e2ec3c1-20260105-0000-bustout-000",
+        "bustout-9e2ec3c1-20260105-0000-bustout-001",
+        "bustout-9e2ec3c1-20260105-0000-bustout-002"
+      ],
+      "generation": 1,
+      "scenario_id": "bustout-9e2ec3c1-20260105-0000",
+      "source_round": "adaptive-round-1",
+      "warmup_transaction_count": 12
+    },
+    {
+      "artifact_dir": "data\\synthetic\\mule_confrontations\\mule-confrontation-fc18c9ba3c66912f",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "fraud_transaction_count": 12,
+      "fraud_transaction_ids": [
+        "mule-9ace6643-20260835-0000-source_allocation-014",
+        "mule-9ace6643-20260835-0000-source_allocation-015",
+        "mule-9ace6643-20260835-0000-source_allocation-016",
+        "mule-9ace6643-20260835-0000-layering-017",
+        "mule-9ace6643-20260835-0000-layering-018",
+        "mule-9ace6643-20260835-0000-layering-019",
+        "mule-9ace6643-20260835-0000-layering-020",
+        "mule-9ace6643-20260835-0000-layering-021",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-022",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-023",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-024",
+        "mule-9ace6643-20260835-0000-fan_in_cashout-025"
+      ],
+      "generation": 0,
+      "scenario_id": "mule-9ace6643-20260835-0000",
+      "source_round": "mule-confrontation-1",
+      "warmup_transaction_count": 14
+    }
+  ]
+}

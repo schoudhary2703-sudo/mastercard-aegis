@@ -1,0 +1,476 @@
+{
+  "claim_flags": {
+    "cross_family_generalization": "partial",
+    "universal_fraud_detection": false,
+    "weakest_unseen_family": "mule_network_structuring"
+  },
+  "fresh_family_performance": [
+    {
+      "attack_family": "adaptive_detector_evasion",
+      "defender_v3": {
+        "average_fraud_risk_score": null,
+        "caught": 4,
+        "evaded": 0,
+        "fitness": null,
+        "model_version": "xgboost-hardened-crossfamily-20260301",
+        "note": "Per-transaction risk scores were not persisted for Defender v3's scoring pass on this scenario; only aggregate precision/recall/counts are available.",
+        "recall": 1.0
+      },
+      "fidelity_score": 0.8057464962045819,
+      "fold_id": "fold-a-synth-mule",
+      "fold_model": {
+        "average_fraud_risk_score": 0.990747481584549,
+        "caught": 3,
+        "evaded": 1,
+        "fitness": 0.0074551842943180536,
+        "model_version": "loafo-synth-mule-20260401",
+        "note": null,
+        "recall": 0.75
+      },
+      "fraud_count": 4,
+      "source_artifact": "models/loafo-synth-mule-20260401/loafo_fold_report.json",
+      "training_families": [
+        "synthetic_identity_bustout",
+        "mule_network_structuring"
+      ]
+    },
+    {
+      "attack_family": "mule_network_structuring",
+      "defender_v3": {
+        "average_fraud_risk_score": null,
+        "caught": 5,
+        "evaded": 7,
+        "fitness": null,
+        "model_version": "xgboost-hardened-crossfamily-20260301",
+        "note": "Per-transaction risk scores were not persisted for Defender v3's scoring pass on this scenario; only aggregate precision/recall/counts are available.",
+        "recall": 0.4166666666666667
+      },
+      "fidelity_score": 0.8460072662864694,
+      "fold_id": "fold-b-synth-adaptive",
+      "fold_model": {
+        "average_fraud_risk_score": 0.24797657050658017,
+        "caught": 0,
+        "evaded": 12,
+        "fitness": 0.6362172857691035,
+        "model_version": "loafo-synth-adaptive-20260402",
+        "note": null,
+        "recall": 0.0
+      },
+      "fraud_count": 12,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "training_families": [
+        "synthetic_identity_bustout",
+        "adaptive_detector_evasion"
+      ]
+    },
+    {
+      "attack_family": "synthetic_identity_bustout",
+      "defender_v3": {
+        "average_fraud_risk_score": null,
+        "caught": 3,
+        "evaded": 0,
+        "fitness": null,
+        "model_version": "xgboost-hardened-crossfamily-20260301",
+        "note": "Per-transaction risk scores were not persisted for Defender v3's scoring pass on this scenario; only aggregate precision/recall/counts are available.",
+        "recall": 1.0
+      },
+      "fidelity_score": 0.8818490255734899,
+      "fold_id": "fold-c-mule-adaptive",
+      "fold_model": {
+        "average_fraud_risk_score": 0.9969690044720968,
+        "caught": 3,
+        "evaded": 0,
+        "fitness": 0.0026728804527990442,
+        "model_version": "loafo-mule-adaptive-20260403",
+        "note": null,
+        "recall": 1.0
+      },
+      "fraud_count": 3,
+      "source_artifact": "models/loafo-mule-adaptive-20260403/loafo_fold_report.json",
+      "training_families": [
+        "mule_network_structuring",
+        "adaptive_detector_evasion"
+      ]
+    }
+  ],
+  "hardest_surviving_attacks": [
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.006011506076902151,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.8409214884640849,
+      "rank": 1,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 15,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-source_allocation-015"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.006045129150152206,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.8408930430998005,
+      "rank": 2,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 14,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-source_allocation-014"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.00784759409725666,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.8393681446573235,
+      "rank": 3,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 16,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-source_allocation-016"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.023580634966492653,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.8260578777611678,
+      "rank": 4,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 17,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-layering-017"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.0458303764462471,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.8072344347963001,
+      "rank": 5,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 20,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-layering-020"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.14569854736328125,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.7227452365297501,
+      "rank": 6,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 21,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-layering-021"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.24237801134586334,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.6409537074998046,
+      "rank": 7,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 18,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-layering-018"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.2508929967880249,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.6337499679434125,
+      "rank": 8,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 19,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-layering-019"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.3082600235939026,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.5852170464203893,
+      "rank": 9,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 22,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-fan_in_cashout-022"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.4590984284877777,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.4576066598451104,
+      "rank": 10,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 23,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-fan_in_cashout-023"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.5084947943687439,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.41581697538166795,
+      "rank": 11,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 24,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-fan_in_cashout-024"
+    },
+    {
+      "action": "approve",
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-adaptive-20260402",
+      "detector_risk_score": 0.9715808033943176,
+      "fidelity_score": 0.8460072662864694,
+      "generation": 0,
+      "ground_truth_label": 1,
+      "hardness_score": 0.024042846830431053,
+      "rank": 12,
+      "scenario_id": "mule-9ace6643-20270102-0000",
+      "sequence_index": 25,
+      "source_artifact": "models/loafo-synth-adaptive-20260402/loafo_fold_report.json",
+      "source_round": "loafo:fold-b-synth-adaptive",
+      "transaction_id": "mule-9ace6643-20270102-0000-fan_in_cashout-025"
+    },
+    {
+      "action": "approve",
+      "attack_family": "adaptive_detector_evasion",
+      "blueprint_id": "adaptive-detector-evasion-v1-g1-e6155abd7625",
+      "credible_evasion": true,
+      "detector_model_version": "loafo-synth-mule-20260401",
+      "detector_risk_score": 0.9802072644233704,
+      "fidelity_score": 0.8057464962045819,
+      "generation": 1,
+      "ground_truth_label": 1,
+      "hardness_score": 0.015947927341173108,
+      "rank": 1,
+      "scenario_id": "adaptive-3350d840-20270103-0000",
+      "sequence_index": 8,
+      "source_artifact": "models/loafo-synth-mule-20260401/loafo_fold_report.json",
+      "source_round": "loafo:fold-a-synth-mule",
+      "transaction_id": "adaptive-3350d840-20270103-0000-adversarial-001"
+    }
+  ],
+  "limitations": [
+    "Each LOAFO fold's fresh evaluation is one real synthetic scenario (3-12 fraud events), not a statistically powered sample -- recall numbers are directional, not confidence-interval-backed estimates.",
+    "Defender v3's per-transaction risk scores were not persisted during LOAFO scoring, so average_fraud_risk_score/fitness are only available for each fold's own model, not for Defender v3's view of the same scenario (see each fresh_family_performance entry's defender_v3.note).",
+    "Model comparison and fresh-family numbers each come from a single untouched PaySim test split and a single fresh scenario per family respectively -- neither is cross-validated.",
+    "No claim of universal fraud detection: mule_network_structuring generalization was weak in the LOAFO benchmark even where the other two families generalized strongly -- see loafo.overall_verdict."
+  ],
+  "loafo": {
+    "mean_loafo_recall": 0.5833333333333334,
+    "overall_verdict": "partial",
+    "per_family": [
+      {
+        "attack_family": "adaptive_detector_evasion",
+        "defender_v3_recall_same_scenario": 1.0,
+        "fold_id": "fold-a-synth-mule",
+        "loafo_recall": 0.75,
+        "training_families": [
+          "synthetic_identity_bustout",
+          "mule_network_structuring"
+        ],
+        "verdict": "strong"
+      },
+      {
+        "attack_family": "mule_network_structuring",
+        "defender_v3_recall_same_scenario": 0.4166666666666667,
+        "fold_id": "fold-b-synth-adaptive",
+        "loafo_recall": 0.0,
+        "training_families": [
+          "synthetic_identity_bustout",
+          "adaptive_detector_evasion"
+        ],
+        "verdict": "weak"
+      },
+      {
+        "attack_family": "synthetic_identity_bustout",
+        "defender_v3_recall_same_scenario": 1.0,
+        "fold_id": "fold-c-mule-adaptive",
+        "loafo_recall": 1.0,
+        "training_families": [
+          "mule_network_structuring",
+          "adaptive_detector_evasion"
+        ],
+        "verdict": "strong"
+      }
+    ],
+    "source_artifact": "models/loafo_summary.json",
+    "verdict_rubric": "strong: LOAFO recall > 0 and >= 50% of Defender v3's recall on the same scenario. partial: LOAFO recall > 0 but below that. weak: LOAFO recall == 0."
+  },
+  "meta": {
+    "artifacts_root": ".",
+    "data_source": "real",
+    "generated_at": "2026-08-25T21:03:33.129363+00:00"
+  },
+  "model_comparison": {
+    "baseline_v1": {
+      "confusion": {
+        "false_negatives": 823,
+        "false_positives": 242,
+        "true_negatives": 951492,
+        "true_positives": 3187
+      },
+      "f1": 0.8568355961822826,
+      "false_positive_rate": 0.00025427272746376614,
+      "latency_ms": {
+        "max_ms": 9.840900000199326,
+        "mean_ms": 6.860088499934136,
+        "p50_ms": 6.883899999593268,
+        "p95_ms": 7.713910000165924,
+        "p99_ms": 8.512257000547832,
+        "samples": 200
+      },
+      "model_version": "xgboost-baseline-20260101",
+      "pr_auc": 0.9088852257782069,
+      "precision": 0.9294254884806066,
+      "recall": 0.7947630922693267,
+      "recall_at_fixed_fpr": {
+        "0.001": 0.8506234413965087,
+        "0.005": 0.9394014962593517,
+        "0.01": 0.9678304239401496
+      },
+      "roc_auc": 0.9989858037934246,
+      "threshold": 0.9885146021842957
+    },
+    "dataset_id": "paysim-16910f90577b-086de09508a4",
+    "defender_v2": {
+      "confusion": {
+        "false_negatives": 919,
+        "false_positives": 230,
+        "true_negatives": 951504,
+        "true_positives": 3091
+      },
+      "f1": 0.8432683126449325,
+      "false_positive_rate": 0.00024166416246556286,
+      "latency_ms": {
+        "max_ms": 191.11139999949955,
+        "mean_ms": 12.282928999975411,
+        "p50_ms": 11.138399999254034,
+        "p95_ms": 14.317775000927211,
+        "p99_ms": 17.255350000850733,
+        "samples": 200
+      },
+      "model_version": "xgboost-hardened-r1-20260201",
+      "pr_auc": 0.9008325858874358,
+      "precision": 0.9307437518819632,
+      "recall": 0.7708229426433916,
+      "recall_at_fixed_fpr": {
+        "0.001": 0.8478802992518704,
+        "0.005": 0.9336658354114713,
+        "0.01": 0.9593516209476309
+      },
+      "roc_auc": 0.9988114446592448,
+      "threshold": 0.9896106719970703
+    },
+    "defender_v3": {
+      "confusion": {
+        "false_negatives": 886,
+        "false_positives": 206,
+        "true_negatives": 951528,
+        "true_positives": 3124
+      },
+      "f1": 0.8512261580381472,
+      "false_positive_rate": 0.0002164470324691563,
+      "latency_ms": {
+        "max_ms": 11.63500000257045,
+        "mean_ms": 6.659154499920987,
+        "p50_ms": 6.662750000032247,
+        "p95_ms": 7.379344997752923,
+        "p99_ms": 8.592663999261276,
+        "samples": 200
+      },
+      "model_version": "xgboost-hardened-crossfamily-20260301",
+      "pr_auc": 0.9035743547093338,
+      "precision": 0.9381381381381382,
+      "recall": 0.7790523690773067,
+      "recall_at_fixed_fpr": {
+        "0.001": 0.8523690773067332,
+        "0.005": 0.9326683291770573,
+        "0.01": 0.9598503740648379
+      },
+      "roc_auc": 0.9987740299479202,
+      "threshold": 0.9894014000892639
+    },
+    "source_artifact": "models/xgboost-hardened-crossfamily-20260301/regression_vs_v1_v2.json",
+    "split": "test"
+  }
+}

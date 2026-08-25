@@ -180,6 +180,21 @@ vs v3, recall by family, LOAFO results, hardest surviving attacks. See
 
 ## How to run locally
 
+**Clean clone, no PaySim download:** this repo tracks a small, real, minimal
+demo-artifact bundle at [`submission/artifacts/`](submission/artifacts) (JSON
+evaluation/confrontation/benchmark evidence only -- no trained model weights,
+no PaySim data). Point the API at it and skip straight to step 4:
+
+```bash
+python -m pip install -e ".[api]"
+AEGIS_ARTIFACTS_ROOT=submission/artifacts uvicorn aegis.api.app:app --reload --port 8000
+cd web && npm install && npm run dev
+```
+
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) "Clean-clone quick start" for
+what is (and is not) in that bundle. To instead reproduce the full pipeline
+from real PaySim data:
+
 ```bash
 # 1. Python environment
 python -m pip install -e ".[dev,api]"

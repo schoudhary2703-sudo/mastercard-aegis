@@ -1,0 +1,50 @@
+{
+  "action_policy": {
+    "decline_at": 0.9968204200267792,
+    "label_threshold": 0.9894014000892639,
+    "policy_version": "policy-v0",
+    "review_at": 0.9936408400535583,
+    "step_up_at": 0.9894014000892639
+  },
+  "contract_version": "1.0.0",
+  "detector_name": "xgboost-baseline",
+  "feature_names": [
+    "temporal.amount",
+    "temporal.hour_of_day",
+    "temporal.source_balance_before",
+    "temporal.destination_balance_before",
+    "temporal.has_destination",
+    "temporal.source_txn_count_before",
+    "temporal.destination_txn_count_before",
+    "temporal.source_distinct_destinations_before",
+    "temporal.destination_distinct_sources_before",
+    "temporal.source_velocity_1h",
+    "temporal.destination_velocity_1h",
+    "temporal.source_avg_amount_before",
+    "temporal.amount_deviation_from_source_history",
+    "temporal.seconds_since_source_previous_txn",
+    "temporal.seconds_since_destination_previous_txn",
+    "temporal.type_payment",
+    "temporal.type_transfer",
+    "temporal.type_cash_in",
+    "temporal.type_cash_out",
+    "temporal.type_debit",
+    "temporal.type_refund"
+  ],
+  "hyperparameters": {
+    "colsample_bytree": 0.8,
+    "eta": 0.05,
+    "eval_metric": "aucpr",
+    "max_depth": 5,
+    "min_child_weight": 2,
+    "nthread": 2,
+    "objective": "binary:logistic",
+    "subsample": 0.8,
+    "tree_method": "hist"
+  },
+  "model_version": "xgboost-hardened-crossfamily-20260301",
+  "num_boost_round": 300,
+  "saved_at": "2026-08-25T18:47:40.528473+00:00",
+  "scale_pos_weight": 1216.9137789904503,
+  "seed": 20260301
+}

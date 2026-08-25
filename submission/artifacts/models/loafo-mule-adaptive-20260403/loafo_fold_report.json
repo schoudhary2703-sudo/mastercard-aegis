@@ -1,0 +1,178 @@
+{
+  "fold_id": "fold-c-mule-adaptive",
+  "fresh_held_out_evaluation": {
+    "average_fraud_risk_score": 0.9969690044720968,
+    "caught_count": 3,
+    "defender_v3_evaluation": {
+      "contract_version": "1.0.0",
+      "created_at": "2026-08-25T20:50:34.378531Z",
+      "dataset_id": "bustout-ed290e12-20270103-0000",
+      "evaluation_id": "defender-v3-on-bustout-ed290e12-20270103-0000",
+      "fidelity": null,
+      "held_out_family": "synthetic_identity_bustout",
+      "latency": null,
+      "metadata": {},
+      "model_version": "xgboost-hardened-crossfamily-20260301",
+      "notes": "Defender v3 (trained WITH synthetic_identity_bustout) scored on the identical fresh scenario as a memorization reference for fold-c-mule-adaptive.",
+      "overall": {
+        "alert_rate": 0.2,
+        "counts": {
+          "false_negatives": 0,
+          "false_positives": 0,
+          "true_negatives": 12,
+          "true_positives": 3
+        },
+        "f1": 1.0,
+        "false_negative_rate": 0.0,
+        "false_positive_rate": 0.0,
+        "positive_support": 3,
+        "pr_auc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "recall_at_fixed_fpr": {
+          "0.001": 1.0,
+          "0.005": 1.0,
+          "0.01": 1.0
+        },
+        "roc_auc": 1.0,
+        "support": 15,
+        "threshold": 0.9894014000892639
+      },
+      "per_attack_family": {},
+      "protocol": "leave_one_attack_family_out",
+      "round_index": null,
+      "seed": 20270103,
+      "split": "test"
+    },
+    "evaded_count": 0,
+    "fidelity_score": 0.8818490255734899,
+    "fold_model_evaluation": {
+      "contract_version": "1.0.0",
+      "created_at": "2026-08-25T20:50:34.286737Z",
+      "dataset_id": "bustout-ed290e12-20270103-0000",
+      "evaluation_id": "fold-c-mule-adaptive-loafo-bustout-ed290e12-20270103-0000",
+      "fidelity": null,
+      "held_out_family": "synthetic_identity_bustout",
+      "latency": null,
+      "metadata": {},
+      "model_version": "loafo-mule-adaptive-20260403",
+      "notes": "fold-c-mule-adaptive: trained on ('mule_network_structuring', 'adaptive_detector_evasion'), scored on one fresh synthetic_identity_bustout scenario never seen in training.",
+      "overall": {
+        "alert_rate": 0.2,
+        "counts": {
+          "false_negatives": 0,
+          "false_positives": 0,
+          "true_negatives": 12,
+          "true_positives": 3
+        },
+        "f1": 1.0,
+        "false_negative_rate": 0.0,
+        "false_positive_rate": 0.0,
+        "positive_support": 3,
+        "pr_auc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "recall_at_fixed_fpr": {
+          "0.001": 1.0,
+          "0.005": 1.0,
+          "0.01": 1.0
+        },
+        "roc_auc": 1.0,
+        "support": 15,
+        "threshold": 0.9887773394584656
+      },
+      "per_attack_family": {},
+      "protocol": "leave_one_attack_family_out",
+      "round_index": null,
+      "seed": 20270103,
+      "split": "test"
+    },
+    "fraud_count": 3,
+    "hardest_evasions": [],
+    "recall": 1.0,
+    "scenario_id": "bustout-ed290e12-20270103-0000",
+    "source_artifact": "data\\synthetic\\loafo_evaluations\\fold-c-mule-adaptive\\confrontation-dd40e9e9f9261337"
+  },
+  "hard_positive_counts_by_family": {
+    "adaptive_detector_evasion": {
+      "fraud": 4,
+      "legitimate": 7,
+      "rows": 11,
+      "scenarios": 1
+    },
+    "mule_network_structuring": {
+      "fraud": 12,
+      "legitimate": 14,
+      "rows": 26,
+      "scenarios": 1
+    }
+  },
+  "hard_positive_total_fraud": 16,
+  "hard_positive_total_rows": 37,
+  "held_out_family": "synthetic_identity_bustout",
+  "model_dir": "models\\loafo-mule-adaptive-20260403",
+  "model_hash_after": {
+    "metadata_json": "9c3937455394b4283266b1ac98ce12ee30f930b04d8cdf0c5e663dd2996c48f7",
+    "model_json": "26a60985f0d9530357be8c10ae633e26432e451f061ea2c4d428709f9e6b2351"
+  },
+  "model_hash_before": {
+    "metadata_json": "9c3937455394b4283266b1ac98ce12ee30f930b04d8cdf0c5e663dd2996c48f7",
+    "model_json": "26a60985f0d9530357be8c10ae633e26432e451f061ea2c4d428709f9e6b2351"
+  },
+  "model_version": "loafo-mule-adaptive-20260403",
+  "notes": "Held-out family 'synthetic_identity_bustout' contributed zero rows to training (verified against actual promoted provenance). Fresh held-out scenario verified to have zero id overlap with any prior artifact under data/synthetic/ or data/hardening/, and with PaySim validation/test. Model hashes verified unchanged before/after every evaluation step.",
+  "paysim_native_test_metrics": {
+    "alert_rate": 0.0035459286168681155,
+    "counts": {
+      "false_negatives": 872,
+      "false_positives": 251,
+      "true_negatives": 951483,
+      "true_positives": 3138
+    },
+    "f1": 0.84822273280173,
+    "false_negative_rate": 0.2174563591022444,
+    "false_positive_rate": 0.0002637291512124186,
+    "positive_support": 4010,
+    "pr_auc": 0.9014756002501937,
+    "precision": 0.9259368545293597,
+    "recall": 0.7825436408977556,
+    "recall_at_fixed_fpr": {
+      "0.001": 0.8481296758104738,
+      "0.005": 0.9326683291770573,
+      "0.01": 0.9625935162094763
+    },
+    "roc_auc": 0.9988261905489456,
+    "support": 955744,
+    "threshold": 0.9887773394584656
+  },
+  "paysim_native_validation_metrics": {
+    "alert_rate": 0.0006074490426581885,
+    "counts": {
+      "false_negatives": 140,
+      "false_positives": 153,
+      "true_negatives": 942576,
+      "true_positives": 420
+    },
+    "f1": 0.7413945278022946,
+    "false_negative_rate": 0.25,
+    "false_positive_rate": 0.0001622947846093628,
+    "positive_support": 560,
+    "pr_auc": 0.7861681910267172,
+    "precision": 0.7329842931937173,
+    "recall": 0.75,
+    "recall_at_fixed_fpr": {
+      "0.001": 0.85,
+      "0.005": 0.9517857142857142,
+      "0.01": 0.9892857142857143
+    },
+    "roc_auc": 0.9992826146220176,
+    "support": 943289,
+    "threshold": 0.9887773394584656
+  },
+  "training_families": [
+    "mule_network_structuring",
+    "adaptive_detector_evasion"
+  ],
+  "training_seed": 20260403,
+  "tuned_threshold": 0.9887773394584656
+}

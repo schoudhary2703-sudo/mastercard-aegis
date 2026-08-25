@@ -94,44 +94,55 @@ one.
 
 ## Current implementation boundary
 
-Canonical PaySim preparation, the synthetic identity / bust-out generator,
-the baseline detector, and their first confrontation are implemented.
-Attacker-only adaptive evolution v1 now lives in `loop/`; it mutates bounded
-bust-out blueprints and scores fresh variants against one frozen detector.
+All three attack families are implemented end-to-end: `identify/`,
+`generate/`, and `evaluate/` each have a module per family
+(`synthetic_identity`, `mule_network`, `adaptive_evasion`), on top of
+canonical PaySim preparation and the baseline detector. Attacker-only
+adaptive evolution lives in `loop/` (`adaptive.py` for bounded bust-out
+mutation, `adaptive_evasion.py` for the adaptive-evasion family); each
+mutates blueprints and scores fresh variants against a frozen detector. See
+`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`, `docs/MULE_NETWORK_STRUCTURING.md`,
+`docs/ADAPTIVE_DETECTOR_EVASION.md`, and `docs/ADAPTIVE_ATTACK_EVOLUTION.md`.
 
-Blue Hardening Round 1 (`scripts/harden_defender.py`,
-`aegis.defend.hard_positives`) implements the RETRAIN stage above for the
-first time: it promotes the Round-0 confrontation's and the selected
-Adaptive-Round-1 candidate's false negatives into a training-only
-hard-positive set and retrains a new `xgboost-hardened-r1-*` artifact
-alongside (never over) the frozen baseline. See "Blue Hardening Round 1" in
-`docs/BASELINE_DETECTOR.md`. The other attack families and multi-round
-self-play (repeating generate -> retrain -> generate against the *hardened*
-detector) remain later-phase work. See `docs/ADAPTIVE_ATTACK_EVOLUTION.md`.
+Three defender generations exist, each retraining the RETRAIN stage above
+alongside (never over) the prior one:
 
-`scripts/harden_defender_crossfamily.py` generalizes that to Defender v3: it
-promotes prior real hard positives from all three attack families
-(`synthetic_identity_bustout`, `mule_network_structuring`,
-`adaptive_detector_evasion`) into one combined training-only set and
-retrains `xgboost-hardened-crossfamily-*` alongside (never over) v1 and v2.
-It also adds two decision-time-safe, distinct-counterparty features
-(`TemporalBaselineFeatureExtractor` 0.1.0 -> 0.2.0) after inspecting the
-existing 19 columns against a real mule-network confrontation and finding
-they could not represent counterparty fan-out/fan-in. See "Cross-family
-hardening (Defender v3)" in `docs/BASELINE_DETECTOR.md`. It does not run a
-fresh Red confrontation against v3 or Leave-One-Attack-Family-Out - both
-remain a separate, later step (`docs/EVALUATION_RULES.md` SS4/SS6).
+* **Blue Hardening Round 1** (`scripts/harden_defender.py`,
+  `aegis.defend.hard_positives`) promotes the Round-0 confrontation's and
+  the selected Adaptive-Round-1 candidate's false negatives into a
+  training-only hard-positive set and retrains `xgboost-hardened-r1-*`
+  (Defender v2). See "Blue Hardening Round 1" in `docs/BASELINE_DETECTOR.md`.
+* **Cross-family hardening** (`scripts/harden_defender_crossfamily.py`)
+  generalizes that to Defender v3: it promotes prior real hard positives
+  from all three attack families into one combined training-only set and
+  retrains `xgboost-hardened-crossfamily-*`. It also adds two
+  decision-time-safe, distinct-counterparty features
+  (`TemporalBaselineFeatureExtractor` 0.1.0 -> 0.2.0) after inspecting the
+  existing 19 columns against a real mule-network confrontation and finding
+  they could not represent counterparty fan-out/fan-in. See "Cross-family
+  hardening (Defender v3)" in `docs/BASELINE_DETECTOR.md`.
+* **LOAFO** (`scripts/run_loafo_benchmark.py`) runs
+  Leave-One-Attack-Family-Out: three fold models, each trained with one
+  family's hard positives completely withheld, scored on a fresh
+  never-seen scenario of that family, against Defender v3 as a memorization
+  reference. See `docs/EVALUATION_RULES.md` SS6.
 
-`api/` now reads those persisted artifacts (models, confrontations,
-adaptive rounds, hardening runs) through a discovery/lineage layer
-(`aegis.api.index`) and serves them read-only over FastAPI
-(`aegis.api.app`) as the real first closed-loop cycle: Baseline v1 ->
+Not yet done: multi-round self-play (retrain -> fresh Red generation ->
+retrain, repeated beyond the sequence already run) -- see README
+"Limitations".
+
+`api/` reads those persisted artifacts (models, confrontations, adaptive
+rounds, hardening runs, LOAFO fold reports) through a discovery/lineage
+layer (`aegis.api.index`, `aegis.api.benchmark`) and serves them read-only
+over FastAPI (`aegis.api.app`): the first closed-loop cycle (Baseline v1 ->
 Round-0 attack -> Adaptive Red -> Defender v2 hardening -> fresh
-confrontation -> Generation-2 adaptation. `web/` consumes those endpoints
-through a typed client (`web/src/api/`) on Overview, Co-Evolution, and
-Evaluation, clearly labeled "Real pipeline data"; the original mock demo
-(`web/src/mock/`) is kept alongside it, labeled "Simulated demo", and is not
-yet removed. See "API architecture" below.
+confrontation -> Generation-2 adaptation) plus the final benchmark (v1 vs
+v2 vs v3, per-family fresh performance, LOAFO generalization). `web/`
+consumes those endpoints through a typed client (`web/src/api/`) on
+Overview, Co-Evolution, Evaluation, and Final Benchmark, clearly labeled
+"Real pipeline data"; the original mock demo (`web/src/mock/`) is kept
+alongside it, labeled "Simulated demo", and is not yet removed. See "API
+architecture" below.
 
 ## API architecture (`src/aegis/api/`)
 

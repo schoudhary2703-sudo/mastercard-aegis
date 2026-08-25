@@ -1,0 +1,142 @@
+{
+  "baseline_v1_model_version": "xgboost-baseline-20260101",
+  "confusion_matrix": {
+    "baseline_v1": {
+      "false_negatives": 823,
+      "false_positives": 242,
+      "true_negatives": 951492,
+      "true_positives": 3187
+    },
+    "defender_v2": {
+      "false_negatives": 919,
+      "false_positives": 230,
+      "true_negatives": 951504,
+      "true_positives": 3091
+    },
+    "defender_v3_crossfamily": {
+      "false_negatives": 886,
+      "false_positives": 206,
+      "true_negatives": 951528,
+      "true_positives": 3124
+    }
+  },
+  "dataset_id": "paysim-16910f90577b-086de09508a4",
+  "defender_v2_model_version": "xgboost-hardened-r1-20260201",
+  "defender_v3_model_version": "xgboost-hardened-crossfamily-20260301",
+  "feature_extractor": "aegis.features.temporal.TemporalBaselineFeatureExtractor 0.2.0 (21 columns: the same 19 decision-time-safe columns v1/v2 used, plus source_distinct_destinations_before / destination_distinct_sources_before)",
+  "latency_ms": {
+    "baseline_v1": {
+      "max_ms": 9.840900000199326,
+      "mean_ms": 6.860088499934136,
+      "p50_ms": 6.883899999593268,
+      "p95_ms": 7.713910000165924,
+      "p99_ms": 8.512257000547832,
+      "samples": 200
+    },
+    "defender_v2": {
+      "max_ms": 191.11139999949955,
+      "mean_ms": 12.282928999975411,
+      "p50_ms": 11.138399999254034,
+      "p95_ms": 14.317775000927211,
+      "p99_ms": 17.255350000850733,
+      "samples": 200
+    },
+    "defender_v3_crossfamily": {
+      "max_ms": 11.63500000257045,
+      "mean_ms": 6.659154499920987,
+      "p50_ms": 6.662750000032247,
+      "p95_ms": 7.379344997752923,
+      "p99_ms": 8.592663999261276,
+      "samples": 200
+    }
+  },
+  "metrics": {
+    "alert_rate": {
+      "baseline_v1": 0.0035877808283389695,
+      "defender_v2": 0.0034747798573676633,
+      "defender_v3_crossfamily": 0.0034841966049486057,
+      "delta_v3_vs_v1": -0.00010358422339036381,
+      "delta_v3_vs_v2": 9.416747580942401e-06
+    },
+    "f1": {
+      "baseline_v1": 0.8568355961822826,
+      "defender_v2": 0.8432683126449325,
+      "defender_v3_crossfamily": 0.8512261580381472,
+      "delta_v3_vs_v1": -0.0056094381441353924,
+      "delta_v3_vs_v2": 0.007957845393214646
+    },
+    "false_negative_rate": {
+      "baseline_v1": 0.20523690773067332,
+      "defender_v2": 0.22917705735660848,
+      "defender_v3_crossfamily": 0.22094763092269326,
+      "delta_v3_vs_v1": 0.015710723192019937,
+      "delta_v3_vs_v2": -0.008229426433915221
+    },
+    "false_positive_rate": {
+      "baseline_v1": 0.00025427272746376614,
+      "defender_v2": 0.00024166416246556286,
+      "defender_v3_crossfamily": 0.0002164470324691563,
+      "delta_v3_vs_v1": -3.7825694994609834e-05,
+      "delta_v3_vs_v2": -2.5217129996406556e-05
+    },
+    "pr_auc": {
+      "baseline_v1": 0.9088852257782069,
+      "defender_v2": 0.9008325858874358,
+      "defender_v3_crossfamily": 0.9035743547093338,
+      "delta_v3_vs_v1": -0.005310871068873069,
+      "delta_v3_vs_v2": 0.0027417688218980274
+    },
+    "precision": {
+      "baseline_v1": 0.9294254884806066,
+      "defender_v2": 0.9307437518819632,
+      "defender_v3_crossfamily": 0.9381381381381382,
+      "delta_v3_vs_v1": 0.008712649657531601,
+      "delta_v3_vs_v2": 0.007394386256174945
+    },
+    "recall": {
+      "baseline_v1": 0.7947630922693267,
+      "defender_v2": 0.7708229426433916,
+      "defender_v3_crossfamily": 0.7790523690773067,
+      "delta_v3_vs_v1": -0.01571072319202005,
+      "delta_v3_vs_v2": 0.00822942643391511
+    },
+    "roc_auc": {
+      "baseline_v1": 0.9989858037934246,
+      "defender_v2": 0.9988114446592448,
+      "defender_v3_crossfamily": 0.9987740299479202,
+      "delta_v3_vs_v1": -0.00021177384550441491,
+      "delta_v3_vs_v2": -3.7414711324568195e-05
+    },
+    "threshold": {
+      "baseline_v1": 0.9885146021842957,
+      "defender_v2": 0.9896106719970703,
+      "defender_v3_crossfamily": 0.9894014000892639,
+      "delta_v3_vs_v1": 0.0008867979049682617,
+      "delta_v3_vs_v2": -0.00020927190780639648
+    }
+  },
+  "notes": "Computed on the untouched PaySim test split only, for all three models - never on the hard positives used to retrain v2 or v3 (docs/EVALUATION_RULES.md SS3). This is a static-holdout regression check only; it does not evaluate cross-family attack improvement, which requires a fresh Red confrontation against Defender v3 after it is frozen (docs/EVALUATION_RULES.md SS4).",
+  "recall_at_fixed_fpr": {
+    "0.001": {
+      "baseline_v1": 0.8506234413965087,
+      "defender_v2": 0.8478802992518704,
+      "defender_v3_crossfamily": 0.8523690773067332
+    },
+    "0.005": {
+      "baseline_v1": 0.9394014962593517,
+      "defender_v2": 0.9336658354114713,
+      "defender_v3_crossfamily": 0.9326683291770573
+    },
+    "0.01": {
+      "baseline_v1": 0.9678304239401496,
+      "defender_v2": 0.9593516209476309,
+      "defender_v3_crossfamily": 0.9598503740648379
+    }
+  },
+  "split": "test",
+  "support": {
+    "baseline_v1": 955744,
+    "defender_v2": 955744,
+    "defender_v3_crossfamily": 955744
+  }
+}

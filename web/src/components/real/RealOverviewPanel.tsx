@@ -1,18 +1,22 @@
-import type { OverviewResponseDTO } from "../../api/types";
+import type { ModelRole, OverviewResponseDTO } from "../../api/types";
 import { Card, CardHeader } from "../ui/Card";
 import { StatTile } from "../ui/StatTile";
 import { HardestEvasionsTable } from "./HardestEvasionsTable";
 
+const ROLE_LABEL: Record<ModelRole, string> = {
+  baseline_v1: "Baseline v1",
+  defender_v2: "Defender v2 (hardened)",
+  defender_v3: "Defender v3 (cross-family hardened)",
+};
+
 export function RealOverviewPanel({ overview }: { overview: OverviewResponseDTO }) {
-  const hardened = overview.models.find((m) => m.is_hardened);
-  const baseline = overview.models.find((m) => !m.is_hardened);
-  const current = hardened ?? baseline;
+  const current = overview.current_model;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
-          label="Models trained"
+          label="Core defenders trained"
           value={overview.models.length}
           hint={overview.models.map((m) => m.model_version).join(", ") || "None yet"}
         />
@@ -22,7 +26,7 @@ export function RealOverviewPanel({ overview }: { overview: OverviewResponseDTO 
           label="Current model"
           value={current ? current.model_version : "—"}
           tone={current ? "positive" : "neutral"}
-          hint={current ? (current.is_hardened ? "Hardened (Defender v2)" : "Baseline") : undefined}
+          hint={current ? ROLE_LABEL[current.role] : undefined}
         />
       </div>
 

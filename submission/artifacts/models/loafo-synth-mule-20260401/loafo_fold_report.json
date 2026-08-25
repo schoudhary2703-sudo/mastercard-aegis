@@ -1,0 +1,195 @@
+{
+  "fold_id": "fold-a-synth-mule",
+  "fresh_held_out_evaluation": {
+    "average_fraud_risk_score": 0.990747481584549,
+    "caught_count": 3,
+    "defender_v3_evaluation": {
+      "contract_version": "1.0.0",
+      "created_at": "2026-08-25T19:58:13.958062Z",
+      "dataset_id": "adaptive-3350d840-20270103-0000",
+      "evaluation_id": "defender-v3-on-adaptive-3350d840-20270103-0000",
+      "fidelity": null,
+      "held_out_family": "adaptive_detector_evasion",
+      "latency": null,
+      "metadata": {},
+      "model_version": "xgboost-hardened-crossfamily-20260301",
+      "notes": "Defender v3 (trained WITH adaptive_detector_evasion) scored on the identical fresh scenario as a memorization reference for fold-a-synth-mule.",
+      "overall": {
+        "alert_rate": 0.36363636363636365,
+        "counts": {
+          "false_negatives": 0,
+          "false_positives": 0,
+          "true_negatives": 7,
+          "true_positives": 4
+        },
+        "f1": 1.0,
+        "false_negative_rate": 0.0,
+        "false_positive_rate": 0.0,
+        "positive_support": 4,
+        "pr_auc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "recall_at_fixed_fpr": {
+          "0.001": 1.0,
+          "0.005": 1.0,
+          "0.01": 1.0
+        },
+        "roc_auc": 1.0,
+        "support": 11,
+        "threshold": 0.9894014000892639
+      },
+      "per_attack_family": {},
+      "protocol": "leave_one_attack_family_out",
+      "round_index": null,
+      "seed": 20270101,
+      "split": "test"
+    },
+    "evaded_count": 1,
+    "fidelity_score": 0.8057464962045819,
+    "fold_model_evaluation": {
+      "contract_version": "1.0.0",
+      "created_at": "2026-08-25T19:58:13.863889Z",
+      "dataset_id": "adaptive-3350d840-20270103-0000",
+      "evaluation_id": "fold-a-synth-mule-loafo-adaptive-3350d840-20270103-0000",
+      "fidelity": null,
+      "held_out_family": "adaptive_detector_evasion",
+      "latency": null,
+      "metadata": {},
+      "model_version": "loafo-synth-mule-20260401",
+      "notes": "fold-a-synth-mule: trained on ('synthetic_identity_bustout', 'mule_network_structuring'), scored on one fresh adaptive_detector_evasion scenario never seen in training.",
+      "overall": {
+        "alert_rate": 0.2727272727272727,
+        "counts": {
+          "false_negatives": 1,
+          "false_positives": 0,
+          "true_negatives": 7,
+          "true_positives": 3
+        },
+        "f1": 0.8571428571428571,
+        "false_negative_rate": 0.25,
+        "false_positive_rate": 0.0,
+        "positive_support": 4,
+        "pr_auc": 1.0,
+        "precision": 1.0,
+        "recall": 0.75,
+        "recall_at_fixed_fpr": {
+          "0.001": 1.0,
+          "0.005": 1.0,
+          "0.01": 1.0
+        },
+        "roc_auc": 1.0,
+        "support": 11,
+        "threshold": 0.990476131439209
+      },
+      "per_attack_family": {},
+      "protocol": "leave_one_attack_family_out",
+      "round_index": null,
+      "seed": 20270101,
+      "split": "test"
+    },
+    "fraud_count": 4,
+    "hardest_evasions": [
+      {
+        "action": "approve",
+        "attack_family": "adaptive_detector_evasion",
+        "blueprint_id": "adaptive-detector-evasion-v1-g1-e6155abd7625",
+        "credible_evasion": true,
+        "detector_model_version": "loafo-synth-mule-20260401",
+        "detector_risk_score": 0.9802072644233704,
+        "fidelity_score": 0.8057464962045819,
+        "generation": 1,
+        "ground_truth_label": 1,
+        "hardness_score": 0.015947927341173108,
+        "rank": 1,
+        "scenario_id": "adaptive-3350d840-20270103-0000",
+        "sequence_index": 8,
+        "transaction_id": "adaptive-3350d840-20270103-0000-adversarial-001"
+      }
+    ],
+    "recall": 0.75,
+    "scenario_id": "adaptive-3350d840-20270103-0000",
+    "source_artifact": "data\\synthetic\\loafo_evaluations\\fold-a-synth-mule\\adaptive-evasion-confrontation-694b4d89ab4ff6c9"
+  },
+  "hard_positive_counts_by_family": {
+    "mule_network_structuring": {
+      "fraud": 12,
+      "legitimate": 14,
+      "rows": 26,
+      "scenarios": 1
+    },
+    "synthetic_identity_bustout": {
+      "fraud": 6,
+      "legitimate": 24,
+      "rows": 30,
+      "scenarios": 2
+    }
+  },
+  "hard_positive_total_fraud": 18,
+  "hard_positive_total_rows": 56,
+  "held_out_family": "adaptive_detector_evasion",
+  "model_dir": "models\\loafo-synth-mule-20260401",
+  "model_hash_after": {
+    "metadata_json": "8199266f76ff23651a202846ebcd4c961a91556ebbd378ab744d6a9d1e0e5f45",
+    "model_json": "ecf8eb350d4f6aae86a2fdc81326f037eb08066d645177491ad057a02621c431"
+  },
+  "model_hash_before": {
+    "metadata_json": "8199266f76ff23651a202846ebcd4c961a91556ebbd378ab744d6a9d1e0e5f45",
+    "model_json": "ecf8eb350d4f6aae86a2fdc81326f037eb08066d645177491ad057a02621c431"
+  },
+  "model_version": "loafo-synth-mule-20260401",
+  "notes": "Held-out family 'adaptive_detector_evasion' contributed zero rows to training (verified against actual promoted provenance). Fresh held-out scenario verified to have zero id overlap with any prior artifact under data/synthetic/ or data/hardening/, and with PaySim validation/test. Model hashes verified unchanged before/after every evaluation step.",
+  "paysim_native_test_metrics": {
+    "alert_rate": 0.003295861653329762,
+    "counts": {
+      "false_negatives": 1025,
+      "false_positives": 165,
+      "true_negatives": 951569,
+      "true_positives": 2985
+    },
+    "f1": 0.8337988826815643,
+    "false_negative_rate": 0.25561097256857856,
+    "false_positive_rate": 0.0001733677687252951,
+    "positive_support": 4010,
+    "pr_auc": 0.9012244936268805,
+    "precision": 0.9476190476190476,
+    "recall": 0.7443890274314214,
+    "recall_at_fixed_fpr": {
+      "0.001": 0.8468827930174564,
+      "0.005": 0.9319201995012469,
+      "0.01": 0.9593516209476309
+    },
+    "roc_auc": 0.9987971748660236,
+    "support": 955744,
+    "threshold": 0.990476131439209
+  },
+  "paysim_native_validation_metrics": {
+    "alert_rate": 0.0005183989212213861,
+    "counts": {
+      "false_negatives": 163,
+      "false_positives": 92,
+      "true_negatives": 942637,
+      "true_positives": 397
+    },
+    "f1": 0.7569113441372738,
+    "false_negative_rate": 0.2910714285714286,
+    "false_positive_rate": 9.758902081085868e-05,
+    "positive_support": 560,
+    "pr_auc": 0.791094896193878,
+    "precision": 0.8118609406952966,
+    "recall": 0.7089285714285715,
+    "recall_at_fixed_fpr": {
+      "0.001": 0.8535714285714285,
+      "0.005": 0.9464285714285714,
+      "0.01": 0.9839285714285714
+    },
+    "roc_auc": 0.9991976939896225,
+    "support": 943289,
+    "threshold": 0.990476131439209
+  },
+  "training_families": [
+    "synthetic_identity_bustout",
+    "mule_network_structuring"
+  ],
+  "training_seed": 20260401,
+  "tuned_threshold": 0.990476131439209
+}

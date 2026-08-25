@@ -48,3 +48,9 @@ runs/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Curated, tracked demo/judge artifact bundle (see docs/DEPLOYMENT.md) --
+# re-included despite the `artifacts/`/`models/` ignores above. Minimal JSON
+# evidence only; never `model.json` or `features/` (still excluded here).
+!submission/artifacts/
+!submission/artifacts/**

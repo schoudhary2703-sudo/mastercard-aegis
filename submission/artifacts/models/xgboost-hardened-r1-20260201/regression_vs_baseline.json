@@ -1,0 +1,104 @@
+{
+  "baseline_model_version": "xgboost-baseline-20260101",
+  "confusion_matrix": {
+    "baseline_v1": {
+      "false_negatives": 823,
+      "false_positives": 242,
+      "true_negatives": 951492,
+      "true_positives": 3187
+    },
+    "defender_v2": {
+      "false_negatives": 919,
+      "false_positives": 230,
+      "true_negatives": 951504,
+      "true_positives": 3091
+    }
+  },
+  "dataset_id": "paysim-16910f90577b-086de09508a4",
+  "defender_v2_model_version": "xgboost-hardened-r1-20260201",
+  "latency_ms": {
+    "baseline_v1": {
+      "max_ms": 9.840900000199326,
+      "mean_ms": 6.860088499934136,
+      "p50_ms": 6.883899999593268,
+      "p95_ms": 7.713910000165924,
+      "p99_ms": 8.512257000547832,
+      "samples": 200
+    },
+    "defender_v2": {
+      "max_ms": 191.11139999949955,
+      "mean_ms": 12.282928999975411,
+      "p50_ms": 11.138399999254034,
+      "p95_ms": 14.317775000927211,
+      "p99_ms": 17.255350000850733,
+      "samples": 200
+    }
+  },
+  "metrics": {
+    "alert_rate": {
+      "baseline_v1": 0.0035877808283389695,
+      "defender_v2": 0.0034747798573676633,
+      "delta": -0.00011300097097130622
+    },
+    "f1": {
+      "baseline_v1": 0.8568355961822826,
+      "defender_v2": 0.8432683126449325,
+      "delta": -0.013567283537350039
+    },
+    "false_negative_rate": {
+      "baseline_v1": 0.20523690773067332,
+      "defender_v2": 0.22917705735660848,
+      "delta": 0.02394014962593516
+    },
+    "false_positive_rate": {
+      "baseline_v1": 0.00025427272746376614,
+      "defender_v2": 0.00024166416246556286,
+      "delta": -1.2608564998203278e-05
+    },
+    "pr_auc": {
+      "baseline_v1": 0.9088852257782069,
+      "defender_v2": 0.9008325858874358,
+      "delta": -0.008052639890771096
+    },
+    "precision": {
+      "baseline_v1": 0.9294254884806066,
+      "defender_v2": 0.9307437518819632,
+      "delta": 0.0013182634013566563
+    },
+    "recall": {
+      "baseline_v1": 0.7947630922693267,
+      "defender_v2": 0.7708229426433916,
+      "delta": -0.02394014962593516
+    },
+    "roc_auc": {
+      "baseline_v1": 0.9989858037934246,
+      "defender_v2": 0.9988114446592448,
+      "delta": -0.00017435913417984672
+    },
+    "threshold": {
+      "baseline_v1": 0.9885146021842957,
+      "defender_v2": 0.9896106719970703,
+      "delta": 0.0010960698127746582
+    }
+  },
+  "notes": "Computed on the untouched PaySim test split only - never on the hard positives used to retrain Defender v2 (docs/EVALUATION_RULES.md SS3).",
+  "recall_at_fixed_fpr": {
+    "0.001": {
+      "baseline_v1": 0.8506234413965087,
+      "defender_v2": 0.8478802992518704
+    },
+    "0.005": {
+      "baseline_v1": 0.9394014962593517,
+      "defender_v2": 0.9336658354114713
+    },
+    "0.01": {
+      "baseline_v1": 0.9678304239401496,
+      "defender_v2": 0.9593516209476309
+    }
+  },
+  "split": "test",
+  "support": {
+    "baseline_v1": 955744,
+    "defender_v2": 955744
+  }
+}

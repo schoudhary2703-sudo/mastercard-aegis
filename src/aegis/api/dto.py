@@ -100,6 +100,7 @@ class ModelSummaryDTO(ApiModel):
     trained_at: str | None = None
     seed: int | None = None
     is_hardened: bool = False
+    role: Literal["baseline_v1", "defender_v2", "defender_v3"] = "baseline_v1"
     source_artifact: str
     evaluation_test: EvaluationSummaryDTO | None = None
     evaluation_validation: EvaluationSummaryDTO | None = None
@@ -231,6 +232,7 @@ class DetectionRecordDTO(ApiModel):
 class OverviewResponseDTO(ApiModel):
     attack_families_in_scope: list[str]
     models: list[ModelSummaryDTO]
+    current_model: ModelSummaryDTO | None = None
     regression: RegressionComparisonDTO | None = None
     confrontation_count: int
     adaptive_round_count: int
