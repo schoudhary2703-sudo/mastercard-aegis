@@ -72,7 +72,9 @@ export function CoEvolutionPage() {
           state={hardestState}
           emptyTitle="No surviving evasions yet"
           emptyBody="This fills in once a confrontation or adaptive round produces at least one credible evasion."
-          render={(hardest) => <HardestEvasionsTable evasions={hardest.evasions} />}
+          render={(hardest) => (
+            <HardestEvasionsTable evasions={hardest.evasions} totalAvailable={hardest.total_available} />
+          )}
         />
       </Card>
 

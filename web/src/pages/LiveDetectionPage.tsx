@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { fetchRecentDetections } from "../api/client";
+import { useApiResource } from "../api/useApiResource";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { ActionBadge, Badge } from "../components/ui/Badge";
 import { Card, CardHeader } from "../components/ui/Card";
@@ -6,6 +8,9 @@ import { DataTable, type Column } from "../components/ui/DataTable";
 import { RiskBar } from "../components/ui/RiskBar";
 import { EmptyState, SkeletonRows } from "../components/ui/States";
 import { StatTile } from "../components/ui/StatTile";
+import { ApiStateSection } from "../components/real/ApiStateSection";
+import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { RealDetectionFeed } from "../components/real/RealDetectionFeed";
 import { generateBatchForFamily } from "../mock/generateBatch";
 import { scoreTransactions } from "../mock/mockDetector";
 import type { AttackFamily, DetectorOutput, Transaction } from "../types/aegis";
@@ -35,6 +40,12 @@ export function LiveDetectionPage() {
   const [family, setFamily] = useState<AttackFamily>("mule_network_structuring");
   const [rows, setRows] = useState<Row[] | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const detectionsFetch = useCallback((signal: AbortSignal) => fetchRecentDetections(50, signal), []);
+  const detectionsState = useApiResource(
+    detectionsFetch,
+    [],
+    (data) => data.detections.length === 0,
+  );
 
   function runDetection() {
     setIsRunning(true);
@@ -84,17 +95,36 @@ export function LiveDetectionPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader
+          title="Real recent detections"
+          subtitle="Per-transaction detector outputs joined with transaction context, read from real confrontation artifacts."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={detectionsState}
+          emptyTitle="No real detections yet"
+          emptyBody="Run scripts/run_bustout_confrontation.py to produce detector_outputs.jsonl artifacts."
+          render={(data) => (
+            <RealDetectionFeed detections={data.detections} totalAvailable={data.total_available} />
+          )}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
           title="Run a mock detection pass"
-          subtitle="Generates a batch for the selected family and scores it with a single detector snapshot."
+          subtitle="Generates a batch for the selected family and scores it with a single detector snapshot. Simulated in the browser, not real data."
           action={
-            <button
-              type="button"
-              onClick={runDetection}
-              disabled={isRunning}
-              className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-medium text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:opacity-60"
-            >
-              {isRunning ? "Scoring…" : "Run detection"}
-            </button>
+            <div className="flex items-center gap-2">
+              <MockDataBadge />
+              <button
+                type="button"
+                onClick={runDetection}
+                disabled={isRunning}
+                className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-medium text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:opacity-60"
+              >
+                {isRunning ? "Scoring…" : "Run detection"}
+              </button>
+            </div>
           }
         />
         <AttackFamilySelector value={family} onChange={setFamily} />

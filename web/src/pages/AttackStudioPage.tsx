@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { fetchAttacks } from "../api/client";
+import { useApiResource } from "../api/useApiResource";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { BlueprintPanel } from "../components/attack/BlueprintPanel";
 import { Badge } from "../components/ui/Badge";
 import { Card, CardHeader } from "../components/ui/Card";
 import { DataTable, type Column } from "../components/ui/DataTable";
 import { EmptyState, SkeletonRows } from "../components/ui/States";
+import { ApiStateSection } from "../components/real/ApiStateSection";
+import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { RealAttackExplorer } from "../components/real/RealAttackExplorer";
 import { BASE_BLUEPRINTS } from "../mock/blueprints";
 import { generateBatchForFamily } from "../mock/generateBatch";
 import type { AttackFamily, Transaction, TransactionBatch } from "../types/aegis";
@@ -27,6 +32,8 @@ export function AttackStudioPage() {
   const [family, setFamily] = useState<AttackFamily>("synthetic_identity_bustout");
   const [batch, setBatch] = useState<TransactionBatch | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const attacksFetch = useCallback((signal: AbortSignal) => fetchAttacks(signal), []);
+  const attacksState = useApiResource(attacksFetch, [], (data) => data.attacks.length === 0);
 
   const blueprint = BASE_BLUEPRINTS[family];
 
@@ -53,6 +60,38 @@ export function AttackStudioPage() {
           }}
         />
       </Card>
+
+      <Card>
+        <CardHeader
+          title="Real persisted attacks for this family"
+          subtitle="Blueprints the pipeline has actually generated and, where confronted, scored -- filtered to the family selected above."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={attacksState}
+          emptyTitle="No real attacks yet"
+          emptyBody="Run scripts/run_bustout_confrontation.py or scripts/run_adaptive_bustout_round.py to populate this list."
+          render={(data) => {
+            const filtered = data.attacks.filter((a) => a.attack_family === family);
+            return filtered.length === 0 ? (
+              <p className="text-sm text-[var(--color-ink-faint)]">
+                No real attacks recorded yet for this family.
+              </p>
+            ) : (
+              <RealAttackExplorer attacks={filtered} />
+            );
+          }}
+        />
+      </Card>
+
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+            Interactive mock generator (simulated, not a trained generator)
+          </h2>
+          <MockDataBadge />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2">

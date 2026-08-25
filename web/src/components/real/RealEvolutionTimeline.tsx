@@ -1,23 +1,55 @@
-import type { EvolutionResponseDTO, EvolutionStageDTO } from "../../api/types";
+import type { EvolutionResponseDTO, EvolutionStageDTO, EvolutionStageName } from "../../api/types";
 import { Badge } from "../ui/Badge";
 
-function StageCard({ stage }: { stage: EvolutionStageDTO }) {
+const STAGE_SIDE: Record<EvolutionStageName, "attack" | "defend"> = {
+  baseline_v1: "defend",
+  round_0_attack: "attack",
+  adaptive_red: "attack",
+  defender_v2_hardening: "defend",
+  fresh_confrontation: "attack",
+  generation_2_adaptation: "attack",
+};
+
+const SIDE_ACCENT: Record<"attack" | "defend", string> = {
+  attack: "border-t-[var(--color-attack-600)]",
+  defend: "border-t-[var(--color-defend-600)]",
+};
+
+function sourceArtifact(stage: EvolutionStageDTO): string | null {
+  return (
+    stage.model?.source_artifact ??
+    stage.confrontation?.source_artifact ??
+    stage.adaptive_round?.source_artifact ??
+    null
+  );
+}
+
+function StageCard({ stage, index }: { stage: EvolutionStageDTO; index: number }) {
   const notRun = stage.status === "not_run_yet";
+  const side = STAGE_SIDE[stage.stage];
+  const artifact = sourceArtifact(stage);
 
   return (
     <div
-      className={`flex min-h-[9rem] flex-col rounded-lg border p-3 ${
+      className={`flex min-h-[10rem] flex-col rounded-lg border border-t-2 p-3 ${
         notRun
-          ? "border-dashed border-[var(--color-border)] opacity-60"
-          : "border-[var(--color-border)] bg-[var(--color-surface)]"
+          ? "border-dashed border-t-[var(--color-border)] border-[var(--color-border)] opacity-60"
+          : `${SIDE_ACCENT[side]} border-[var(--color-border)] bg-[var(--color-surface)]`
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold leading-tight text-[var(--color-ink)]">{stage.label}</p>
-        <Badge variant={notRun ? "neutral" : "defend"}>{notRun ? "Not run" : "Real"}</Badge>
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-sunken)] text-[10px] font-semibold text-[var(--color-ink-muted)]">
+            {index + 1}
+          </span>
+          <p className="text-xs font-semibold leading-tight text-[var(--color-ink)]">{stage.label}</p>
+        </div>
+        <Badge variant={notRun ? "neutral" : side === "attack" ? "attack" : "defend"}>
+          {notRun ? "Not run" : "Real"}
+        </Badge>
       </div>
 
-      <div className="mt-2 space-y-1 text-[11px] leading-snug text-[var(--color-ink-muted)]">
+      <div className="mt-2 flex-1 space-y-1 text-[11px] leading-snug text-[var(--color-ink-muted)]">
         {stage.model && (
           <>
             <p className="font-mono">{stage.model.model_version}</p>
@@ -62,6 +94,12 @@ function StageCard({ stage }: { stage: EvolutionStageDTO }) {
 
         {notRun && <p>This stage has not produced an artifact yet.</p>}
       </div>
+
+      {artifact && (
+        <p className="mt-2 truncate border-t border-[var(--color-border)] pt-1.5 font-mono text-[10px] text-[var(--color-ink-faint)]">
+          {artifact}
+        </p>
+      )}
     </div>
   );
 }
@@ -71,13 +109,15 @@ function StageCard({ stage }: { stage: EvolutionStageDTO }) {
  * Red -> Defender v2 hardening -> fresh confrontation -> Generation-2
  * adaptation. Every card and every line of the narrative below it comes
  * straight from `/api/evolution`; nothing here is computed client-side.
+ * Attack-side stages carry a red top accent, defend-side stages a green
+ * one, so the alternating red/blue loop reads at a glance.
  */
 export function RealEvolutionTimeline({ evolution }: { evolution: EvolutionResponseDTO }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {evolution.stages.map((stage) => (
-          <StageCard key={stage.stage} stage={stage} />
+        {evolution.stages.map((stage, i) => (
+          <StageCard key={stage.stage} stage={stage} index={i} />
         ))}
       </div>
 
