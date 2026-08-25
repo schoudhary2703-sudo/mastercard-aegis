@@ -18,6 +18,14 @@ from aegis.evaluate.confrontation import (
     build_bustout_confrontation_report,
     rank_hardest_evasions,
 )
+from aegis.evaluate.mule_confrontation import (
+    MuleNetworkConfrontationEvaluator,
+    MuleNetworkConfrontationReport,
+    MuleScenarioConfrontationReport,
+    TrainingOverlapScan,
+    build_mule_network_confrontation_report,
+    scan_training_overlap,
+)
 
 __all__ = [
     "BaseEvaluator",
@@ -26,7 +34,13 @@ __all__ = [
     "ConfrontationValidationError",
     "EvasionRecord",
     "FraudEventAssessment",
+    "MuleNetworkConfrontationEvaluator",
+    "MuleNetworkConfrontationReport",
+    "MuleScenarioConfrontationReport",
     "ScenarioConfrontationReport",
+    "TrainingOverlapScan",
     "build_bustout_confrontation_report",
+    "build_mule_network_confrontation_report",
     "rank_hardest_evasions",
+    "scan_training_overlap",
 ]

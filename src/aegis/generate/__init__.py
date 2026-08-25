@@ -10,6 +10,12 @@ from __future__ import annotations
 
 from aegis.generate.base import BaseGenerator, BlueprintNotSupportedError
 from aegis.generate.config import GenerationConfig
+from aegis.generate.mule_network import (
+    MuleNetworkConfigurationError,
+    MuleNetworkFidelitySummary,
+    MuleNetworkReferenceProfile,
+    MuleNetworkStructuringGenerator,
+)
 from aegis.generate.paysim import (
     DEFAULT_PAYSIM_CURRENCY,
     DEFAULT_PAYSIM_EPOCH,
@@ -40,6 +46,10 @@ __all__ = [
     "BlueprintNotSupportedError",
     "BustOutFidelitySummary",
     "GenerationConfig",
+    "MuleNetworkConfigurationError",
+    "MuleNetworkFidelitySummary",
+    "MuleNetworkReferenceProfile",
+    "MuleNetworkStructuringGenerator",
     "PaySimPreparationConfig",
     "PaySimPreparationError",
     "PaySimPreparationResult",
