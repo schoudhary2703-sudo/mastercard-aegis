@@ -27,6 +27,8 @@ data/interim/*
 data/processed/*
 data/synthetic/*
 data/external/*
+data/hardening/*
+data/reports/*
 !data/**/.gitkeep
 !data/**/README.md
 

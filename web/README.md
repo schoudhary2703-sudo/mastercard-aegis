@@ -1,10 +1,11 @@
 # web/
 
-The AEGIS demo UI. **Now integrating real data.** Overview, Co-Evolution and
-Evaluation each carry a "Real pipeline data" section that reads live from
-the `aegis.api` FastAPI service (`src/api/`); the original interactive
-mock demo, driven by `src/mock/`, is kept alongside it and clearly labeled
-"Simulated demo (not real data)". See
+The AEGIS demo UI. **Real data throughout.** Overview, Attack Taxonomy,
+Attack Studio, Live Detection, Co-Evolution, Evaluation, and Final Benchmark
+each carry one or more "Real pipeline data" sections that read live from the
+`aegis.api` FastAPI service (`src/api/`); the original interactive mock demo,
+driven by `src/mock/`, is kept alongside it on the relevant pages and clearly
+labeled "Simulated demo (not real data)". See
 [`docs/UI_DESIGN_SYSTEM.md`](../docs/UI_DESIGN_SYSTEM.md) for the design
 system, and `docs/ARCHITECTURE.md` ("API architecture") for how `src/api/`
 is structured.
@@ -38,14 +39,17 @@ Other commands:
 
 ## What this is
 
-Six screens telling the closed-loop story end to end: Overview, Attack
-Studio, Live Detection, **Co-Evolution** (the hero interaction -- run the
-loop round over round and watch the defender harden), Attack Taxonomy, and
-Evaluation. Overview, Co-Evolution, and Evaluation now also show real
-metrics and the real closed-loop lineage (Baseline v1 -> Round-0 -> Adaptive
-Red -> Defender v2 hardening -> fresh confrontation -> Generation-2), read
-through `src/api/client.ts`. Everything else remains the mock demo;
-`docs/UI_DESIGN_SYSTEM.md` documents what is mocked and why.
+Seven screens: Overview, Attack Studio, Live Detection, **Co-Evolution**
+(the hero interaction -- run the loop round over round and watch the
+defender harden, in the mock demo), Attack Taxonomy, Evaluation, and
+**Final Benchmark** (the judge-facing summary: baseline v1 vs Defender v2 vs
+Defender v3, recall by attack family, LOAFO generalization results, and the
+hardest surviving attacks). Every page except the pure mock-demo panels now
+reads real data through `src/api/client.ts`: the real closed-loop lineage
+(Baseline v1 -> Round-0 -> Adaptive Red -> Defender v2 hardening -> fresh
+confrontation -> Generation-2), real attack blueprints and confrontation
+results, real recent detections, and the final v1/v2/v3/LOAFO benchmark.
+`docs/UI_DESIGN_SYSTEM.md` documents what remains mocked and why.
 
 ## Rules that still apply
 

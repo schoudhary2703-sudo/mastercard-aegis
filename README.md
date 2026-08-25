@@ -3,47 +3,25 @@
 **Adversarial Evaluation & Generative Immune System for payments.**
 Mastercard Innovation Challenge 2026.
 
-A closed-loop red-team / blue-team payment security system. A Red Team invents
-and mutates fraud; a Blue Team detects it; the loop feeds successful evasions
-back as training signal.
+## The problem
+
+Fraud detectors trained once and left alone go stale: the pattern a model
+was tuned against is not the pattern that shows up in production six months
+later, because the people committing fraud adapt. Most fraud-detection
+demos show a static model scoring a static test set and stop there -- which
+never tests the thing that actually matters: **does the detector improve
+when it sees new attacks, and does that improvement generalize, or is it
+just memorizing what it was shown?**
+
+## The AEGIS solution
+
+AEGIS is a closed-loop red-team / blue-team system: a Red Team invents and
+mutates synthetic fraud, a Blue Team detects it, and the loop feeds
+successful evasions back into training as signal for the next round.
 
 ```
 IDENTIFY -> GENERATE -> DEFEND -> EVALUATE -> EVOLVE -> RETRAIN
 ```
-
-> **Status: Blue Hardening Round 1.** Contracts, canonical PaySim preparation,
-> the first Red and Blue implementations, their confrontation, and
-> attacker-only adaptive evolution v1 are complete. Defender retraining now
-> exists for one round: `scripts/harden_defender.py` promotes Round-0 and
-> Adaptive-Round-1 false negatives into training-only hard positives and
-> retrains a `xgboost-hardened-r1-*` artifact alongside the frozen baseline.
-> Multi-round self-play (retrain -> fresh Red generation -> retrain) is not
-> implemented. Workstream boundaries and evaluation rules remain binding; see
-> [Non-goals](#non-goals).
-
-## Scope
-
-Exactly three attack families, deliberately. Do not add more.
-
-| Family | What it is |
-| --- | --- |
-| `synthetic_identity_bustout` | Fabricated or blended identities nurtured into good standing, then drained. |
-| `mule_network_structuring` | Layered transfers across mule accounts, structured under reporting thresholds. |
-| `adaptive_detector_evasion` | Attacks mutated in response to detector feedback to stay under the threshold. |
-
-## Quickstart
-
-```bash
-python -m pip install -e ".[dev]"   # or: make install-dev
-python scripts/verify_setup.py      # or: make verify
-python -m pytest                    # or: make test
-```
-
-Then read [`AGENTS.md`](AGENTS.md) before writing any code.
-
-## Architecture at a glance
-
-Every arrow in the loop is a **contract**, not a call into another team's code.
 
 | Stage | Module | Consumes | Produces |
 | --- | --- | --- | --- |
@@ -51,78 +29,233 @@ Every arrow in the loop is a **contract**, not a call into another team's code.
 | GENERATE | `generate/` | `AttackBlueprint` + `GenerationConfig` | `TransactionBatch` |
 | FEATURES | `features/` | `Transaction[]` | feature matrix |
 | DEFEND | `defend/` | feature matrix | `DetectorOutput` |
-| EVALUATE | `evaluate/` | `DetectorOutput` + truth | `EvaluationResult` |
+| EVALUATE | `evaluate/` | `DetectorOutput` + ground truth | `EvaluationResult` |
 | EVOLVE | `loop/` | `EvasionFeedback` | mutated `AttackBlueprint` |
+| RETRAIN | `defend/` | promoted hard positives | new `model_version` |
 
-The Red Team and Blue Team are built in parallel by separate agents, so neither
-may see inside the other. Full rules in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Every arrow is a **contract** (a frozen pydantic type in
+`aegis.shared.contracts`), not a function call into another team's code --
+see [`docs/CONTRACTS.md`](docs/CONTRACTS.md) and
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Layout
+This repository has run that loop for real, on real PaySim data, through
+three defender generations and a formal generalization benchmark -- not a
+simulation of what the loop would produce. Every number cited below is
+read from a persisted artifact on disk (`data/reports/final_benchmark_summary.json`),
+never invented.
+
+## Three attack families, deliberately fixed
+
+| Family | What it is |
+| --- | --- |
+| `synthetic_identity_bustout` | A fabricated or blended identity builds ordinary payment history, then drains a sudden burst of high-value transfers. |
+| `mule_network_structuring` | A coordinator account fans funds out across several mule accounts, layers them, and fans back in to a cash-out -- structured to keep any single transaction unremarkable. |
+| `adaptive_detector_evasion` | An attack probes a frozen detector, reads which signals scored it, and mutates its own parameters to stay under threshold. |
+
+Exactly these three, on purpose -- see [Non-goals](#non-goals).
+
+## Architecture
 
 ```
 src/aegis/
-  shared/      contracts, enums, types      shared, frozen
-    contracts/   AttackBlueprint, Transaction, DetectorOutput,
-                 EvaluationResult, EvasionFeedback
-  identify/    blueprint proposal            Red Team
-  generate/    generator interface           Red Team
-  features/    feature extractor interface   shared, Blue-led
-  defend/      detector + action policy      Blue Team
-  evaluate/    evaluator interface           shared, needs sign-off
-  loop/        attacker evolution             Phase 2 v1 (no retraining)
-  api/         read-only artifact API        Phase 3, integration owner
-web/           demo UI + real-data client    Phase 3, integration owner
-data/          datasets, generated corpora   git-ignored
-scripts/       reproducible entry points
-tests/         contract + interface tests
-docs/          architecture, contracts, rules
+  shared/        contracts, enums, types              shared, frozen
+  identify/      blueprint proposal                    Red Team
+  generate/      generator interface + 3 generators     Red Team
+  features/      feature extractor (21 decision-time-safe columns)
+  defend/        detector, action policy, hardening, metrics
+  evaluate/      evaluator interface + confrontation reports
+  loop/          attacker evolution (adaptive mutation)
+  api/           read-only artifact API (FastAPI)
+web/             judge-facing UI (React + Vite), real data + labeled mock demo
+scripts/         reproducible entry points (train, confront, harden, benchmark)
+data/            datasets and generated corpora (git-ignored, never committed)
+models/          trained detector artifacts (git-ignored, never committed)
+tests/           unit, integration, and contract tests
+docs/            architecture, contracts, rules, this submission's own docs
 ```
 
-`src/aegis/<module>/` is the logical `<module>/` from the brief. The `src/`
-layout gives both workstreams one import root (`aegis.*`) with no top-level
-name collisions.
+`api/` and `web/` are **read-only consumers** of what the pipeline already
+produced -- they compute nothing, retrain nothing, and never re-run a
+generator or detector. See "Real API + UI" below.
 
-## How a future workstream plugs in
+## PaySim setup
 
-**Blue Team - a new detector.** Subclass `BaseDetector`, implement two methods.
-`predict()` assembles `DetectorOutput` for you.
+The canonical payment world is [PaySim](https://www.kaggle.com/datasets/ealaxi/paysim1),
+a public synthetic mobile-money simulator (chosen and locked -- see
+[`docs/DATA_STRATEGY.md`](docs/DATA_STRATEGY.md)). It is not bundled (multi-GB
+CSV); download it yourself and point the preparation script at it:
 
-```python
-from aegis.defend import BaseDetector
-
-class MyDetector(BaseDetector):
-    name = "my-detector"
-    model_version = "my-detector-r1"
-
-    def fit(self, X_train, y_train, meta=None):
-        ...
-        self._feature_names = list(X_train.columns)
-        self._is_fitted = True
-        return self
-
-    def score(self, X):
-        ...  # ndarray of calibrated probabilities in [0, 1]
+```bash
+python scripts/prepare_paysim.py data/raw/paysim/<your-file>.csv --seed 20260101
 ```
 
-**Red Team - a new generator.** Subclass `BaseGenerator` and implement
-`stream()`. `generate()` wraps it into a provenanced `TransactionBatch`.
+This produces one deterministic, versioned `train.jsonl` /
+`validation.jsonl` / `test.jsonl` split under `data/processed/paysim/<run-id>/`
+-- entity- and time-based, never touched by a generator or a detector after
+assignment (see [`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) SS1).
+Every training and confrontation script below reads from this one prepared
+run, so every model in the progression is comparable on the identical
+untouched test split.
 
-```python
-from aegis.generate import BaseGenerator
+## Blue defender progression: v1 -> v2 -> v3
 
-class MyGenerator(BaseGenerator):
-    name = "my-generator"
-    supported_families = ("mule_network_structuring",)
+| Version | What it is | Trained on |
+| --- | --- | --- |
+| **Baseline v1** (`xgboost-baseline-20260101`) | The first real detector: XGBoost over 19 decision-time-safe features. | PaySim train only. |
+| **Defender v2** (`xgboost-hardened-r1-20260201`) | Promotes Round-0 and Adaptive-Round-1 bust-out false negatives into training-only hard positives, retrains. | PaySim train + bust-out hard positives. |
+| **Defender v3** (`xgboost-hardened-crossfamily-20260301`) | **Cross-family hardening**: promotes prior real hard positives from all three families, retrains with two added features. | PaySim train + hard positives from all 3 families. |
 
-    def stream(self, blueprint, config):
-        for step in blueprint.ordered_sequence():
-            yield Transaction(...)  # is_synthetic=True, scenario_id, blueprint_id
+**Cross-family hardening.** Before adding anything, the real mule-network
+confrontation data was inspected against the existing 19 features: they
+counted prior transaction *volume* per account but never distinct
+*counterparties*, so a coordinator paying one destination six times and one
+paying six distinct destinations once each looked identical -- exactly the
+difference between ordinary payments and mule fan-out. Two columns were
+added to close that specific gap: `source_distinct_destinations_before`,
+`destination_distinct_sources_before` (21 columns total, same causal,
+decision-time-safe rules as the other 19; see
+[`docs/BASELINE_DETECTOR.md`](docs/BASELINE_DETECTOR.md)).
+
+On the untouched PaySim test split:
+
+| Metric | Baseline v1 | Defender v2 | Defender v3 |
+| --- | --- | --- | --- |
+| Precision | 92.9% | 93.1% | **93.8%** |
+| Recall | 79.5% | 77.1% | 77.9% |
+| F1 | 85.7% | 84.3% | 85.1% |
+| FPR | 0.0254% | 0.0242% | **0.0216%** |
+| Mean latency | 6.86ms | 12.28ms | 6.66ms |
+
+Cross-family hardening improved precision, F1, and FPR versus Defender v2,
+and closed most of v2's regression against baseline v1 on the *native*
+task -- while adding training signal from two families v2 had never seen.
+It does not fully recover baseline v1's recall. Full numbers, per-family
+breakdowns, and confusion matrices:
+[`data/reports/final_benchmark_summary.json`](data/reports/final_benchmark_summary.json)
+(regenerate with `scripts/build_final_benchmark_summary.py`).
+
+## LOAFO: does hardening generalize, or just memorize?
+
+Cross-family hardening trains *with* all three families. To test whether
+that training actually transfers to a family a detector has never seen at
+all, AEGIS runs **Leave-One-Attack-Family-Out (LOAFO)**: three folds, each
+trained on two families' hard positives with the third contributing **zero**
+training rows, then scored on one fresh, real, previously-unseen scenario of
+that held-out family (`scripts/run_loafo_benchmark.py`,
+[`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) SS6). Defender v3 is
+scored on the identical fresh scenario as a memorization reference.
+
+| Held out | Trained on | LOAFO recall | Defender v3 recall (same scenario) | Verdict |
+| --- | --- | --- | --- | --- |
+| `adaptive_detector_evasion` | Synthetic + Mule | 75% | 100% | strong |
+| `mule_network_structuring` | Synthetic + Adaptive | **0%** | 42% | weak |
+| `synthetic_identity_bustout` | Mule + Adaptive | 100% | 100% | strong |
+
+Mean LOAFO recall: **58.3%**. Two of three families transfer well from the
+other two; mule-network structuring does not transfer at all in this
+benchmark. Generalization is **partial**, not universal -- see
+[`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) for exactly what is and is
+not supported by this result.
+
+## Real API + UI
+
+`src/aegis/api/` (FastAPI) reads persisted artifacts under `models/` and
+`data/` and serves them read-only:
+
+```
+GET /api/overview            GET /api/evaluation
+GET /api/attacks              GET /api/attacks/:id
+GET /api/detections/recent    GET /api/evolution
+GET /api/hardest-evasions     GET /api/benchmark
 ```
 
-**Features.** Subclass `BaseFeatureExtractor`, namespace every emitted column
-(`temporal.*`, `graph.*`), fit on train only.
+`web/` (React + Vite) is a seven-screen UI. Every screen except the
+interactive Co-Evolution demo now reads real data through
+`web/src/api/client.ts`, labeled "Real pipeline data"; the client-side mock
+demo (unrelated code, `web/src/mock/`) is kept alongside it and always
+labeled "Simulated demo (not real data)" -- the two are never blended
+without a label. `/final-benchmark` is the judge-facing summary: v1 vs v2
+vs v3, recall by family, LOAFO results, hardest surviving attacks. See
+[`docs/UI_DESIGN_SYSTEM.md`](docs/UI_DESIGN_SYSTEM.md).
 
-Nothing above requires either team to read the other's code. That is the point.
+## How to run locally
+
+```bash
+# 1. Python environment
+python -m pip install -e ".[dev,api]"
+
+# 2. PaySim data (see "PaySim setup" above) -- one-time, produces
+#    data/processed/paysim/<run-id>/{train,validation,test}.jsonl
+python scripts/prepare_paysim.py data/raw/paysim/<your-file>.csv --seed 20260101
+
+# 3. Reproduce the defender progression (each writes to its own models/<version>/,
+#    never overwriting a prior one) -- optional if you only want the UI, since
+#    everything in this repo's own data/reports/final_benchmark_summary.json
+#    was already produced by this exact sequence
+python scripts/train_baseline_detector.py data/processed/paysim/<run-id> --seed 20260101 --low-memory
+python scripts/harden_defender.py data/processed/paysim/<run-id> --low-memory
+python scripts/harden_defender_crossfamily.py data/processed/paysim/<run-id> --low-memory
+python scripts/run_loafo_benchmark.py data/processed/paysim/<run-id>
+python scripts/build_final_benchmark_summary.py
+
+# 4. API (terminal 1)
+uvicorn aegis.api.app:app --reload --port 8000
+
+# 5. UI (terminal 2)
+cd web && npm install && npm run dev
+```
+
+Opens at `http://localhost:5173`; the dev server proxies `/api/*` to
+`http://localhost:8000` with no CORS setup needed. See
+[`web/README.md`](web/README.md).
+
+```bash
+python -m pytest        # or: make test / make check (lint + typecheck + test)
+```
+
+## Deployment notes
+
+The live demo does **not** require the multi-GB PaySim CSV or a retraining
+step -- it needs only the already-trained `models/` artifacts and
+`data/reports/final_benchmark_summary.json`, served read-only by the API
+behind a static frontend. Full plan, environment variables, and a
+no-backend fallback path: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+## Limitations
+
+* Not a claim of universal fraud detection. See
+  [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) for the full audit of what
+  is and is not supported.
+* LOAFO's fresh evaluations are one real scenario per family (3-12 fraud
+  events) -- directional evidence, not a statistically powered estimate.
+  Mule-network structuring generalized weakly (0% LOAFO recall) even where
+  the other two families generalized strongly.
+* No production latency SLA is claimed; reported latency is mean/p50/p95
+  scoring time over a fixed sample on one machine, not a load-tested figure.
+* Multi-round self-play (retrain -> fresh Red generation -> retrain,
+  repeated) beyond the sequence already run is not implemented.
+* Cross-workstream boundaries in [`AGENTS.md`](AGENTS.md) remain binding:
+  `identify/`, `generate/`, `loop/` are Red-owned; `defend/`, `features/`
+  are Blue-owned; `shared/` is jointly owned and frozen; `api/`/`web/` are
+  read-only consumers of both.
+
+## Documentation
+
+| Doc | Read it when |
+| --- | --- |
+| [`AGENTS.md`](AGENTS.md) | **Before writing any code.** Ownership and rules. |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Understanding module boundaries and the API architecture. |
+| [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Using or changing a shared type. |
+| [`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) | Producing any number. Binding. |
+| [`docs/DATA_STRATEGY.md`](docs/DATA_STRATEGY.md) | Touching a dataset. Locked. |
+| [`docs/BASELINE_DETECTOR.md`](docs/BASELINE_DETECTOR.md) | The detector, hardening rounds 1-3, and the feature set. |
+| [`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`](docs/SYNTHETIC_IDENTITY_BUSTOUT.md), [`docs/MULE_NETWORK_STRUCTURING.md`](docs/MULE_NETWORK_STRUCTURING.md), [`docs/ADAPTIVE_DETECTOR_EVASION.md`](docs/ADAPTIVE_DETECTOR_EVASION.md) | The three Red Team generators, one doc each. |
+| [`docs/ADAPTIVE_ATTACK_EVOLUTION.md`](docs/ADAPTIVE_ATTACK_EVOLUTION.md), [`docs/RED_BLUE_CONFRONTATION.md`](docs/RED_BLUE_CONFRONTATION.md) | Adaptive evolution and the confrontation harness. |
+| [`docs/UI_DESIGN_SYSTEM.md`](docs/UI_DESIGN_SYSTEM.md) | The UI's screens, real-vs-mock labeling, and visual language. |
+| [`docs/DEMO_FLOW.md`](docs/DEMO_FLOW.md) | Running the judge demo. |
+| [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) | What this submission does and does not claim. |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploying the demo. |
+| [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md) | Final submission steps. |
 
 ## Development
 
@@ -136,26 +269,12 @@ Nothing above requires either team to read the other's code. That is the point.
 | `make check` | Lint + typecheck + test. |
 | `make verify` | Smoke-check the install and contract surface. |
 
-Runtime dependencies are pydantic, numpy and pandas. Nothing else, on purpose -
-ML and generative libraries are added by the workstream that needs them.
-
-## Documentation
-
-| Doc | Read it when |
-| --- | --- |
-| [`AGENTS.md`](AGENTS.md) | **Before writing any code.** Ownership and rules. |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Understanding module boundaries. |
-| [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Using or changing a shared type. |
-| [`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) | Producing any number. Binding. |
-| [`docs/DATA_STRATEGY.md`](docs/DATA_STRATEGY.md) | Touching a dataset. Locked. |
-| [`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`](docs/SYNTHETIC_IDENTITY_BUSTOUT.md) | Generating the first Red Team family. |
-| [`docs/ADAPTIVE_ATTACK_EVOLUTION.md`](docs/ADAPTIVE_ATTACK_EVOLUTION.md) | Evolving bust-out variants against a frozen detector. |
-| [`docs/BASELINE_DETECTOR.md`](docs/BASELINE_DETECTOR.md) "Blue Hardening Round 1" | Promoting hard positives and retraining the defender. |
+Runtime dependencies are pydantic, numpy, pandas, and xgboost; `fastapi` +
+`uvicorn` behind the optional `api` extra. Nothing else, on purpose.
 
 ## Non-goals
 
-Still not added: the other two attack generators, multi-round self-play
-(retraining after each new Red generation, repeatedly), SDV / CTGAN,
-LangGraph, or GRPO. Cross-workstream components remain governed by
-`AGENTS.md`; cloud infrastructure, authentication, databases, and Docker
-remain out of scope.
+Exactly three attack families -- do not add a fourth. Multi-round self-play
+beyond the sequence already run, SDV/CTGAN, LangGraph, GRPO, cloud
+infrastructure, authentication, databases, and Docker remain out of scope.
+Cross-workstream boundaries are governed by [`AGENTS.md`](AGENTS.md).

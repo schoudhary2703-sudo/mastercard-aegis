@@ -6,10 +6,15 @@ specifying, any backend, detector, generator, or API behaviour.
 
 ## Status
 
-**Mock foundation.** Every number on screen is computed client-side from
-locally generated fixtures (`web/src/mock/`). There is no network call to a
-backend. See [Mock data policy](#mock-data-policy) below for why, and what
-changes when a real `api/` layer exists.
+**Real data + mock demo, side by side.** A real `api/` layer now exists
+(`src/aegis/api/`, FastAPI) and `web/src/api/` is a typed client for it.
+Every page except the pure interactive demo now shows one or more sections
+computed server-side from persisted pipeline artifacts, each labeled
+"Real pipeline data"; the original client-side mock (`web/src/mock/`,
+described in [Mock data policy](#mock-data-policy) below) is kept alongside
+it where it still adds value (an interactive, no-backend-required walk
+through one closed-loop round) and is always labeled "Simulated demo (not
+real data)". A page never blends the two without a label.
 
 ## Stack
 
@@ -56,14 +61,15 @@ or "this transaction is risky" without reading the label.
 
 ## Screens
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Overview -- loop diagram, session stats, links into every screen. |
-| `/attack-studio` | Pick a family, inspect its blueprint, generate a batch. |
-| `/live-detection` | Standalone detection pass: risk scores, caught vs. evaded. |
-| `/co-evolution` | **Hero.** Runs the closed loop round by round with metrics trend and evasion feedback. |
-| `/attack-taxonomy` | Reference catalog of the three fixed attack families. |
-| `/evaluation` | `EvaluationResult` for the latest Co-Evolution round: overall, per-family, confusion matrix, latency. |
+| Route | Purpose | Real data |
+| --- | --- | --- |
+| `/` | Overview -- real pipeline status, loop diagram, session stats, links into every screen. | Yes (+ mock demo) |
+| `/attack-studio` | Real attacks for the selected family, plus pick-a-family / generate-a-batch mock demo. | Yes (+ mock demo) |
+| `/live-detection` | Real recent detections, plus a standalone mock detection pass. | Yes (+ mock demo) |
+| `/co-evolution` | Real closed-loop lineage and hardest surviving attacks; **hero mock demo** below runs the loop round by round. | Yes (+ mock demo) |
+| `/attack-taxonomy` | Real attack blueprints and confrontation results, plus illustrative reference blueprints. | Yes (+ mock demo) |
+| `/evaluation` | Real per-model `EvaluationResult`s (v1/v2/v3), plus the latest mock Co-Evolution round's. | Yes (+ mock demo) |
+| `/final-benchmark` | v1 vs v2 vs v3 comparison, recall by family, LOAFO results, hardest surviving attacks. | Yes (no mock) |
 
 ## Component conventions
 
@@ -97,11 +103,16 @@ package, and `web/` does not import `aegis.*`. `web/src/mock/` contains:
 * `loopSimulator.ts` -- advances one round: mutate blueprint from prior
   feedback, generate, score, evaluate, derive feedback.
 
-When a real `api/` service layer exists, the intended migration is: replace
-the contents of `src/mock/` with fetch calls into `api/`, keep
-`src/types/aegis.ts` as the wire contract, and delete `defenderStrength` /
-the seeded RNG entirely. No page or component should need to change, since
-they only consume the typed shapes, never the mock internals.
+Now that the real `api/` service layer exists, real data lives beside the
+mock rather than replacing it: `src/api/types.ts` and `src/api/client.ts`
+are the real wire contract (mirroring `src/aegis/api/dto.py`), consumed only
+by components under `src/components/real/`. `src/mock/` and
+`src/types/aegis.ts` are untouched and still power the interactive
+Co-Evolution/Attack-Studio/Live-Detection demos, each clearly labeled
+"Simulated demo (not real data)" wherever it appears. The two type systems
+are deliberately not unified -- `src/types/aegis.ts` mirrors the frozen
+`aegis.shared.contracts`, `src/api/types.ts` mirrors the API's own DTOs, and
+neither should be edited to match the other.
 
 ## Known limitations
 
