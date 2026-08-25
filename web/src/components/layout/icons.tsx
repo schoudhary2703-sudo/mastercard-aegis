@@ -62,6 +62,13 @@ export const EvaluationIcon = () => (
   </svg>
 );
 
+export const BenchmarkIcon = () => (
+  <svg {...base}>
+    <circle cx="12" cy="9" r="6" />
+    <path d="M8.5 14.2 7 21l5-2.5L17 21l-1.5-6.8" />
+  </svg>
+);
+
 export const ResetIcon = () => (
   <svg {...base} width={15} height={15}>
     <path d="M4 12a8 8 0 1 0 2.5-5.8" />

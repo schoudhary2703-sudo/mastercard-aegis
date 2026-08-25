@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from aegis.api.benchmark import build_final_benchmark_summary
 from aegis.api.dto import (
     AdaptiveRoundStageStatsDTO,
     AdaptiveRoundSummaryDTO,
@@ -33,6 +34,7 @@ from aegis.api.dto import (
     EvaluationSummaryDTO,
     EvolutionResponseDTO,
     EvolutionStageDTO,
+    FinalBenchmarkSummaryDTO,
     HardeningSummaryDTO,
     HardestEvasionDTO,
     HardestEvasionsResponseDTO,
@@ -779,3 +781,13 @@ def build_recent_detections(
     return RecentDetectionsResponseDTO(
         detections=records, total_available=total_available, limit=limit, meta=_meta(settings)
     )
+
+
+def build_benchmark(settings: Settings) -> FinalBenchmarkSummaryDTO:
+    """The final, judge-facing benchmark summary: baseline v1, Defender v2,
+    Defender v3, and the LOAFO generalization benchmark. `aegis.api.benchmark`
+    does the actual artifact discovery/aggregation; this only wraps its
+    result in the response DTO."""
+    raw = build_final_benchmark_summary(settings.artifacts_root)
+    raw["meta"] = _meta(settings).model_dump(mode="json")
+    return FinalBenchmarkSummaryDTO(**raw)

@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
+  BenchmarkIcon,
   DetectionIcon,
   EvaluationIcon,
   LoopIcon,
@@ -15,6 +16,7 @@ const NAV = [
   { to: "/co-evolution", label: "Co-Evolution", icon: LoopIcon },
   { to: "/attack-taxonomy", label: "Attack Taxonomy", icon: TaxonomyIcon },
   { to: "/evaluation", label: "Evaluation", icon: EvaluationIcon },
+  { to: "/final-benchmark", label: "Final Benchmark", icon: BenchmarkIcon },
 ];
 
 export function Sidebar() {
@@ -51,8 +53,11 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-[var(--color-navy-800)] px-5 py-4 text-[11px] text-[var(--color-navy-300)]">
-        <p className="font-medium text-white/80">Mock demo mode</p>
-        <p className="mt-0.5">All data is locally generated. No backend calls.</p>
+        <p className="font-medium text-white/80">Mixed real / simulated data</p>
+        <p className="mt-0.5">
+          Sections marked "Real pipeline data" call the live API; the rest is a local, labeled
+          demo.
+        </p>
       </div>
     </aside>
   );

@@ -19,6 +19,11 @@ const NAV_CARDS = [
   { to: "/co-evolution", title: "Co-Evolution", body: "Run the closed loop round over round. The hero demo." },
   { to: "/attack-taxonomy", title: "Attack Taxonomy", body: "The three in-scope families and their blueprints." },
   { to: "/evaluation", title: "Evaluation", body: "Protocol-scoped metrics for the current round." },
+  {
+    to: "/final-benchmark",
+    title: "Final Benchmark",
+    body: "v1 vs v2 vs v3, LOAFO generalization, and the hardest surviving attacks.",
+  },
 ];
 
 export function OverviewPage() {

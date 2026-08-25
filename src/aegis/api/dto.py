@@ -278,3 +278,77 @@ class HardestEvasionsResponseDTO(ApiModel):
     total_available: int
     limit: int
     meta: MetaDTO
+
+
+# -- final benchmark (baseline v1 / Defender v2 / Defender v3 / LOAFO) ------
+
+
+class ModelComparisonEntryDTO(ApiModel):
+    model_version: str
+    precision: float | None = None
+    recall: float | None = None
+    f1: float | None = None
+    pr_auc: float | None = None
+    roc_auc: float | None = None
+    false_positive_rate: float | None = None
+    recall_at_fixed_fpr: dict[str, float] = {}
+    threshold: float | None = None
+    latency_ms: dict[str, Any] | None = None
+    confusion: dict[str, int] | None = None
+
+
+class ModelComparisonDTO(ApiModel):
+    split: str
+    dataset_id: str = ""
+    baseline_v1: ModelComparisonEntryDTO | None = None
+    defender_v2: ModelComparisonEntryDTO | None = None
+    defender_v3: ModelComparisonEntryDTO | None = None
+    source_artifact: str
+
+
+class FamilyModelPerformanceDTO(ApiModel):
+    model_version: str | None = None
+    recall: float | None = None
+    caught: int | None = None
+    evaded: int | None = None
+    average_fraud_risk_score: float | None = None
+    fitness: float | None = None
+    note: str | None = None
+
+
+class FreshFamilyPerformanceDTO(ApiModel):
+    attack_family: str
+    fold_id: str
+    training_families: list[str] = []
+    fraud_count: int
+    fidelity_score: float | None = None
+    fold_model: FamilyModelPerformanceDTO
+    defender_v3: FamilyModelPerformanceDTO
+    source_artifact: str
+
+
+class LoafoFamilyResultDTO(ApiModel):
+    attack_family: str
+    fold_id: str
+    training_families: list[str] = []
+    loafo_recall: float
+    defender_v3_recall_same_scenario: float
+    verdict: str
+
+
+class LoafoBenchmarkDTO(ApiModel):
+    mean_loafo_recall: float
+    overall_verdict: str
+    verdict_rubric: str = ""
+    per_family: list[LoafoFamilyResultDTO] = []
+    source_artifact: str
+
+
+class FinalBenchmarkSummaryDTO(ApiModel):
+    model_comparison: ModelComparisonDTO | None = None
+    fresh_family_performance: list[FreshFamilyPerformanceDTO] = []
+    loafo: LoafoBenchmarkDTO | None = None
+    hardest_surviving_attacks: list[HardestEvasionDTO] = []
+    limitations: list[str] = []
+    claim_flags: dict[str, Any] = {}
+    meta: MetaDTO

@@ -254,3 +254,76 @@ export interface HardestEvasionsResponseDTO {
   limit: number;
   meta: MetaDTO;
 }
+
+// -- final benchmark (baseline v1 / Defender v2 / Defender v3 / LOAFO) ------
+
+export interface ModelComparisonEntryDTO {
+  model_version: string;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  pr_auc: number | null;
+  roc_auc: number | null;
+  false_positive_rate: number | null;
+  recall_at_fixed_fpr: Record<string, number>;
+  threshold: number | null;
+  latency_ms: Record<string, unknown> | null;
+  confusion: Record<string, number> | null;
+}
+
+export interface ModelComparisonDTO {
+  split: string;
+  dataset_id: string;
+  baseline_v1: ModelComparisonEntryDTO | null;
+  defender_v2: ModelComparisonEntryDTO | null;
+  defender_v3: ModelComparisonEntryDTO | null;
+  source_artifact: string;
+}
+
+export interface FamilyModelPerformanceDTO {
+  model_version: string | null;
+  recall: number | null;
+  caught: number | null;
+  evaded: number | null;
+  average_fraud_risk_score: number | null;
+  fitness: number | null;
+  note: string | null;
+}
+
+export interface FreshFamilyPerformanceDTO {
+  attack_family: string;
+  fold_id: string;
+  training_families: string[];
+  fraud_count: number;
+  fidelity_score: number | null;
+  fold_model: FamilyModelPerformanceDTO;
+  defender_v3: FamilyModelPerformanceDTO;
+  source_artifact: string;
+}
+
+export interface LoafoFamilyResultDTO {
+  attack_family: string;
+  fold_id: string;
+  training_families: string[];
+  loafo_recall: number;
+  defender_v3_recall_same_scenario: number;
+  verdict: "strong" | "partial" | "weak" | string;
+}
+
+export interface LoafoBenchmarkDTO {
+  mean_loafo_recall: number;
+  overall_verdict: "strong" | "partial" | "weak" | "unknown" | string;
+  verdict_rubric: string;
+  per_family: LoafoFamilyResultDTO[];
+  source_artifact: string;
+}
+
+export interface FinalBenchmarkSummaryDTO {
+  model_comparison: ModelComparisonDTO | null;
+  fresh_family_performance: FreshFamilyPerformanceDTO[];
+  loafo: LoafoBenchmarkDTO | null;
+  hardest_surviving_attacks: HardestEvasionDTO[];
+  limitations: string[];
+  claim_flags: Record<string, unknown>;
+  meta: MetaDTO;
+}

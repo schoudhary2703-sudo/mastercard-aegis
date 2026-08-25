@@ -24,6 +24,7 @@ from aegis.api.dto import (
     AttacksResponseDTO,
     EvaluationResponseDTO,
     EvolutionResponseDTO,
+    FinalBenchmarkSummaryDTO,
     HardestEvasionsResponseDTO,
     OverviewResponseDTO,
     RecentDetectionsResponseDTO,
@@ -112,3 +113,14 @@ def get_hardest_evasions(
     settings = get_settings()
     index = service.build_index(settings)
     return service.build_hardest_evasions(index, settings, limit=limit)
+
+
+@app.get("/api/benchmark", response_model=FinalBenchmarkSummaryDTO)
+def get_benchmark() -> FinalBenchmarkSummaryDTO:
+    """The final, judge-facing benchmark: baseline v1 vs Defender v2 vs
+    Defender v3, Defender v3's fresh per-family performance, the LOAFO
+    generalization results, and the hardest surviving attacks from LOAFO's
+    fresh scenarios. Aggregated live from persisted artifacts on every call
+    (see `aegis.api.benchmark`) - never reads a stale cache."""
+    settings = get_settings()
+    return service.build_benchmark(settings)
