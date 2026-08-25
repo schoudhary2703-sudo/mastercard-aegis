@@ -27,7 +27,7 @@ from aegis.shared.contracts import (
     EvaluationResult,
     LatencyMetrics,
 )
-from aegis.shared.enums import DataSplit, EvaluationProtocol
+from aegis.shared.enums import AttackFamily, DataSplit, EvaluationProtocol
 
 if TYPE_CHECKING:  # pragma: no cover
     import pandas as pd
@@ -256,8 +256,17 @@ def build_evaluation_result(
     fpr_budgets: Sequence[float] = DEFAULT_FPR_BUDGETS,
     seed: int | None = None,
     notes: str = "",
+    round_index: int | None = None,
+    held_out_family: AttackFamily | None = None,
 ) -> EvaluationResult:
-    """Build a complete, protocol-tagged `EvaluationResult` for one split."""
+    """Build a complete, protocol-tagged `EvaluationResult` for one split.
+
+    `round_index` / `held_out_family` are passed straight through to the
+    contract, which enforces their presence for
+    `CLOSED_LOOP_ROUND` / `LEAVE_ONE_ATTACK_FAMILY_OUT` respectively
+    (`docs/EVALUATION_RULES.md` SS6) - both default to `None`, so every
+    existing `STATIC_HOLDOUT` caller is unaffected.
+    """
     overall = compute_classification_metrics(y_true, scores, threshold, fpr_budgets)
     return EvaluationResult(
         evaluation_id=evaluation_id,
@@ -269,6 +278,8 @@ def build_evaluation_result(
         latency=latency,
         seed=seed,
         notes=notes,
+        round_index=round_index,
+        held_out_family=held_out_family,
     )
 
 

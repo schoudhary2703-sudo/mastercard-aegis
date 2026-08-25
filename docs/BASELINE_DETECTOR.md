@@ -272,6 +272,57 @@ against the now-frozen v3 in each family, which is a separate, later step.
 transaction id across all three families plus the fresh-seed requirement for
 that step, and explicitly defers Leave-One-Attack-Family-Out (SS6).
 
+## LOAFO generalization benchmark
+
+`scripts/run_loafo_benchmark.py` implements `docs/EVALUATION_RULES.md` SS6
+(Leave-One-Attack-Family-Out): three folds, each trained on two families'
+prior hard positives with the third family contributing **zero** training
+rows, then scored on one genuinely fresh scenario of that held-out family.
+The question it answers is different from the cross-family regression above:
+not "does the untouched PaySim number move" but "does a detector that has
+never seen this family's pattern catch any of it at all" - generalization,
+not memorization.
+
+```
+Fold A: train synthetic_identity_bustout + mule_network_structuring
+        hold out adaptive_detector_evasion -> models/loafo-synth-mule-20260401/
+Fold B: train synthetic_identity_bustout + adaptive_detector_evasion
+        hold out mule_network_structuring  -> models/loafo-synth-adaptive-20260402/
+Fold C: train mule_network_structuring + adaptive_detector_evasion
+        hold out synthetic_identity_bustout -> models/loafo-mule-adaptive-20260403/
+```
+
+Each fold's fresh held-out scenario is generated and scored via the
+existing, unmodified confrontation scripts
+(`run_bustout_confrontation`/`run_mule_network_confrontation`/
+`run_adaptive_evasion_confrontation`) against the fold's own frozen model, at
+a seed used nowhere else in the repo. Defender v3 (trained *with* all three
+families) is scored on the identical fresh scenario as a memorization
+reference, so the two numbers are directly comparable. Both fold and v3
+results are real `EvaluationResult`s tagged `LEAVE_ONE_ATTACK_FAMILY_OUT`
+(`aegis.defend.metrics.build_evaluation_result` gained a small, additive
+`held_out_family` passthrough for this - existing `STATIC_HOLDOUT` callers
+are unaffected since it defaults to `None`).
+
+Every fold verifies, not just claims: the held-out family's absence from
+actual promoted provenance (not just from the source list); zero id overlap
+between the fresh scenario and every prior artifact under `data/synthetic/`
+and `data/hardening/` (a snapshot taken immediately before generation); and
+that the fold model's and Defender v3's `model.json`/`metadata.json` are
+byte-identical before and after scoring. `models/loafo_summary.json`
+aggregates all three folds' held-out recall, the same-scenario Defender v3
+comparison, and a disclosed strong/partial/weak rubric (see the script's
+`build_summary` for the exact thresholds - a methodological choice, not a
+fact about the data).
+
+One real per-fold optimization: unlike `harden_defender.py`'s original
+baseline-feature-reuse helper (which copied a cached feature array without
+checking its schema), `_maybe_reuse_v3_features` here verifies the cached
+schema's `feature_names` match the current extractor's exactly before ever
+copying - safe here because every LOAFO fold and Defender v3 share the same
+21-column (`0.2.0`) schema, unlike the v1/v2-vs-v3 case in the cross-family
+script above.
+
 ## Limitations
 
 * No cross-split history carryover (see above).

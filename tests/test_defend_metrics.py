@@ -22,7 +22,7 @@ from aegis.defend.metrics import (
     roc_auc,
     tune_threshold_for_f1,
 )
-from aegis.shared.enums import DataSplit, EvaluationProtocol
+from aegis.shared.enums import AttackFamily, DataSplit, EvaluationProtocol
 from tests.conftest import ConstantDetector
 
 Y = np.array([1, 0, 1, 0, 0])
@@ -250,6 +250,52 @@ def test_build_evaluation_result_round_trips_protocol_and_split():
     # Round-trips through the frozen contract's own JSON serialization.
     reloaded = type(result).from_json(result.to_json())
     assert reloaded.evaluation_id == "eval-1"
+
+
+def test_build_evaluation_result_accepts_leave_one_attack_family_out():
+    result = build_evaluation_result(
+        evaluation_id="loafo-eval-1",
+        y_true=Y,
+        scores=SCORES,
+        threshold=0.5,
+        model_version="test-model-v0",
+        dataset_id="fixture-dataset",
+        split=DataSplit.TEST,
+        protocol=EvaluationProtocol.LEAVE_ONE_ATTACK_FAMILY_OUT,
+        held_out_family=AttackFamily.MULE_NETWORK_STRUCTURING,
+    )
+    assert result.protocol is EvaluationProtocol.LEAVE_ONE_ATTACK_FAMILY_OUT
+    assert result.held_out_family is AttackFamily.MULE_NETWORK_STRUCTURING
+
+
+def test_build_evaluation_result_leave_one_attack_family_out_requires_held_out_family():
+    with pytest.raises(ValueError, match="held_out_family"):
+        build_evaluation_result(
+            evaluation_id="loafo-eval-missing",
+            y_true=Y,
+            scores=SCORES,
+            threshold=0.5,
+            model_version="test-model-v0",
+            dataset_id="fixture-dataset",
+            split=DataSplit.TEST,
+            protocol=EvaluationProtocol.LEAVE_ONE_ATTACK_FAMILY_OUT,
+        )
+
+
+def test_build_evaluation_result_default_static_holdout_still_omits_held_out_family():
+    """Regression guard: the new optional param must not change any existing caller's output."""
+    result = build_evaluation_result(
+        evaluation_id="eval-plain",
+        y_true=Y,
+        scores=SCORES,
+        threshold=0.5,
+        model_version="test-model-v0",
+        dataset_id="fixture-dataset",
+        split=DataSplit.TEST,
+    )
+    assert result.protocol is EvaluationProtocol.STATIC_HOLDOUT
+    assert result.held_out_family is None
+    assert result.round_index is None
 
 
 # --- latency -----------------------------------------------------------
