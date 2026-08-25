@@ -11,10 +11,15 @@ back as training signal.
 IDENTIFY -> GENERATE -> DEFEND -> EVALUATE -> EVOLVE -> RETRAIN
 ```
 
-> **Status: Phase 1 workstreams active.** Contracts and canonical PaySim
-> preparation are complete, and the first deterministic Red Team family
-> (synthetic identity / bust-out) is implemented. Workstream boundaries and
-> evaluation rules remain binding; see [Non-goals](#non-goals).
+> **Status: Blue Hardening Round 1.** Contracts, canonical PaySim preparation,
+> the first Red and Blue implementations, their confrontation, and
+> attacker-only adaptive evolution v1 are complete. Defender retraining now
+> exists for one round: `scripts/harden_defender.py` promotes Round-0 and
+> Adaptive-Round-1 false negatives into training-only hard positives and
+> retrains a `xgboost-hardened-r1-*` artifact alongside the frozen baseline.
+> Multi-round self-play (retrain -> fresh Red generation -> retrain) is not
+> implemented. Workstream boundaries and evaluation rules remain binding; see
+> [Non-goals](#non-goals).
 
 ## Scope
 
@@ -64,7 +69,7 @@ src/aegis/
   features/    feature extractor interface   shared, Blue-led
   defend/      detector + action policy      Blue Team
   evaluate/    evaluator interface           shared, needs sign-off
-  loop/        closed-loop orchestration     Phase 2 (empty)
+  loop/        attacker evolution             Phase 2 v1 (no retraining)
   api/         service layer                 Phase 3 (empty)
 web/           demo UI                       Phase 3 (empty)
 data/          datasets, generated corpora   git-ignored
@@ -144,10 +149,13 @@ ML and generative libraries are added by the workstream that needs them.
 | [`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) | Producing any number. Binding. |
 | [`docs/DATA_STRATEGY.md`](docs/DATA_STRATEGY.md) | Touching a dataset. Locked. |
 | [`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`](docs/SYNTHETIC_IDENTITY_BUSTOUT.md) | Generating the first Red Team family. |
+| [`docs/ADAPTIVE_ATTACK_EVOLUTION.md`](docs/ADAPTIVE_ATTACK_EVOLUTION.md) | Evolving bust-out variants against a frozen detector. |
+| [`docs/BASELINE_DETECTOR.md`](docs/BASELINE_DETECTOR.md) "Blue Hardening Round 1" | Promoting hard positives and retraining the defender. |
 
 ## Non-goals
 
-Not added by this Red Team phase: the other two attack generators, adaptive
-detector-aware mutation, SDV / CTGAN, LangGraph, GRPO, or the closed-loop
-algorithm. Cross-workstream components remain governed by `AGENTS.md`; cloud
-infrastructure, authentication, databases, and Docker remain out of scope.
+Still not added: the other two attack generators, multi-round self-play
+(retraining after each new Red generation, repeatedly), SDV / CTGAN,
+LangGraph, or GRPO. Cross-workstream components remain governed by
+`AGENTS.md`; cloud infrastructure, authentication, databases, and Docker
+remain out of scope.

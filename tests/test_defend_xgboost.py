@@ -197,3 +197,62 @@ def test_same_seed_and_data_produce_identical_scores():
 def test_model_version_is_stable_and_specific():
     detector = XGBoostDetector(seed=20260101)
     assert "20260101" in detector.model_version
+
+
+# --- memory-safe QuantileDMatrix equivalence -----------------------------
+def test_quantile_dmatrix_matches_plain_dmatrix_for_hist():
+    """`fit()` uses QuantileDMatrix for tree_method=hist (see xgboost_detector.py).
+
+    This proves that choice is a pure execution-level optimization: training
+    the identical data/params/seed through a plain `xgb.DMatrix` and through
+    `xgb.QuantileDMatrix` must produce the same predictions.
+    """
+    import xgboost as xgb
+
+    X, y, _ = _fixture_frame(n=120, seed=3)
+    feature_names = list(X.columns)
+    params = {
+        "max_depth": 4,
+        "eta": 0.1,
+        "objective": "binary:logistic",
+        "tree_method": "hist",
+        "seed": 5,
+        "scale_pos_weight": 1.0,
+    }
+
+    dtrain_plain = xgb.DMatrix(X, label=y, feature_names=feature_names)
+    booster_plain = xgb.train(params, dtrain_plain, num_boost_round=15)
+
+    dtrain_quantile = xgb.QuantileDMatrix(X, label=y, feature_names=feature_names)
+    booster_quantile = xgb.train(params, dtrain_quantile, num_boost_round=15)
+
+    dtest = xgb.DMatrix(X, feature_names=feature_names)
+    np.testing.assert_allclose(
+        booster_plain.predict(dtest), booster_quantile.predict(dtest), rtol=1e-5, atol=1e-6
+    )
+
+
+def test_fit_actually_uses_quantile_dmatrix_for_hist_tree_method(monkeypatch):
+    """Regression guard: `fit()` must route through QuantileDMatrix, not silently
+    fall back to plain DMatrix, for the approved default `tree_method=hist`."""
+    import xgboost as xgb
+
+    X, y, _ = _fixture_frame(n=40)
+    calls = {"quantile": 0, "plain": 0}
+    real_quantile_dmatrix = xgb.QuantileDMatrix
+    real_dmatrix = xgb.DMatrix
+
+    def spy_quantile(*args, **kwargs):
+        calls["quantile"] += 1
+        return real_quantile_dmatrix(*args, **kwargs)
+
+    def spy_plain(*args, **kwargs):
+        calls["plain"] += 1
+        return real_dmatrix(*args, **kwargs)
+
+    monkeypatch.setattr(xgb, "QuantileDMatrix", spy_quantile)
+    monkeypatch.setattr(xgb, "DMatrix", spy_plain)
+
+    XGBoostDetector(seed=1, num_boost_round=10).fit(X, y)
+    assert calls["quantile"] == 1
+    assert calls["plain"] == 0

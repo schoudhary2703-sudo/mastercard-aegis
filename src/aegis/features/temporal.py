@@ -6,12 +6,21 @@ passed to `transform`, ordered by `timestamp`. A row's aggregates reflect only
 strictly earlier rows in that same call; state updates happen *after* a row's
 features are recorded, never before.
 
+The causal state machine lives in `_CausalHistoryState` below and is shared,
+unmodified, with `aegis.features.streaming` - the disk-materializing path used
+for large datasets that do not fit comfortably in memory. Both paths call the
+exact same `compute()` / `observe()` methods in the exact same order, so the
+two are structurally guaranteed to agree, not just tested to agree. See
+`tests/test_features_streaming.py` for the equivalence proof and
+`docs/BASELINE_DETECTOR.md` "Memory-safe materialization" for the full design.
+
 Deliberate simplification: running per-account state does **not** carry over
 between separate `transform` calls (e.g. from a `train` call into a later
-`validation` call). This keeps the extractor a pure function of its input -
-simple to test and unambiguously leakage-safe - at the cost of a "cold start"
-at the beginning of each split for accounts that also appear earlier in time
-in a different split. See `docs/BASELINE_DETECTOR.md` for the trade-off.
+`validation` call) in the in-memory path, nor across split boundaries in the
+streaming path. This keeps a single call a pure function of its input - simple
+to test and unambiguously leakage-safe - at the cost of a "cold start" at the
+beginning of each split for accounts that also appear earlier in time in a
+different split. See `docs/BASELINE_DETECTOR.md` for the trade-off.
 
 Never read: `label`, `attack_family`, `blueprint_id`, `scenario_id`,
 `is_synthetic`, `generation`, or `metadata` (where PaySim's `isFlaggedFraud`
@@ -32,7 +41,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import pandas as pd
@@ -46,6 +55,138 @@ _KNOWN_TYPES: list[str] = [member.value for member in TransactionType]
 """Fixed, schema-known vocabulary - not learned from data, so one-hot column
 order is stable no matter which types appear in a given split."""
 
+FEATURE_SUFFIXES: list[str] = [
+    "amount",
+    "hour_of_day",
+    "source_balance_before",
+    "destination_balance_before",
+    "has_destination",
+    "source_txn_count_before",
+    "destination_txn_count_before",
+    "source_velocity_1h",
+    "destination_velocity_1h",
+    "source_avg_amount_before",
+    "amount_deviation_from_source_history",
+    "seconds_since_source_previous_txn",
+    "seconds_since_destination_previous_txn",
+    *[f"type_{value}" for value in _KNOWN_TYPES],
+]
+"""Un-namespaced feature names, in emission order. 19 columns: 13 scalar/
+history features plus one-hot over the 6 known transaction types."""
+
+
+def feature_columns(namespace: str) -> list[str]:
+    """Namespaced column names in emission order, e.g. `temporal.amount`."""
+    return [f"{namespace}.{suffix}" for suffix in FEATURE_SUFFIXES]
+
+
+class _CausalHistoryState:
+    """Running per-account state for one causal, chronologically-ordered pass.
+
+    `compute(txn)` reads only state built by *earlier* `observe()` calls;
+    `observe(txn)` folds `txn` into that state afterwards. Callers must call
+    them in that order, once per transaction, in non-decreasing timestamp
+    order - the same contract whether the caller holds the whole split in
+    memory (`TemporalBaselineFeatureExtractor`) or streams it in chunks
+    (`aegis.features.streaming`).
+    """
+
+    __slots__ = (
+        "dst_count",
+        "dst_last_ts",
+        "dst_recent",
+        "src_count",
+        "src_last_ts",
+        "src_recent",
+        "src_sum",
+        "src_sumsq",
+    )
+
+    def __init__(self) -> None:
+        self.src_count: dict[str, int] = defaultdict(int)
+        self.src_sum: dict[str, float] = defaultdict(float)
+        self.src_sumsq: dict[str, float] = defaultdict(float)
+        self.src_last_ts: dict[str, datetime] = {}
+        self.src_recent: dict[str, deque[datetime]] = defaultdict(deque)
+        self.dst_count: dict[str, int] = defaultdict(int)
+        self.dst_last_ts: dict[str, datetime] = {}
+        self.dst_recent: dict[str, deque[datetime]] = defaultdict(deque)
+
+    def compute(self, txn: Transaction) -> list[float]:
+        """Feature values for `txn`, in `FEATURE_SUFFIXES` order."""
+        src = txn.source_account_id
+        dst = txn.destination_account_id
+
+        src_window = self.src_recent[src]
+        while src_window and (txn.timestamp - src_window[0]) > _VELOCITY_WINDOW:
+            src_window.popleft()
+        source_velocity_1h = float(len(src_window))
+
+        if dst:
+            dst_window = self.dst_recent[dst]
+            while dst_window and (txn.timestamp - dst_window[0]) > _VELOCITY_WINDOW:
+                dst_window.popleft()
+            destination_velocity_1h = float(len(dst_window))
+        else:
+            destination_velocity_1h = 0.0
+
+        n = self.src_count[src]
+        if n > 0:
+            mean = self.src_sum[src] / n
+            variance = max(self.src_sumsq[src] / n - mean**2, 0.0)
+            std = variance**0.5
+            source_avg_amount_before = mean
+            amount_deviation = (txn.amount - mean) / std if std > 1e-9 else 0.0
+        else:
+            source_avg_amount_before = float("nan")
+            amount_deviation = 0.0
+
+        seconds_since_source = (
+            (txn.timestamp - self.src_last_ts[src]).total_seconds()
+            if src in self.src_last_ts
+            else float("nan")
+        )
+        seconds_since_destination = (
+            (txn.timestamp - self.dst_last_ts[dst]).total_seconds()
+            if dst and dst in self.dst_last_ts
+            else float("nan")
+        )
+
+        row = [
+            float(txn.amount),
+            float(txn.timestamp.hour),
+            # Pre-transaction balances only. `*_balance_after` is a
+            # post-transaction outcome and must never appear here - see the
+            # decision-time feature policy in the module docstring.
+            _optional(txn.source_balance_before),
+            _optional(txn.destination_balance_before),
+            1.0 if dst else 0.0,
+            float(self.src_count[src]),
+            float(self.dst_count[dst]) if dst else 0.0,
+            source_velocity_1h,
+            destination_velocity_1h,
+            source_avg_amount_before,
+            amount_deviation,
+            seconds_since_source,
+            seconds_since_destination,
+        ]
+        row.extend(1.0 if txn.transaction_type.value == value else 0.0 for value in _KNOWN_TYPES)
+        return row
+
+    def observe(self, txn: Transaction) -> None:
+        """Fold `txn` into the running state, after its features were computed."""
+        src = txn.source_account_id
+        dst = txn.destination_account_id
+        self.src_count[src] += 1
+        self.src_sum[src] += txn.amount
+        self.src_sumsq[src] += txn.amount**2
+        self.src_last_ts[src] = txn.timestamp
+        self.src_recent[src].append(txn.timestamp)
+        if dst:
+            self.dst_count[dst] += 1
+            self.dst_last_ts[dst] = txn.timestamp
+            self.dst_recent[dst].append(txn.timestamp)
+
 
 class TemporalBaselineFeatureExtractor(BaseFeatureExtractor):
     """Baseline per-transaction and per-account-history features."""
@@ -56,7 +197,7 @@ class TemporalBaselineFeatureExtractor(BaseFeatureExtractor):
     def fit(
         self, transactions: Sequence[Transaction], meta: dict[str, Any] | None = None
     ) -> TemporalBaselineFeatureExtractor:
-        self._feature_names = self._column_order()
+        self._feature_names = feature_columns(self.namespace)
         self._is_fitted = True
         return self
 
@@ -69,114 +210,18 @@ class TemporalBaselineFeatureExtractor(BaseFeatureExtractor):
         ordered = [rows[i] for i in range(len(transactions))]
         return pd.DataFrame(ordered, columns=self._feature_names)
 
-    def _column_order(self) -> list[str]:
-        ns = self.namespace
-        base = [
-            f"{ns}.amount",
-            f"{ns}.hour_of_day",
-            f"{ns}.source_balance_before",
-            f"{ns}.destination_balance_before",
-            f"{ns}.has_destination",
-            f"{ns}.source_txn_count_before",
-            f"{ns}.destination_txn_count_before",
-            f"{ns}.source_velocity_1h",
-            f"{ns}.destination_velocity_1h",
-            f"{ns}.source_avg_amount_before",
-            f"{ns}.amount_deviation_from_source_history",
-            f"{ns}.seconds_since_source_previous_txn",
-            f"{ns}.seconds_since_destination_previous_txn",
-        ]
-        base += [f"{ns}.type_{value}" for value in _KNOWN_TYPES]
-        return base
-
-    def _compute_rows(self, transactions: Sequence[Transaction]) -> dict[int, dict[str, float]]:
-        ns = self.namespace
+    def _compute_rows(self, transactions: Sequence[Transaction]) -> dict[int, list[float]]:
         # Stable causal order: timestamp, then original position as a
         # deterministic tie-break for same-instant rows (PaySim's hourly
         # `step` resolution means many rows legitimately share one timestamp).
         order = sorted(range(len(transactions)), key=lambda i: (transactions[i].timestamp, i))
 
-        src_count: dict[str, int] = defaultdict(int)
-        src_sum: dict[str, float] = defaultdict(float)
-        src_sumsq: dict[str, float] = defaultdict(float)
-        src_last_ts: dict[str, Any] = {}
-        src_recent: dict[str, deque[Any]] = defaultdict(deque)
-        dst_count: dict[str, int] = defaultdict(int)
-        dst_last_ts: dict[str, Any] = {}
-        dst_recent: dict[str, deque[Any]] = defaultdict(deque)
-
-        rows: dict[int, dict[str, float]] = {}
-
+        state = _CausalHistoryState()
+        rows: dict[int, list[float]] = {}
         for i in order:
             txn = transactions[i]
-            src = txn.source_account_id
-            dst = txn.destination_account_id
-
-            row: dict[str, float] = {
-                f"{ns}.amount": float(txn.amount),
-                f"{ns}.hour_of_day": float(txn.timestamp.hour),
-                # Pre-transaction balances only. `*_balance_after` is a
-                # post-transaction outcome and must never appear here - see
-                # the decision-time feature policy in the module docstring.
-                f"{ns}.source_balance_before": _optional(txn.source_balance_before),
-                f"{ns}.destination_balance_before": _optional(txn.destination_balance_before),
-                f"{ns}.has_destination": 1.0 if dst else 0.0,
-                f"{ns}.source_txn_count_before": float(src_count[src]),
-                f"{ns}.destination_txn_count_before": float(dst_count[dst]) if dst else 0.0,
-            }
-
-            src_window = src_recent[src]
-            while src_window and (txn.timestamp - src_window[0]) > _VELOCITY_WINDOW:
-                src_window.popleft()
-            row[f"{ns}.source_velocity_1h"] = float(len(src_window))
-
-            if dst:
-                dst_window = dst_recent[dst]
-                while dst_window and (txn.timestamp - dst_window[0]) > _VELOCITY_WINDOW:
-                    dst_window.popleft()
-                row[f"{ns}.destination_velocity_1h"] = float(len(dst_window))
-            else:
-                row[f"{ns}.destination_velocity_1h"] = 0.0
-
-            n = src_count[src]
-            if n > 0:
-                mean = src_sum[src] / n
-                variance = max(src_sumsq[src] / n - mean**2, 0.0)
-                std = variance**0.5
-                row[f"{ns}.source_avg_amount_before"] = mean
-                row[f"{ns}.amount_deviation_from_source_history"] = (
-                    (txn.amount - mean) / std if std > 1e-9 else 0.0
-                )
-            else:
-                row[f"{ns}.source_avg_amount_before"] = float("nan")
-                row[f"{ns}.amount_deviation_from_source_history"] = 0.0
-
-            row[f"{ns}.seconds_since_source_previous_txn"] = (
-                (txn.timestamp - src_last_ts[src]).total_seconds()
-                if src in src_last_ts
-                else float("nan")
-            )
-            row[f"{ns}.seconds_since_destination_previous_txn"] = (
-                (txn.timestamp - dst_last_ts[dst]).total_seconds()
-                if dst and dst in dst_last_ts
-                else float("nan")
-            )
-
-            for value in _KNOWN_TYPES:
-                row[f"{ns}.type_{value}"] = 1.0 if txn.transaction_type.value == value else 0.0
-
-            rows[i] = row
-
-            src_count[src] += 1
-            src_sum[src] += txn.amount
-            src_sumsq[src] += txn.amount**2
-            src_last_ts[src] = txn.timestamp
-            src_recent[src].append(txn.timestamp)
-            if dst:
-                dst_count[dst] += 1
-                dst_last_ts[dst] = txn.timestamp
-                dst_recent[dst].append(txn.timestamp)
-
+            rows[i] = state.compute(txn)
+            state.observe(txn)
         return rows
 
 
@@ -184,4 +229,8 @@ def _optional(value: float | None) -> float:
     return float(value) if value is not None else float("nan")
 
 
-__all__ = ["TemporalBaselineFeatureExtractor"]
+__all__ = [
+    "FEATURE_SUFFIXES",
+    "TemporalBaselineFeatureExtractor",
+    "feature_columns",
+]

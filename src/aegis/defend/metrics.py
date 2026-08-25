@@ -124,26 +124,53 @@ def tune_threshold_for_f1(y_true: np.ndarray, scores: np.ndarray) -> float:
     """Pick the score threshold maximizing F1 on the given (validation-only) data.
 
     Candidates are the observed score values themselves, so the search is
-    exact rather than grid-approximated. Ties on the best F1 favor the
-    *higher* threshold (fewer false positives).
+    exact rather than grid-approximated - same as a brute-force sweep over
+    every unique score - but computed in O(n log n) via one sort plus a
+    cumulative TP/FP scan, not O(n * unique_scores). The naive per-candidate
+    recount is fine on a fixture (tens of rows) and catastrophic on a real
+    ~943k-row validation split with near-continuous probabilities, which is
+    exactly what stalled the first real PaySim run for roughly ninety minutes
+    with no completed artifact to show for it.
+
+    Ties on the best F1 favor the *higher* threshold (fewer false positives) -
+    see `tests/test_defend_metrics.py` for the brute-force equivalence proof
+    this relies on instead of asserting by inspection.
     """
+    if len(y_true) != len(scores):
+        msg = f"y_true and scores must be the same length, got {len(y_true)} and {len(scores)}"
+        raise ValueError(msg)
     if len(scores) == 0:
         return 0.5
-    candidates = np.unique(scores)
-    best_threshold = float(candidates[-1])
-    best_f1 = -1.0
-    for threshold in candidates:
-        predicted = (scores >= threshold).astype(int)
-        tp = int(((predicted == 1) & (y_true == 1)).sum())
-        fp = int(((predicted == 1) & (y_true == 0)).sum())
-        fn = int(((predicted == 0) & (y_true == 1)).sum())
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-        if f1 >= best_f1:
-            best_f1 = f1
-            best_threshold = float(threshold)
-    return best_threshold
+
+    # Sort by score descending: walking this order and taking a cumulative
+    # sum of labels gives TP/predicted-positive counts for "score >= T" at
+    # every T in one pass, instead of one O(n) recount per candidate.
+    order = np.argsort(-scores, kind="mergesort")
+    y_sorted = y_true[order]
+    scores_sorted = scores[order]
+
+    n = len(scores_sorted)
+    distinct = np.where(np.diff(scores_sorted) != 0)[0]
+    cutoffs = np.r_[distinct, n - 1]  # last index of each run of equal scores
+
+    cum_tp = np.cumsum(y_sorted)[cutoffs]
+    predicted_positive = cutoffs + 1
+    precision = cum_tp / predicted_positive
+
+    n_pos = float(y_sorted.sum())
+    recall = cum_tp / n_pos if n_pos > 0 else np.zeros_like(cum_tp, dtype=float)
+
+    denom = precision + recall
+    f1 = np.divide(
+        2 * precision * recall, denom, out=np.zeros_like(denom, dtype=float), where=denom > 0
+    )
+
+    # `cutoffs` is already ordered from the highest threshold (most
+    # restrictive) to the lowest, so `argmax`'s first-occurrence-on-ties
+    # behavior directly reproduces "ties favor the higher threshold" - no
+    # explicit tie-break loop needed.
+    best_index = int(np.argmax(f1))
+    return float(scores_sorted[cutoffs[best_index]])
 
 
 def compute_classification_metrics(

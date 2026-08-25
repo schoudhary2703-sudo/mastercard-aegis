@@ -90,7 +90,20 @@ class XGBoostDetector(BaseDetector):
         params["scale_pos_weight"] = spw
         params["seed"] = self.seed
 
-        dtrain = xgb.DMatrix(X_train, label=y, feature_names=list(X_train.columns))
+        feature_names = list(X_train.columns)
+        # QuantileDMatrix builds the hist tree method's quantile sketch
+        # directly from the input, skipping the intermediate CSR/dense copy a
+        # plain DMatrix makes for that method - materially lower peak memory
+        # for large splits, mathematically equivalent for `tree_method`
+        # `hist`/`gpu_hist` (see tests/test_defend_xgboost.py). Falls back to
+        # a plain DMatrix for any other tree method, where QuantileDMatrix
+        # is not applicable.
+        if params.get("tree_method") in ("hist", "gpu_hist"):
+            dtrain: xgb.DMatrix = xgb.QuantileDMatrix(
+                X_train, label=y, feature_names=feature_names, nthread=params.get("nthread")
+            )
+        else:
+            dtrain = xgb.DMatrix(X_train, label=y, feature_names=feature_names)
         self._booster = xgb.train(params, dtrain, num_boost_round=self.num_boost_round)
         self._feature_names = list(X_train.columns)
         self._is_fitted = True

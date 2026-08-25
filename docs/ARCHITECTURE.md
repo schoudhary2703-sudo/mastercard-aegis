@@ -59,8 +59,8 @@ api/      -> shared, and read-only views of results
 * `shared/` must never import from any other AEGIS package.
 * `defend/` must never import `generate/`, `identify/` or `loop/`.
 * `generate/` must never import `defend/` or `features/`.
-* `loop/` is the only package allowed to import from both sides. **Nothing may
-  import from `loop/`** - that would create a cycle and re-couple the teams.
+* `loop/` is the only AEGIS package allowed to import from both sides. No AEGIS
+  package imports from `loop/`; integration entry-point scripts may invoke it.
 * `api/` and `web/` are read-only consumers of contracts. They compute nothing.
 
 Import direction is the architecture. If a task seems to require breaking one
@@ -78,7 +78,7 @@ src/aegis/
   features/      feature extractor interface            (shared, Blue-led)
   defend/        detector interface + action policy     (Blue Team)
   evaluate/      evaluator interface                    (shared, sign-off)
-  loop/          closed-loop orchestration              (Phase 2, empty)
+  loop/          attacker evolution orchestration       (Phase 2 v1)
   api/           service layer                          (Phase 3, empty)
 web/             demo UI                                (Phase 3, empty)
 data/            datasets and generated corpora         (git-ignored)
@@ -94,8 +94,17 @@ one.
 
 ## Current implementation boundary
 
-Phase 1 workstreams add implementations only inside their owned packages.
-Canonical PaySim preparation and one deterministic Red Team generator
-(synthetic identity / bust-out) are implemented; see
-`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`. The other Red Team families, adaptive
-mutation, and closed-loop orchestration remain later-phase work.
+Canonical PaySim preparation, the synthetic identity / bust-out generator,
+the baseline detector, and their first confrontation are implemented.
+Attacker-only adaptive evolution v1 now lives in `loop/`; it mutates bounded
+bust-out blueprints and scores fresh variants against one frozen detector.
+
+Blue Hardening Round 1 (`scripts/harden_defender.py`,
+`aegis.defend.hard_positives`) implements the RETRAIN stage above for the
+first time: it promotes the Round-0 confrontation's and the selected
+Adaptive-Round-1 candidate's false negatives into a training-only
+hard-positive set and retrains a new `xgboost-hardened-r1-*` artifact
+alongside (never over) the frozen baseline. See "Blue Hardening Round 1" in
+`docs/BASELINE_DETECTOR.md`. The other attack families and multi-round
+self-play (repeating generate -> retrain -> generate against the *hardened*
+detector) remain later-phase work. See `docs/ADAPTIVE_ATTACK_EVOLUTION.md`.

@@ -169,13 +169,32 @@ containing `model.json`, `metadata.json`, `evaluation_validation.json`, and
 `evaluation_test.json`. `--help` lists all options (`--num-boost-round`,
 `--latency-sample-size`).
 
+## Blue Hardening Round 1
+
+`scripts/harden_defender.py` (logic in `aegis.defend.hard_positives`)
+implements `docs/ARCHITECTURE.md`'s RETRAIN stage and
+`docs/EVALUATION_RULES.md` SS2/SS3 for the first time: it promotes every
+scenario transaction (legitimate warm-up **and** fraudulent bust-out rows -
+the warm-up rows are kept so the fraud rows' history-derived features are not
+computed from a cold start) from the frozen Round-0 confrontation and the
+selected Adaptive-Round-1 candidate into a training-only hard-positive set,
+re-stamps `split=train`, and retrains a `xgboost-hardened-r1-<seed>` artifact
+via the same low-memory pipeline described above - validation and test are
+read, materialized, and scored exactly as in the plain baseline run; only
+train gains the promoted rows.
+
+Two things this deliberately does *not* do, per SS3/SS4: it never reports
+Defender v2's score on the hard positives it was just trained on, and it
+never claims a win from anything but the untouched PaySim test split
+(`regression_vs_baseline.json`, written next to the new model artifact,
+holds that baseline-v1-vs-Defender-v2 comparison). It also never generates or
+mutates an attack - `generation2_handoff.json`, written alongside the model,
+is the explicit, unmodified-script interface (`run_bustout_confrontation.py
+--reuse-model-dir`, then `run_adaptive_bustout_round.py`) a fresh Red
+generation-2 round should confront Defender v2 with next.
+
 ## Limitations
 
-* **No real evaluation has been run.** No PaySim CSV exists in this
-  environment (`data/raw/` is empty), so every number in this document's
-  examples and in the test suite comes from small synthetic fixtures, not
-  the real dataset. The pipeline is verified end-to-end
-  (`tests/test_defend_pipeline.py`) but not benchmarked.
 * No cross-split history carryover (see above).
 * Threshold tuning optimizes F1 only; a production deployment might instead
   target a specific FPR budget from `recall_at_fixed_fpr`.
