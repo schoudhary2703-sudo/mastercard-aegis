@@ -39,18 +39,28 @@ from aegis.loop.adaptive import (
     evolve_bustout_round,
     generate_mutation_candidates,
 )
+from aegis.loop.adaptive_evasion import (
+    AdaptiveEvasionLoopError,
+    GuidedAdaptation,
+    adapt_blueprint_from_evasions,
+    build_adaptive_evasion_feedback,
+)
 
 __all__ = [
     "AdaptiveCandidateResult",
+    "AdaptiveEvasionLoopError",
     "AdaptiveEvolutionError",
     "AdaptiveRoundExecution",
     "AdaptiveRoundReport",
     "BlindSpotAnalysis",
+    "GuidedAdaptation",
     "MutationCandidate",
     "ParameterRegionEvidence",
     "RoundAttackMetrics",
     "RoundComparison",
+    "adapt_blueprint_from_evasions",
     "analyze_blind_spots",
+    "build_adaptive_evasion_feedback",
     "build_evasion_feedback",
     "calculate_attack_fitness",
     "compare_rounds",

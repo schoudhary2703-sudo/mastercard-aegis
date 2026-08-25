@@ -8,6 +8,12 @@ This package must not import from `defend/` or `features/`.
 
 from __future__ import annotations
 
+from aegis.generate.adaptive_evasion import (
+    AdaptiveDetectorEvasionGenerator,
+    AdaptiveEvasionConfigurationError,
+    AdaptiveEvasionFidelitySummary,
+    AdaptiveEvasionReferenceProfile,
+)
 from aegis.generate.base import BaseGenerator, BlueprintNotSupportedError
 from aegis.generate.config import GenerationConfig
 from aegis.generate.mule_network import (
@@ -42,6 +48,10 @@ __all__ = [
     "DEFAULT_PAYSIM_CURRENCY",
     "DEFAULT_PAYSIM_EPOCH",
     "PAYSIM_REQUIRED_COLUMNS",
+    "AdaptiveDetectorEvasionGenerator",
+    "AdaptiveEvasionConfigurationError",
+    "AdaptiveEvasionFidelitySummary",
+    "AdaptiveEvasionReferenceProfile",
     "BaseGenerator",
     "BlueprintNotSupportedError",
     "BustOutFidelitySummary",

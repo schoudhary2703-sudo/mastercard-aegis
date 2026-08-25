@@ -7,6 +7,12 @@ docs/EVALUATION_RULES.md.
 
 from __future__ import annotations
 
+from aegis.evaluate.adaptive_evasion import (
+    AdaptiveEvasionConfrontationEvaluator,
+    AdaptiveEvasionConfrontationReport,
+    AdaptiveEvasionScenarioReport,
+    build_adaptive_evasion_confrontation_report,
+)
 from aegis.evaluate.base import BaseEvaluator
 from aegis.evaluate.confrontation import (
     BustOutConfrontationEvaluator,
@@ -28,6 +34,9 @@ from aegis.evaluate.mule_confrontation import (
 )
 
 __all__ = [
+    "AdaptiveEvasionConfrontationEvaluator",
+    "AdaptiveEvasionConfrontationReport",
+    "AdaptiveEvasionScenarioReport",
     "BaseEvaluator",
     "BustOutConfrontationEvaluator",
     "BustOutConfrontationReport",
@@ -39,6 +48,7 @@ __all__ = [
     "MuleScenarioConfrontationReport",
     "ScenarioConfrontationReport",
     "TrainingOverlapScan",
+    "build_adaptive_evasion_confrontation_report",
     "build_bustout_confrontation_report",
     "build_mule_network_confrontation_report",
     "rank_hardest_evasions",
