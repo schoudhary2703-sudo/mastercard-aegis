@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { fetchEvolution, fetchHardestEvasions } from "../api/client";
+import { useApiResource } from "../api/useApiResource";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { Badge } from "../components/ui/Badge";
 import { Card, CardHeader } from "../components/ui/Card";
@@ -10,6 +12,10 @@ import { LoopDiagram } from "../components/loop/LoopDiagram";
 import { EvasionFeedbackPanel } from "../components/evolution/EvasionFeedbackPanel";
 import { MetricsTrendChart } from "../components/evolution/MetricsTrendChart";
 import { RoundStepper } from "../components/evolution/RoundStepper";
+import { ApiStateSection } from "../components/real/ApiStateSection";
+import { HardestEvasionsTable } from "../components/real/HardestEvasionsTable";
+import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { RealEvolutionTimeline } from "../components/real/RealEvolutionTimeline";
 import type { RoundRecord } from "../mock/loopSimulator";
 import { useLoop } from "../state/LoopContext";
 
@@ -32,6 +38,10 @@ const METRIC_COLUMNS: Column<RoundRecord>[] = [
 export function CoEvolutionPage() {
   const { family, setFamily, rounds, runNextRound, latest } = useLoop();
   const [tab, setTab] = useState<DetailTab>("summary");
+  const evolutionFetch = useCallback((signal: AbortSignal) => fetchEvolution(signal), []);
+  const evolutionState = useApiResource(evolutionFetch, []);
+  const hardestFetch = useCallback((signal: AbortSignal) => fetchHardestEvasions(25, signal), []);
+  const hardestState = useApiResource(hardestFetch, [], (data) => data.evasions.length === 0);
 
   const caught = latest ? latest.evaluation.overall.confusion.true_positive : 0;
   const evaded = latest ? latest.feedback.transaction_ids.length : 0;
@@ -40,17 +50,48 @@ export function CoEvolutionPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader
-          title="Adversarial loop"
-          subtitle="Each round: Identify -> Generate -> Defend -> Evaluate -> Evolve -> Retrain."
+          title="The real closed-loop cycle"
+          subtitle="Baseline v1 -> Round-0 attack -> Adaptive Red -> Defender v2 hardening -> fresh confrontation -> Generation-2 adaptation."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={evolutionState}
+          emptyTitle="No closed-loop artifacts yet"
+          emptyBody="Run the pipeline scripts (train baseline, confront, adapt, harden) to populate this timeline."
+          render={(evolution) => <RealEvolutionTimeline evolution={evolution} />}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Hardest surviving attacks"
+          subtitle="Every credible evasion across real confrontations and adaptive rounds, ranked by hardness score."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={hardestState}
+          emptyTitle="No surviving evasions yet"
+          emptyBody="This fills in once a confrontation or adaptive round produces at least one credible evasion."
+          render={(hardest) => <HardestEvasionsTable evasions={hardest.evasions} />}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Adversarial loop (interactive demo)"
+          subtitle="Each round: Identify -> Generate -> Defend -> Evaluate -> Evolve -> Retrain. Simulated in the browser, not real data."
           action={
-            <button
-              type="button"
-              onClick={runNextRound}
-              disabled={rounds.length >= 6}
-              className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-medium text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {rounds.length === 0 ? "Run round 0" : rounds.length >= 6 ? "Demo complete" : `Run round ${rounds.length}`}
-            </button>
+            <div className="flex items-center gap-2">
+              <MockDataBadge />
+              <button
+                type="button"
+                onClick={runNextRound}
+                disabled={rounds.length >= 6}
+                className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-medium text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {rounds.length === 0 ? "Run round 0" : rounds.length >= 6 ? "Demo complete" : `Run round ${rounds.length}`}
+              </button>
+            </div>
           }
         />
         <LoopDiagram active={latest ? "retrain" : "identify"} compact />

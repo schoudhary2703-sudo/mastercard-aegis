@@ -70,8 +70,8 @@ src/aegis/
   defend/      detector + action policy      Blue Team
   evaluate/    evaluator interface           shared, needs sign-off
   loop/        attacker evolution             Phase 2 v1 (no retraining)
-  api/         service layer                 Phase 3 (empty)
-web/           demo UI                       Phase 3 (empty)
+  api/         read-only artifact API        Phase 3, integration owner
+web/           demo UI + real-data client    Phase 3, integration owner
 data/          datasets, generated corpora   git-ignored
 scripts/       reproducible entry points
 tests/         contract + interface tests

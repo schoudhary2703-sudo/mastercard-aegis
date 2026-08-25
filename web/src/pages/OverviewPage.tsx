@@ -1,9 +1,15 @@
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
+import { fetchOverview } from "../api/client";
+import { useApiResource } from "../api/useApiResource";
 import { Badge } from "../components/ui/Badge";
 import { Card, CardHeader } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/States";
 import { StatTile } from "../components/ui/StatTile";
 import { LoopDiagram } from "../components/loop/LoopDiagram";
+import { ApiStateSection } from "../components/real/ApiStateSection";
+import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { RealOverviewPanel } from "../components/real/RealOverviewPanel";
 import { useLoop } from "../state/LoopContext";
 import { ATTACK_FAMILY_LABEL } from "../types/aegis";
 
@@ -17,13 +23,30 @@ const NAV_CARDS = [
 
 export function OverviewPage() {
   const { rounds, latest, family } = useLoop();
+  const overviewFetch = useCallback((signal: AbortSignal) => fetchOverview(signal), []);
+  const overviewState = useApiResource(overviewFetch, []);
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader
-          title="The closed loop"
+          title="Real pipeline status"
+          subtitle="What the AEGIS red/blue pipeline has actually produced on disk, read live through the API."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={overviewState}
+          emptyTitle="No pipeline artifacts yet"
+          emptyBody="Run scripts/train_baseline_detector.py and scripts/run_bustout_confrontation.py to populate this view."
+          render={(overview) => <RealOverviewPanel overview={overview} />}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="The closed loop (interactive demo)"
           subtitle="A Red Team invents and mutates fraud; a Blue Team detects it; the loop feeds successful evasions back as training signal."
+          action={<MockDataBadge />}
         />
         <LoopDiagram active={latest ? "retrain" : undefined} />
       </Card>

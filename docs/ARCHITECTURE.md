@@ -79,8 +79,8 @@ src/aegis/
   defend/        detector interface + action policy     (Blue Team)
   evaluate/      evaluator interface                    (shared, sign-off)
   loop/          attacker evolution orchestration       (Phase 2 v1)
-  api/           service layer                          (Phase 3, empty)
-web/             demo UI                                (Phase 3, empty)
+  api/           read-only artifact index + FastAPI     (Phase 3, integration owner)
+web/             demo UI + typed real-data client       (Phase 3, integration owner)
 data/            datasets and generated corpora         (git-ignored)
 scripts/         reproducible entry points
 tests/           contract and interface tests
@@ -108,3 +108,42 @@ alongside (never over) the frozen baseline. See "Blue Hardening Round 1" in
 `docs/BASELINE_DETECTOR.md`. The other attack families and multi-round
 self-play (repeating generate -> retrain -> generate against the *hardened*
 detector) remain later-phase work. See `docs/ADAPTIVE_ATTACK_EVOLUTION.md`.
+
+`api/` now reads those persisted artifacts (models, confrontations,
+adaptive rounds, hardening runs) through a discovery/lineage layer
+(`aegis.api.index`) and serves them read-only over FastAPI
+(`aegis.api.app`) as the real first closed-loop cycle: Baseline v1 ->
+Round-0 attack -> Adaptive Red -> Defender v2 hardening -> fresh
+confrontation -> Generation-2 adaptation. `web/` consumes those endpoints
+through a typed client (`web/src/api/`) on Overview, Co-Evolution, and
+Evaluation, clearly labeled "Real pipeline data"; the original mock demo
+(`web/src/mock/`) is kept alongside it, labeled "Simulated demo", and is not
+yet removed. See "API architecture" below.
+
+## API architecture (`src/aegis/api/`)
+
+```
+paths.py    slug validation + traversal-safe path resolution
+reader.py   fault-tolerant JSON/JSONL reading (missing/malformed -> None, never raises)
+index.py    discovers models/, data/synthetic/confrontations/**,
+            data/synthetic/adaptive_rounds/**, data/hardening/** and
+            resolves lineage between them from real fields already on
+            those artifacts (model_version, parent_confrontation_id,
+            presence of generation2_handoff.json) -- nothing is hardcoded
+            to a specific report id
+dto.py      response models. Where an artifact embeds a real
+            aegis.shared.contracts type (EvaluationResult, AttackBlueprint)
+            the DTO mirrors its fields exactly; the report-level shapes
+            (confrontation.json, adaptive_round.json, hardening
+            provenance) have no shared-contract equivalent, so a bespoke
+            adapter DTO is used instead of changing shared/
+service.py  builds DTOs from the index; only computes plain aggregates
+            (sums, ratios) of numbers already on an artifact
+app.py      FastAPI routes (GET-only)
+```
+
+Every artifact under `data/` and `models/` is git-ignored, so
+`tests/test_api_*.py` build a throwaway fixture tree
+(`tests/api_fixtures.py`) rather than depending on a pipeline run having
+happened first; the endpoints degrade to an explicit empty/"not run yet"
+state instead of erroring when no artifacts exist yet.

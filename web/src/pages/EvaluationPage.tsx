@@ -1,29 +1,60 @@
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
+import { fetchEvaluation } from "../api/client";
+import { useApiResource } from "../api/useApiResource";
 import { Badge } from "../components/ui/Badge";
 import { Card, CardHeader } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/States";
 import { StatTile } from "../components/ui/StatTile";
 import { ConfusionMatrix } from "../components/evaluation/ConfusionMatrix";
+import { ApiStateSection } from "../components/real/ApiStateSection";
+import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { RealEvaluationPanel } from "../components/real/RealEvaluationPanel";
 import { useLoop } from "../state/LoopContext";
 import { ATTACK_FAMILIES, ATTACK_FAMILY_LABEL } from "../types/aegis";
 
 export function EvaluationPage() {
   const { latest } = useLoop();
+  const evaluationFetch = useCallback((signal: AbortSignal) => fetchEvaluation(signal), []);
+  const evaluationState = useApiResource(
+    evaluationFetch,
+    [],
+    (data) => data.evaluations.length === 0,
+  );
+
+  const realSection = (
+    <Card>
+      <CardHeader
+        title="Real evaluation results"
+        subtitle="Protocol-scoped metrics read from persisted model artifacts -- baseline v1 and Defender v2, test and validation splits."
+        action={<RealDataBadge />}
+      />
+      <ApiStateSection
+        state={evaluationState}
+        emptyTitle="No real evaluations yet"
+        emptyBody="Run scripts/train_baseline_detector.py to produce evaluation_test.json / evaluation_validation.json."
+        render={(evaluation) => <RealEvaluationPanel evaluation={evaluation} />}
+      />
+    </Card>
+  );
 
   if (!latest) {
     return (
-      <EmptyState
-        title="No evaluation available yet"
-        body="Every number here is traceable to a round run in Co-Evolution. Run at least one round to populate this screen."
-        action={
-          <Link
-            to="/co-evolution"
-            className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-medium text-white transition-standard hover:bg-[var(--color-accent-500)]"
-          >
-            Go to Co-Evolution
-          </Link>
-        }
-      />
+      <div className="space-y-6">
+        {realSection}
+        <EmptyState
+          title="No mock round run yet"
+          body="The interactive demo below is traceable to a round run in Co-Evolution. Run at least one round to populate it."
+          action={
+            <Link
+              to="/co-evolution"
+              className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-medium text-white transition-standard hover:bg-[var(--color-accent-500)]"
+            >
+              Go to Co-Evolution
+            </Link>
+          }
+        />
+      </div>
     );
   }
 
@@ -31,12 +62,15 @@ export function EvaluationPage() {
 
   return (
     <div className="space-y-6">
+      {realSection}
+
       <Card>
         <CardHeader
           title={evaluation.evaluation_id}
-          subtitle="Every metric below is scoped to this evaluation and this protocol."
+          subtitle="Interactive demo (simulated) -- every metric below is scoped to this mock evaluation and protocol."
           action={
             <div className="flex gap-2">
+              <MockDataBadge />
               <Badge variant="neutral">{evaluation.protocol}</Badge>
               <Badge variant="neutral">round {evaluation.round_index}</Badge>
               <Badge variant="defend">{evaluation.model_version}</Badge>
