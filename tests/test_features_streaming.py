@@ -143,6 +143,33 @@ def test_chunk_boundary_does_not_reset_causal_history(work_dir):
     assert seconds_since == pytest.approx(1800.0)  # 30 minutes after acct-x's first row
 
 
+def test_chunk_boundary_does_not_reset_distinct_counterparty_history(work_dir):
+    """Cross-family (Defender v3) columns must survive a chunk boundary too -
+    same equivalence proof as `test_chunk_boundary_does_not_reset_causal_history`,
+    for `source_distinct_destinations_before` specifically."""
+    txns = [
+        _txn(0, source_account_id="coordinator", destination_account_id="mule-1", timestamp=T0),
+        _txn(1, source_account_id="other", timestamp=T0 + timedelta(minutes=1)),
+        _txn(
+            2,
+            source_account_id="coordinator",
+            destination_account_id="mule-2",
+            timestamp=T0 + timedelta(minutes=2),
+        ),
+    ]
+    source = work_dir / "split.jsonl"
+    _write_jsonl(source, txns)
+
+    # chunk_size=1 forces the boundary between every row, including between
+    # the coordinator's two transactions.
+    artifact = materialize_split_features(source, work_dir / "chunked", chunk_size=1)
+    features = artifact.load_features(mmap=False)
+    names = feature_columns("temporal")
+
+    distinct_before = features[2, names.index("temporal.source_distinct_destinations_before")]
+    assert distinct_before == 1.0  # saw mule-1 in an earlier chunk
+
+
 def test_row_order_and_label_alignment_preserved(work_dir):
     txns = _sequence(25)
     source = work_dir / "split.jsonl"
@@ -240,9 +267,7 @@ def test_materialize_with_extra_matches_concatenated_in_memory(work_dir):
     run over base+extra concatenated - this is the hard-positive hardening path,
     so it needs the same equivalence proof `materialize_split_features` has."""
     base_txns = _sequence(20)
-    extra_txns = [
-        _txn(100 + i, timestamp=T0 + timedelta(days=1, minutes=i * 7)) for i in range(5)
-    ]
+    extra_txns = [_txn(100 + i, timestamp=T0 + timedelta(days=1, minutes=i * 7)) for i in range(5)]
     base_source = work_dir / "base.jsonl"
     extra_source = work_dir / "extra.jsonl"
     _write_jsonl(base_source, base_txns)

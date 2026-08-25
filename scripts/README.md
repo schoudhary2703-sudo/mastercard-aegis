@@ -14,6 +14,7 @@ root with no arguments, or with `--help` explaining what it needs.
 | `run_adaptive_evasion_confrontation.py` | Apply one bounded EvasionFeedback mutation and score one fresh adaptive-evasion child against a frozen model. |
 | `run_mule_network_confrontation.py` | Generate a fresh mule-network structuring scenario and score it against a frozen model without retraining. |
 | `harden_defender.py` | Blue Hardening Round 1: promote prior Red-Team false negatives into training-only hard positives, retrain Defender v2, and compare it against the frozen baseline on untouched PaySim test. |
+| `harden_defender_crossfamily.py` | Defender v3: promote prior real hard positives from all three attack families into training-only rows, retrain, and compare v1/v2/v3 on untouched PaySim test. |
 
 Rules:
 

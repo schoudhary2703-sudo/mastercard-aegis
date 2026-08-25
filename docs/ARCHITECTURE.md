@@ -109,6 +109,19 @@ alongside (never over) the frozen baseline. See "Blue Hardening Round 1" in
 self-play (repeating generate -> retrain -> generate against the *hardened*
 detector) remain later-phase work. See `docs/ADAPTIVE_ATTACK_EVOLUTION.md`.
 
+`scripts/harden_defender_crossfamily.py` generalizes that to Defender v3: it
+promotes prior real hard positives from all three attack families
+(`synthetic_identity_bustout`, `mule_network_structuring`,
+`adaptive_detector_evasion`) into one combined training-only set and
+retrains `xgboost-hardened-crossfamily-*` alongside (never over) v1 and v2.
+It also adds two decision-time-safe, distinct-counterparty features
+(`TemporalBaselineFeatureExtractor` 0.1.0 -> 0.2.0) after inspecting the
+existing 19 columns against a real mule-network confrontation and finding
+they could not represent counterparty fan-out/fan-in. See "Cross-family
+hardening (Defender v3)" in `docs/BASELINE_DETECTOR.md`. It does not run a
+fresh Red confrontation against v3 or Leave-One-Attack-Family-Out - both
+remain a separate, later step (`docs/EVALUATION_RULES.md` SS4/SS6).
+
 `api/` now reads those persisted artifacts (models, confrontations,
 adaptive rounds, hardening runs) through a discovery/lineage layer
 (`aegis.api.index`) and serves them read-only over FastAPI

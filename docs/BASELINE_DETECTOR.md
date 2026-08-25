@@ -26,10 +26,13 @@ wrapper - so the only new runtime dependency is `xgboost` itself.
 ## Features
 
 `aegis.features.TemporalBaselineFeatureExtractor`
-(`src/aegis/features/temporal.py`), namespace `temporal.*`, 19 columns:
+(`src/aegis/features/temporal.py`), namespace `temporal.*`, 21 columns as of
+version `0.2.0` (used by Defender v3 onward; v1/v2 were trained on version
+`0.1.0`'s 19 columns - see "Cross-family hardening (Defender v3)" below):
 
 `amount`, `hour_of_day`, `source_balance_before`, `destination_balance_before`,
 `has_destination`, `source_txn_count_before`, `destination_txn_count_before`,
+`source_distinct_destinations_before`, `destination_distinct_sources_before`,
 `source_velocity_1h`, `destination_velocity_1h`, `source_avg_amount_before`,
 `amount_deviation_from_source_history`, `seconds_since_source_previous_txn`,
 `seconds_since_destination_previous_txn`, and one-hot
@@ -69,6 +72,8 @@ fraud/provenance metadata. Concretely:
 | `type_{payment,transfer,cash_in,cash_out,debit,refund}` | current-transaction-known | The request's own declared `transaction_type`; one-hot over a fixed, schema-known vocabulary. |
 | `source_txn_count_before` | prior-history-derived | Count of the source account's transactions strictly earlier than this one. |
 | `destination_txn_count_before` | prior-history-derived | Same, for the destination account. |
+| `source_distinct_destinations_before` | prior-history-derived | Count of *distinct* destination accounts the source has paid strictly earlier than this one - not volume, counterparty fan-out. Added for Defender v3, see below. |
+| `destination_distinct_sources_before` | prior-history-derived | Count of *distinct* source accounts that have paid the destination strictly earlier than this one - counterparty fan-in. Added for Defender v3, see below. |
 | `source_velocity_1h` | prior-history-derived | Count of the source account's transactions in the 1h window strictly before this one. |
 | `destination_velocity_1h` | prior-history-derived | Same, for the destination account. |
 | `source_avg_amount_before` | prior-history-derived | Running mean of the source account's amounts, over strictly earlier transactions only. |
@@ -193,6 +198,80 @@ is the explicit, unmodified-script interface (`run_bustout_confrontation.py
 --reuse-model-dir`, then `run_adaptive_bustout_round.py`) a fresh Red
 generation-2 round should confront Defender v2 with next.
 
+## Cross-family hardening (Defender v3)
+
+`scripts/harden_defender_crossfamily.py` generalizes Blue Hardening Round 1
+from one attack family to all three implemented so far. It promotes prior
+real false negatives from:
+
+1. `synthetic_identity_bustout` - the same Round-0 confrontation and selected
+   Adaptive-Round-1 candidate Defender v2 used.
+2. `mule_network_structuring` - the one real confrontation run against
+   Defender v2 (`data/synthetic/mule_confrontations/`).
+3. `adaptive_detector_evasion` - the one real confrontation run against
+   Defender v2 (`data/synthetic/adaptive_evasion_confrontations/`).
+
+into one combined, training-only hard-positive set, and retrains
+`xgboost-hardened-crossfamily-<seed>` via the identical low-memory pipeline,
+validation-only threshold tuning, and untouched-test evaluation used for
+v1/v2. `aegis.defend.hard_positives.promote_hard_positives` needed **no
+changes** - it already reads `attack_family`/`blueprint_id`/`generation`/
+`scenario_id` off the promoted `Transaction` rows themselves and never
+special-cased bust-out.
+
+Deliberately **not** promoted: the bust-out "fresh confrontation" and
+"generation-2" artifacts generated *against Defender v2*
+(`confrontation-9ad4e08145771e39`,
+`adaptive-round-1-10758c69cc2b51d5`) - those are reserved for the fresh,
+post-v3 Red evaluation this script does not perform
+(`docs/EVALUATION_RULES.md` SS4); promoting them now would consume the only
+genuinely fresh bust-out evaluation available for that later step.
+
+### Feature change: distinct-counterparty columns (v3 only)
+
+Before adding anything, the mule confrontation's real transaction graph was
+inspected against the existing 19 columns: it showed one coordinator account
+paying several distinct mule accounts, and those accounts layering funds on
+to further distinct accounts before a fan-in cash-out. `source_txn_count_before`
+/ `destination_txn_count_before` count prior transaction *volume* per
+account, never *distinct counterparties* - a source paying one destination
+six times and a source paying six distinct destinations once each were
+indistinguishable, even though only the latter is the fan-out pattern that
+defines mule-network structuring. That is a structural gap the 19 columns
+cannot close by retraining alone, not a training-data-volume problem.
+
+Two columns were added to close exactly that gap, nothing more:
+`source_distinct_destinations_before` and `destination_distinct_sources_before`
+(cumulative distinct-counterparty counts, added to `_CausalHistoryState`
+alongside the existing per-account state - see
+`tests/test_features_temporal.py`'s
+`test_fan_out_to_distinct_destinations_is_counted_separately_from_repeat_volume`
+for the concrete before/after this closes). They follow every existing rule:
+strictly-prior-only, no future edges, no labels, no post-transaction fields,
+deterministic, and bounded in memory by distinct-account count (a `set` per
+account, same order of memory as the existing `src_recent`/`dst_recent`
+deques - not a transaction graph). `TemporalBaselineFeatureExtractor.version`
+moved `0.1.0` -> `0.2.0` to mark the change. v1's and v2's frozen artifacts
+are data already on disk and are unaffected; only future runs (v3 onward)
+see 21 columns. Because the column set changed, v3's validation/test feature
+arrays are always materialized fresh - `harden_defender.py`'s
+`_maybe_reuse_baseline_features` optimization is deliberately **not** reused
+in the cross-family script, since copying v1/v2's cached 19-column arrays
+would silently score v3 on the wrong-shaped input.
+
+### Three-way regression, not a cross-family-attack claim
+
+`regression_vs_v1_v2.json`, written next to the new model artifact, compares
+v1, v2, and v3 on the untouched PaySim test split only - precision, recall,
+F1, PR-AUC, ROC-AUC, FPR, recall at fixed FPR budgets, confusion matrix,
+threshold, and latency, for all three. This is a **static-holdout**
+regression check, not evidence of cross-family attack improvement: per
+`docs/EVALUATION_RULES.md` SS4, that requires a fresh Red confrontation
+against the now-frozen v3 in each family, which is a separate, later step.
+`codex_handoff.json`, written alongside it, lists every excluded scenario and
+transaction id across all three families plus the fresh-seed requirement for
+that step, and explicitly defers Leave-One-Attack-Family-Out (SS6).
+
 ## Limitations
 
 * No cross-split history carryover (see above).
@@ -211,3 +290,15 @@ generation-2 round should confront Defender v2 with next.
   versus a version that used them; that is the correct trade for a decision
   that must be made before the transaction settles, not a regression to
   chase back.
+* The distinct-counterparty columns (Defender v3) are trained on exactly one
+  real mule confrontation scenario and one real adaptive-evasion
+  confrontation scenario - enough to prove the feature is wired correctly
+  and leakage-safe, not enough to expect the trained model to generalize.
+  Whether v3 actually catches more mule/adaptive-evasion attacks is an open
+  question the fresh, post-v3 Red confrontation (not yet run) will answer.
+* `TemporalBaselineFeatureExtractor` moved to version `0.2.0` for v3; a
+  literal byte-for-byte re-run of the v1/v2 training commands against
+  today's code would now produce 21-column features, not the 19 those two
+  frozen artifacts recorded. This is expected - the version field exists to
+  track exactly this - but no automated reproducibility check for v1/v2
+  specifically exists in this repo.

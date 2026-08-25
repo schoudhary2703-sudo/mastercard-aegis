@@ -238,3 +238,222 @@ def test_transaction_type_one_hot_is_exclusive():
     row = frame.iloc[0]
     assert row["temporal.type_cash_out"] == 1.0
     assert sum(row[c] for c in type_columns) == 1.0
+
+
+# --- cross-family (Defender v3) distinct-counterparty features -------------
+# `source_distinct_destinations_before` / `destination_distinct_sources_before`
+# were added for mule-network structuring; see the "Cross-family feature
+# addition" note in aegis.features.temporal's module docstring. Every rule
+# that applies to the original 19 columns applies to these two as well -
+# these tests are the explicit leakage proof for the new columns specifically,
+# rather than relying only on the whole-frame checks above.
+
+
+def test_first_transaction_has_zero_distinct_counterparties():
+    txns = [
+        _txn(
+            transaction_id="only-one",
+            source_account_id="fresh-src",
+            destination_account_id="fresh-dst",
+        )
+    ]
+    frame = TemporalBaselineFeatureExtractor().fit_transform(txns)
+    row = frame.iloc[0]
+    assert row["temporal.source_distinct_destinations_before"] == 0.0
+    assert row["temporal.destination_distinct_sources_before"] == 0.0
+
+
+def test_fan_out_to_distinct_destinations_is_counted_separately_from_repeat_volume():
+    """The whole point of these columns: a source paying 3 *distinct*
+    destinations must read differently from a source paying the *same*
+    destination 3 times, even though `source_txn_count_before` (prior
+    volume) is identical either way -- the original 19 columns could not
+    tell these two cases apart."""
+    fan_out = [
+        _txn(
+            transaction_id="a",
+            source_account_id="coordinator",
+            destination_account_id="mule-1",
+            timestamp=T0,
+        ),
+        _txn(
+            transaction_id="b",
+            source_account_id="coordinator",
+            destination_account_id="mule-2",
+            timestamp=T0 + timedelta(minutes=1),
+        ),
+        _txn(
+            transaction_id="c",
+            source_account_id="coordinator",
+            destination_account_id="mule-3",
+            timestamp=T0 + timedelta(minutes=2),
+        ),
+        _txn(
+            transaction_id="d",
+            source_account_id="coordinator",
+            destination_account_id="mule-4",
+            timestamp=T0 + timedelta(minutes=3),
+        ),
+    ]
+    repeat = [
+        _txn(
+            transaction_id="a",
+            source_account_id="coordinator",
+            destination_account_id="mule-1",
+            timestamp=T0,
+        ),
+        _txn(
+            transaction_id="b",
+            source_account_id="coordinator",
+            destination_account_id="mule-1",
+            timestamp=T0 + timedelta(minutes=1),
+        ),
+        _txn(
+            transaction_id="c",
+            source_account_id="coordinator",
+            destination_account_id="mule-1",
+            timestamp=T0 + timedelta(minutes=2),
+        ),
+        _txn(
+            transaction_id="d",
+            source_account_id="coordinator",
+            destination_account_id="mule-1",
+            timestamp=T0 + timedelta(minutes=3),
+        ),
+    ]
+
+    fan_out_frame = TemporalBaselineFeatureExtractor().fit_transform(fan_out)
+    repeat_frame = TemporalBaselineFeatureExtractor().fit_transform(repeat)
+
+    # Prior volume is identical in both scenarios for the 4th transaction...
+    assert (
+        fan_out_frame.iloc[3]["temporal.source_txn_count_before"]
+        == repeat_frame.iloc[3]["temporal.source_txn_count_before"]
+        == 3.0
+    )
+    # ...but distinct-destination count is not.
+    assert fan_out_frame.iloc[3]["temporal.source_distinct_destinations_before"] == 3.0
+    assert repeat_frame.iloc[3]["temporal.source_distinct_destinations_before"] == 1.0
+
+
+def test_fan_in_to_one_destination_from_distinct_sources_is_counted():
+    txns = [
+        _txn(
+            transaction_id="a",
+            source_account_id="mule-1",
+            destination_account_id="exit",
+            timestamp=T0,
+        ),
+        _txn(
+            transaction_id="b",
+            source_account_id="mule-2",
+            destination_account_id="exit",
+            timestamp=T0 + timedelta(minutes=1),
+        ),
+        _txn(
+            transaction_id="c",
+            source_account_id="mule-3",
+            destination_account_id="exit",
+            timestamp=T0 + timedelta(minutes=2),
+        ),
+    ]
+    frame = TemporalBaselineFeatureExtractor().fit_transform(txns)
+    assert frame.iloc[2]["temporal.destination_distinct_sources_before"] == 2.0
+
+
+def test_distinct_counterparty_counts_use_only_strictly_earlier_events():
+    """A late-arriving new counterparty must not affect an earlier row's count."""
+    txns = [
+        _txn(
+            transaction_id="a",
+            source_account_id="src",
+            destination_account_id="dst-1",
+            timestamp=T0,
+        ),
+        _txn(
+            transaction_id="b",
+            source_account_id="src",
+            destination_account_id="dst-2",
+            timestamp=T0 + timedelta(minutes=1),
+        ),
+    ]
+    baseline = TemporalBaselineFeatureExtractor().fit_transform(txns)
+
+    # Insert a third, later transaction to a brand-new destination.
+    mutated = [
+        *txns,
+        _txn(
+            transaction_id="c",
+            source_account_id="src",
+            destination_account_id="dst-3",
+            timestamp=T0 + timedelta(minutes=2),
+        ),
+    ]
+    mutated_frame = TemporalBaselineFeatureExtractor().fit_transform(mutated)
+
+    assert (
+        baseline.iloc[0]["temporal.source_distinct_destinations_before"]
+        == mutated_frame.iloc[0]["temporal.source_distinct_destinations_before"]
+        == 0.0
+    )
+    assert (
+        baseline.iloc[1]["temporal.source_distinct_destinations_before"]
+        == mutated_frame.iloc[1]["temporal.source_distinct_destinations_before"]
+        == 1.0
+    )
+    # Only the new row itself sees the count grow to 2.
+    assert mutated_frame.iloc[2]["temporal.source_distinct_destinations_before"] == 2.0
+
+
+def test_repeated_destination_does_not_double_count_distinct_destinations():
+    txns = [
+        _txn(
+            transaction_id="a",
+            source_account_id="src",
+            destination_account_id="dst-1",
+            timestamp=T0,
+        ),
+        _txn(
+            transaction_id="b",
+            source_account_id="src",
+            destination_account_id="dst-1",
+            timestamp=T0 + timedelta(minutes=1),
+        ),
+        _txn(
+            transaction_id="c",
+            source_account_id="src",
+            destination_account_id="dst-1",
+            timestamp=T0 + timedelta(minutes=2),
+        ),
+    ]
+    frame = TemporalBaselineFeatureExtractor().fit_transform(txns)
+    assert frame.iloc[2]["temporal.source_distinct_destinations_before"] == 1.0
+
+
+def test_no_destination_leaves_distinct_counterparty_features_at_zero():
+    txns = [_txn(transaction_id="cashout", destination_account_id=None)]
+    frame = TemporalBaselineFeatureExtractor().fit_transform(txns)
+    row = frame.iloc[0]
+    assert row["temporal.source_distinct_destinations_before"] == 0.0
+    assert row["temporal.destination_distinct_sources_before"] == 0.0
+
+
+def test_distinct_counterparty_features_are_deterministic():
+    txns = [
+        _txn(
+            transaction_id="a",
+            source_account_id="src",
+            destination_account_id="dst-1",
+            timestamp=T0,
+        ),
+        _txn(
+            transaction_id="b",
+            source_account_id="src",
+            destination_account_id="dst-2",
+            timestamp=T0 + timedelta(minutes=1),
+        ),
+    ]
+    extractor = TemporalBaselineFeatureExtractor().fit(txns)
+    first = extractor.transform(txns)
+    second = extractor.transform(txns)
+    assert first.equals(second)

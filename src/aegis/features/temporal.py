@@ -35,6 +35,24 @@ canonical `Transaction` contract carries them (they exist for provenance and
 downstream analysis, not for a real-time authorization decision). See
 "Decision-time feature policy" in `docs/BASELINE_DETECTOR.md` for the full
 per-feature audit.
+
+Cross-family feature addition (Defender v3): `source_distinct_destinations_before`
+and `destination_distinct_sources_before` count *distinct* prior counterparties
+per account - not prior transaction volume, which `source_txn_count_before` /
+`destination_txn_count_before` already cover. They exist because a real
+mule-network-structuring confrontation (`data/synthetic/mule_confrontations/`)
+showed a coordinator account paying several distinct mule accounts, and mule
+accounts layering funds on to further distinct accounts before a fan-in
+cash-out - a graph shape the other 19 columns cannot represent, since they
+track *how many* payments an account made, never *how many different
+counterparties*. Both new columns follow the exact same rules as every other
+feature here: strictly-prior-only (folded into `_CausalHistoryState` via the
+same `compute()`-then-`observe()` contract), no future edges, no labels, no
+post-transaction fields, deterministic given a fixed input order, and bounded
+in memory by distinct-account count (a `set` of counterparty ids per account,
+same order of memory as the existing `src_recent`/`dst_recent` deques - not a
+full transaction graph). They are cumulative counts (matching
+`source_txn_count_before`'s convention), not windowed.
 """
 
 from __future__ import annotations
@@ -63,6 +81,8 @@ FEATURE_SUFFIXES: list[str] = [
     "has_destination",
     "source_txn_count_before",
     "destination_txn_count_before",
+    "source_distinct_destinations_before",
+    "destination_distinct_sources_before",
     "source_velocity_1h",
     "destination_velocity_1h",
     "source_avg_amount_before",
@@ -71,8 +91,19 @@ FEATURE_SUFFIXES: list[str] = [
     "seconds_since_destination_previous_txn",
     *[f"type_{value}" for value in _KNOWN_TYPES],
 ]
-"""Un-namespaced feature names, in emission order. 19 columns: 13 scalar/
-history features plus one-hot over the 6 known transaction types."""
+"""Un-namespaced feature names, in emission order. 21 columns: 15 scalar/
+history features plus one-hot over the 6 known transaction types.
+
+`source_distinct_destinations_before` / `destination_distinct_sources_before`
+are the Defender-v3 cross-family addition (see `docs/BASELINE_DETECTOR.md`
+"Cross-family hardening (Defender v3)"): a minimal, decision-time-safe
+counterparty-fan-out signal added because the other 19 columns count total
+prior transaction *volume* per account but never distinct *counterparties*,
+so a source paying one destination six times and a source paying six
+distinct destinations once each were indistinguishable - exactly the
+difference between ordinary repeat payments and mule-network structuring's
+fan-out/layering pattern. See the module-level "Cross-family feature
+addition" note below for the full reasoning and the leakage argument."""
 
 
 def feature_columns(namespace: str) -> list[str]:
@@ -95,7 +126,9 @@ class _CausalHistoryState:
         "dst_count",
         "dst_last_ts",
         "dst_recent",
+        "dst_src_seen",
         "src_count",
+        "src_dst_seen",
         "src_last_ts",
         "src_recent",
         "src_sum",
@@ -111,6 +144,10 @@ class _CausalHistoryState:
         self.dst_count: dict[str, int] = defaultdict(int)
         self.dst_last_ts: dict[str, datetime] = {}
         self.dst_recent: dict[str, deque[datetime]] = defaultdict(deque)
+        # Distinct-counterparty sets, bounded by distinct-account count - see
+        # "Cross-family feature addition" in the module docstring.
+        self.src_dst_seen: dict[str, set[str]] = defaultdict(set)
+        self.dst_src_seen: dict[str, set[str]] = defaultdict(set)
 
     def compute(self, txn: Transaction) -> list[float]:
         """Feature values for `txn`, in `FEATURE_SUFFIXES` order."""
@@ -163,6 +200,8 @@ class _CausalHistoryState:
             1.0 if dst else 0.0,
             float(self.src_count[src]),
             float(self.dst_count[dst]) if dst else 0.0,
+            float(len(self.src_dst_seen[src])),
+            float(len(self.dst_src_seen[dst])) if dst else 0.0,
             source_velocity_1h,
             destination_velocity_1h,
             source_avg_amount_before,
@@ -186,13 +225,18 @@ class _CausalHistoryState:
             self.dst_count[dst] += 1
             self.dst_last_ts[dst] = txn.timestamp
             self.dst_recent[dst].append(txn.timestamp)
+            self.src_dst_seen[src].add(dst)
+            self.dst_src_seen[dst].add(src)
 
 
 class TemporalBaselineFeatureExtractor(BaseFeatureExtractor):
     """Baseline per-transaction and per-account-history features."""
 
     namespace = "temporal"
-    version = "0.1.0"
+    version = "0.2.0"
+    """Bumped from 0.1.0: adds the two distinct-counterparty columns for
+    Defender v3 cross-family hardening. See the module docstring's
+    "Cross-family feature addition" note."""
 
     def fit(
         self, transactions: Sequence[Transaction], meta: dict[str, Any] | None = None
