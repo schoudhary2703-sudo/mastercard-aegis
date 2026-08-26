@@ -24,7 +24,9 @@ from aegis.api.dto import (
     AttacksResponseDTO,
     EvaluationResponseDTO,
     EvolutionResponseDTO,
+    ExperimentsResponseDTO,
     FinalBenchmarkSummaryDTO,
+    GenAIResponseDTO,
     HardestEvasionsResponseDTO,
     OverviewResponseDTO,
     RecentDetectionsResponseDTO,
@@ -113,6 +115,26 @@ def get_hardest_evasions(
     settings = get_settings()
     index = service.build_index(settings)
     return service.build_hardest_evasions(index, settings, limit=limit)
+
+
+@app.get("/api/experiments", response_model=ExperimentsResponseDTO)
+def get_experiments() -> ExperimentsResponseDTO:
+    """One replayable experiment per attack family, assembled from persisted
+    artifacts (see `aegis.api.experiments`). Every event is a transaction a
+    real detector really scored; nothing is generated or re-scored here. Each
+    experiment reports whether its per-transaction stream is complete."""
+    settings = get_settings()
+    index = service.build_index(settings)
+    return service.build_experiments_response(index, settings)
+
+
+@app.get("/api/genai", response_model=GenAIResponseDTO)
+def get_genai() -> GenAIResponseDTO:
+    """Persisted GenAI reasoning runs with their provenance (provider, model,
+    prompt version, live vs recorded). Returns an empty list when the GenAI
+    layer has not been run -- never placeholder reasoning."""
+    settings = get_settings()
+    return service.build_genai_response(settings)
 
 
 @app.get("/api/benchmark", response_model=FinalBenchmarkSummaryDTO)

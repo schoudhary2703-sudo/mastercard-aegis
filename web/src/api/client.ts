@@ -13,7 +13,9 @@ import type {
   AttacksResponseDTO,
   EvaluationResponseDTO,
   EvolutionResponseDTO,
+  ExperimentsResponseDTO,
   FinalBenchmarkSummaryDTO,
+  GenAIResponseDTO,
   HardestEvasionsResponseDTO,
   OverviewResponseDTO,
   RecentDetectionsResponseDTO,
@@ -91,4 +93,12 @@ export function fetchHardestEvasions(
 
 export function fetchBenchmark(signal?: AbortSignal): Promise<FinalBenchmarkSummaryDTO> {
   return getJson<FinalBenchmarkSummaryDTO>("/api/benchmark", signal);
+}
+
+export function fetchExperiments(signal?: AbortSignal): Promise<ExperimentsResponseDTO> {
+  return getJson<ExperimentsResponseDTO>("/api/experiments", signal);
+}
+
+export function fetchGenAI(signal?: AbortSignal): Promise<GenAIResponseDTO> {
+  return getJson<GenAIResponseDTO>("/api/genai", signal);
 }

@@ -6,7 +6,8 @@ import { CoEvolutionPage } from "./pages/CoEvolutionPage";
 import { EvaluationPage } from "./pages/EvaluationPage";
 import { FinalBenchmarkPage } from "./pages/FinalBenchmarkPage";
 import { LiveDetectionPage } from "./pages/LiveDetectionPage";
-import { OverviewPage } from "./pages/OverviewPage";
+import { AttackLabPage } from "./pages/AttackLabPage";
+import { MissionControlPage } from "./pages/MissionControlPage";
 import { LoopProvider } from "./state/LoopContext";
 
 export default function App() {
@@ -15,7 +16,8 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route element={<AppShell />}>
-            <Route index element={<OverviewPage />} />
+            <Route index element={<MissionControlPage />} />
+            <Route path="attack-lab" element={<AttackLabPage />} />
             <Route path="attack-studio" element={<AttackStudioPage />} />
             <Route path="live-detection" element={<LiveDetectionPage />} />
             <Route path="co-evolution" element={<CoEvolutionPage />} />

@@ -346,6 +346,100 @@ class LoafoBenchmarkDTO(ApiModel):
     source_artifact: str
 
 
+# -- attack-lab experiment replay -----------------------------------------
+
+
+class ReplayEventDTO(ApiModel):
+    """One transaction a real detector really scored, read back off disk."""
+
+    transaction_id: str
+    sequence_index: int | None = None
+    risk_score: float
+    threshold: float | None = None
+    action: str = ""
+    predicted_label: int = 0
+    ground_truth_label: int = 0
+    is_fraud: bool = False
+    caught: bool = False
+    amount: float | None = None
+    timestamp: str | None = None
+
+
+class ExperimentStageDTO(ApiModel):
+    """One defender generation's result on this family, for before/after."""
+
+    label: str
+    model_version: str = ""
+    role: str = ""
+    fraud_count: int = 0
+    caught_count: int = 0
+    escaped_count: int = 0
+    recall: float = 0.0
+
+
+class ExperimentParameterDTO(ApiModel):
+    name: str
+    value: Any = None
+    mutable: bool = False
+
+
+class ExperimentDTO(ApiModel):
+    attack_family: str
+    label: str
+    headline: str = ""
+    genai_angle: str = ""
+    attack_name: str = ""
+    blueprint_id: str = ""
+    scenario_id: str = ""
+    model_version: str = ""
+    fraud_count: int = 0
+    caught_count: int = 0
+    escaped_count: int = 0
+    recall: float = 0.0
+    fidelity_score: float | None = None
+    parameters: list[ExperimentParameterDTO] = []
+    events: list[ReplayEventDTO] = []
+    events_complete: bool = False
+    events_note: str | None = None
+    hardest_survivor: HardestEvasionDTO | None = None
+    progression: list[ExperimentStageDTO] = []
+    # The current core defender's result on this family. For a LOAFO family
+    # this is NOT the replayed stream (which is the handicapped fold model),
+    # so aggregating "how does the current defender do" must use this.
+    current_defender: ExperimentStageDTO | None = None
+    replayed_model_label: str = ""
+    source_artifacts: list[str] = []
+
+
+class ExperimentsResponseDTO(ApiModel):
+    experiments: list[ExperimentDTO] = []
+    meta: MetaDTO
+
+
+# -- GenAI reasoning runs ---------------------------------------------------
+
+
+class GenAIRunDTO(ApiModel):
+    run_id: str
+    stage: str
+    created_at: str | None = None
+    provider: str = ""
+    model: str = ""
+    prompt_version: str = ""
+    live: bool = False
+    schema_valid: bool = False
+    failure: str | None = None
+    response: dict[str, Any] | None = None
+    source_artifact: str = ""
+
+
+class GenAIResponseDTO(ApiModel):
+    runs: list[GenAIRunDTO] = []
+    attack_analyst: GenAIRunDTO | None = None
+    blind_spot_analyst: GenAIRunDTO | None = None
+    meta: MetaDTO
+
+
 class FinalBenchmarkSummaryDTO(ApiModel):
     model_comparison: ModelComparisonDTO | None = None
     fresh_family_performance: list[FreshFamilyPerformanceDTO] = []

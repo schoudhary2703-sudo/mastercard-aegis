@@ -331,3 +331,90 @@ export interface FinalBenchmarkSummaryDTO {
   claim_flags: Record<string, unknown>;
   meta: MetaDTO;
 }
+
+// -- attack-lab experiment replay -------------------------------------------
+
+export interface ReplayEventDTO {
+  transaction_id: string;
+  sequence_index: number | null;
+  risk_score: number;
+  threshold: number | null;
+  action: string;
+  predicted_label: number;
+  ground_truth_label: number;
+  is_fraud: boolean;
+  caught: boolean;
+  amount: number | null;
+  timestamp: string | null;
+}
+
+export interface ExperimentStageDTO {
+  label: string;
+  model_version: string;
+  role: string;
+  fraud_count: number;
+  caught_count: number;
+  escaped_count: number;
+  recall: number;
+}
+
+export interface ExperimentParameterDTO {
+  name: string;
+  value: unknown;
+  mutable: boolean;
+}
+
+export interface ExperimentDTO {
+  attack_family: string;
+  label: string;
+  headline: string;
+  genai_angle: string;
+  attack_name: string;
+  blueprint_id: string;
+  scenario_id: string;
+  model_version: string;
+  fraud_count: number;
+  caught_count: number;
+  escaped_count: number;
+  recall: number;
+  fidelity_score: number | null;
+  parameters: ExperimentParameterDTO[];
+  events: ReplayEventDTO[];
+  events_complete: boolean;
+  events_note: string | null;
+  hardest_survivor: HardestEvasionDTO | null;
+  progression: ExperimentStageDTO[];
+  /** Current core defender's result on this family. For a LOAFO family this is
+   * NOT the replayed stream (which is the handicapped fold model). */
+  current_defender: ExperimentStageDTO | null;
+  replayed_model_label: string;
+  source_artifacts: string[];
+}
+
+export interface ExperimentsResponseDTO {
+  experiments: ExperimentDTO[];
+  meta: MetaDTO;
+}
+
+// -- GenAI reasoning runs ---------------------------------------------------
+
+export interface GenAIRunDTO {
+  run_id: string;
+  stage: string;
+  created_at: string | null;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  live: boolean;
+  schema_valid: boolean;
+  failure: string | null;
+  response: Record<string, unknown> | null;
+  source_artifact: string;
+}
+
+export interface GenAIResponseDTO {
+  runs: GenAIRunDTO[];
+  attack_analyst: GenAIRunDTO | null;
+  blind_spot_analyst: GenAIRunDTO | null;
+  meta: MetaDTO;
+}

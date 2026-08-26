@@ -1,39 +1,47 @@
-import { useLocation } from "react-router-dom";
 import { useLoop } from "../../state/LoopContext";
-import { ResetIcon } from "./icons";
+import { MenuIcon, ResetIcon } from "./icons";
 
-const TITLES: Record<string, { title: string; subtitle: string }> = {
-  "/": { title: "Overview", subtitle: "System health and the closed loop at a glance." },
-  "/attack-studio": { title: "Attack Studio", subtitle: "Select a family and generate a synthetic attack batch." },
-  "/live-detection": { title: "Live Detection", subtitle: "Detector output per transaction, caught vs. evaded." },
-  "/co-evolution": { title: "Co-Evolution", subtitle: "Run rounds and watch attack and defense adapt to each other." },
-  "/attack-taxonomy": { title: "Attack Taxonomy", subtitle: "The three in-scope attack families and their blueprints." },
-  "/evaluation": { title: "Evaluation", subtitle: "Protocol-scoped performance for the current round." },
-};
-
-export function Topbar() {
-  const location = useLocation();
+/**
+ * Slim chrome. Page titles live on the pages themselves now, so this bar
+ * carries only the mobile menu trigger, the brand, and the data-provenance
+ * indicator. The mock-demo round counter appears only once a mock round has
+ * actually been run, so it never sits next to real data by default.
+ */
+export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { rounds, reset } = useLoop();
-  const meta = TITLES[location.pathname] ?? { title: "AEGIS", subtitle: "" };
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6">
-      <div>
-        <h1 className="text-base font-semibold text-[var(--color-ink)]">{meta.title}</h1>
-        <p className="text-xs text-[var(--color-ink-muted)]">{meta.subtitle}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-1 text-xs font-medium text-[var(--color-ink-muted)]">
-          Round {rounds.length} · Mock data
-        </span>
+    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 sm:px-5 lg:px-6">
+      <div className="flex min-w-0 items-center gap-2.5">
         <button
           type="button"
-          onClick={reset}
-          className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink-muted)] transition-standard hover:border-[var(--color-border-strong)] hover:text-[var(--color-ink)]"
+          onClick={onOpenMenu}
+          aria-label="Open navigation"
+          className="rounded-lg border border-[var(--color-border)] p-1.5 text-[var(--color-ink-muted)] transition-standard hover:text-[var(--color-ink)] lg:hidden"
         >
-          <ResetIcon />
-          Reset demo
+          <MenuIcon />
         </button>
+        <span className="truncate text-sm font-semibold text-[var(--color-ink)] lg:hidden">
+          AEGIS
+        </span>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-defend-100)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-defend-600)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-defend-600)]" />
+          Real artifacts
+        </span>
+        {rounds.length > 0 && (
+          <button
+            type="button"
+            onClick={reset}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-ink-muted)] transition-standard hover:border-[var(--color-border-strong)] hover:text-[var(--color-ink)]"
+          >
+            <ResetIcon />
+            <span className="hidden sm:inline">Reset demo ({rounds.length})</span>
+            <span className="sm:hidden">{rounds.length}</span>
+          </button>
+        )}
       </div>
     </header>
   );

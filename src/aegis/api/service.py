@@ -34,7 +34,11 @@ from aegis.api.dto import (
     EvaluationSummaryDTO,
     EvolutionResponseDTO,
     EvolutionStageDTO,
+    ExperimentDTO,
+    ExperimentsResponseDTO,
     FinalBenchmarkSummaryDTO,
+    GenAIResponseDTO,
+    GenAIRunDTO,
     HardeningSummaryDTO,
     HardestEvasionDTO,
     HardestEvasionsResponseDTO,
@@ -45,6 +49,13 @@ from aegis.api.dto import (
     RecentDetectionsResponseDTO,
     RegressionComparisonDTO,
     RegressionMetricDeltaDTO,
+)
+from aegis.api.experiments import build_experiments
+from aegis.api.genai_runs import (
+    ATTACK_ANALYST_STAGE,
+    BLIND_SPOT_ANALYST_STAGE,
+    build_genai_runs,
+    latest_by_stage,
 )
 from aegis.api.index import (
     ADAPTIVE_ROUNDS_DIR,
@@ -790,6 +801,33 @@ def build_recent_detections(
 
     return RecentDetectionsResponseDTO(
         detections=records, total_available=total_available, limit=limit, meta=_meta(settings)
+    )
+
+
+def build_experiments_response(
+    index: ArtifactIndex, settings: Settings
+) -> ExperimentsResponseDTO:
+    """Per-family replayable experiments. `aegis.api.experiments` does the
+    artifact reading; this only wraps the result in the response DTO."""
+    raw = build_experiments(settings.artifacts_root, index)
+    return ExperimentsResponseDTO(
+        experiments=[ExperimentDTO(**entry) for entry in raw], meta=_meta(settings)
+    )
+
+
+def build_genai_response(settings: Settings) -> GenAIResponseDTO:
+    """Persisted GenAI reasoning runs. Empty when none exist -- the UI says so
+    rather than showing placeholder reasoning."""
+    raw = build_genai_runs(settings.artifacts_root)
+    runs = [GenAIRunDTO(**entry) for entry in raw]
+    latest = latest_by_stage(raw)
+    attack = latest.get(ATTACK_ANALYST_STAGE)
+    blind = latest.get(BLIND_SPOT_ANALYST_STAGE)
+    return GenAIResponseDTO(
+        runs=runs,
+        attack_analyst=GenAIRunDTO(**attack) if attack else None,
+        blind_spot_analyst=GenAIRunDTO(**blind) if blind else None,
+        meta=_meta(settings),
     )
 
 

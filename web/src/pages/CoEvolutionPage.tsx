@@ -1,173 +1,213 @@
-import { useCallback, useState } from "react";
-import { fetchEvolution, fetchHardestEvasions } from "../api/client";
+import { useCallback } from "react";
+import { fetchEvolution, fetchExperiments, fetchHardestEvasions } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
+import type { ExperimentDTO } from "../api/types";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
-import { Badge } from "../components/ui/Badge";
-import { Card, CardHeader } from "../components/ui/Card";
-import { DataTable, type Column } from "../components/ui/DataTable";
-import { EmptyState } from "../components/ui/States";
-import { StatTile } from "../components/ui/StatTile";
-import { Tabs } from "../components/ui/Tabs";
+import { OutcomeBadge } from "../components/lab/ReplayStream";
 import { LoopDiagram } from "../components/loop/LoopDiagram";
-import { EvasionFeedbackPanel } from "../components/evolution/EvasionFeedbackPanel";
-import { MetricsTrendChart } from "../components/evolution/MetricsTrendChart";
-import { RoundStepper } from "../components/evolution/RoundStepper";
 import { ApiStateSection } from "../components/real/ApiStateSection";
 import { HardestEvasionsTable } from "../components/real/HardestEvasionsTable";
-import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { MockDataBadge } from "../components/real/RealBadge";
 import { RealEvolutionTimeline } from "../components/real/RealEvolutionTimeline";
-import type { RoundRecord } from "../mock/loopSimulator";
+import { Card } from "../components/ui/Card";
+import { Details } from "../components/ui/Details";
 import { useLoop } from "../state/LoopContext";
 
-type DetailTab = "summary" | "feedback";
+/**
+ * Evolution: the escape story, told with real numbers.
+ *
+ * The lead is what got through and whether hardening closed it -- that is the
+ * finding. The browser-side mock demo is still here (it is the fallback if
+ * the API dies mid-demo) but is collapsed so it cannot be mistaken for, or
+ * visually compete with, the real result.
+ */
 
-const METRIC_COLUMNS: Column<RoundRecord>[] = [
-  { key: "round", header: "Round", render: (r) => <span className="font-semibold">R{r.roundIndex}</span> },
-  { key: "model", header: "Model version", render: (r) => <span className="font-mono text-xs">{r.modelVersion}</span> },
-  { key: "recall", header: "Recall", align: "right", render: (r) => `${(r.evaluation.overall.recall * 100).toFixed(0)}%` },
-  { key: "precision", header: "Precision", align: "right", render: (r) => `${(r.evaluation.overall.precision * 100).toFixed(0)}%` },
-  { key: "alert", header: "Alert rate", align: "right", render: (r) => `${(r.evaluation.overall.alert_rate * 100).toFixed(0)}%` },
-  {
-    key: "evaded",
-    header: "Fraud evaded",
-    align: "right",
-    render: (r) => r.feedback.transaction_ids.length,
-  },
-];
+function EscapeSummary({ experiments }: { experiments: ExperimentDTO[] }) {
+  // Current-defender counters, not the per-experiment headline: a LOAFO
+  // family's headline describes the handicapped fold model, so summing those
+  // would report an escape count no deployed defender actually produces.
+  const totalEscaped = experiments.reduce(
+    (n, e) => n + (e.current_defender?.escaped_count ?? 0),
+    0,
+  );
+  const totalFraud = experiments.reduce((n, e) => n + (e.current_defender?.fraud_count ?? 0), 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2.5">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">
+            Fraud attempts
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--color-ink)]">
+            {totalFraud}
+          </p>
+        </div>
+        <div className="rounded-xl border border-[var(--color-risk-high-100)] bg-[var(--color-risk-high-100)]/40 p-3 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">
+            Escaped
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--color-risk-high-600)]">
+            {totalEscaped}
+          </p>
+        </div>
+        <div className="rounded-xl border border-[var(--color-risk-low-100)] bg-[var(--color-risk-low-100)]/40 p-3 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">
+            Caught
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--color-risk-low-600)]">
+            {totalFraud - totalEscaped}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        {experiments.map((e) => (
+          <div
+            key={e.attack_family}
+            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[var(--color-ink)]">{e.label}</p>
+              <div className="flex items-center gap-2 text-[11px] tabular-nums">
+                <span className="text-[var(--color-risk-low-600)]">
+                  {e.current_defender?.caught_count ?? e.caught_count} caught
+                </span>
+                <span className="text-[var(--color-ink-faint)]">·</span>
+                <span className="text-[var(--color-risk-high-600)]">
+                  {e.current_defender?.escaped_count ?? e.escaped_count} escaped
+                </span>
+                <span className="text-[var(--color-ink-faint)]">by v3</span>
+              </div>
+            </div>
+
+            <div className="mt-2 space-y-1.5">
+              {e.progression.map((p) => (
+                <div key={p.label + p.model_version} className="flex items-center gap-2">
+                  <span className="w-32 shrink-0 truncate text-[11px] text-[var(--color-ink-muted)] sm:w-44">
+                    {p.label}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-border)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--color-risk-low-600)]"
+                      style={{ width: `${Math.max(1, p.recall * 100)}%` }}
+                    />
+                  </div>
+                  <span className="w-16 shrink-0 text-right text-[11px] font-semibold tabular-nums text-[var(--color-ink)]">
+                    {(p.recall * 100).toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {e.hardest_survivor && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
+                <OutcomeBadge caught={false} />
+                <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[var(--color-ink-muted)]">
+                  {e.hardest_survivor.transaction_id}
+                </span>
+                <span className="text-[11px] font-semibold tabular-nums text-[var(--color-ink)]">
+                  {(e.hardest_survivor.detector_risk_score * 100).toFixed(1)}% risk
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function CoEvolutionPage() {
   const { family, setFamily, rounds, runNextRound, latest } = useLoop();
-  const [tab, setTab] = useState<DetailTab>("summary");
-  const evolutionFetch = useCallback((signal: AbortSignal) => fetchEvolution(signal), []);
-  const evolutionState = useApiResource(evolutionFetch, []);
-  const hardestFetch = useCallback((signal: AbortSignal) => fetchHardestEvasions(25, signal), []);
-  const hardestState = useApiResource(hardestFetch, [], (data) => data.evasions.length === 0);
 
-  const caught = latest ? latest.evaluation.overall.confusion.true_positive : 0;
-  const evaded = latest ? latest.feedback.transaction_ids.length : 0;
+  const evolutionFetch = useCallback((s: AbortSignal) => fetchEvolution(s), []);
+  const experimentsFetch = useCallback((s: AbortSignal) => fetchExperiments(s), []);
+  const hardestFetch = useCallback((s: AbortSignal) => fetchHardestEvasions(25, s), []);
+
+  const evolution = useApiResource(evolutionFetch, []);
+  const experiments = useApiResource(experimentsFetch, [], (d) => d.experiments.length === 0);
+  const hardest = useApiResource(hardestFetch, [], (d) => d.evasions.length === 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <header>
+        <h1 className="text-xl font-bold text-[var(--color-ink)] sm:text-2xl">Evolution</h1>
+        <p className="text-xs text-[var(--color-ink-muted)]">
+          What escaped, and whether hardening closed it.
+        </p>
+      </header>
+
       <Card>
-        <CardHeader
-          title="The real closed-loop cycle"
-          subtitle="Baseline v1 -> Round-0 attack -> Adaptive Red -> Defender v2 hardening -> fresh confrontation -> Generation-2 adaptation."
-          action={<RealDataBadge />}
-        />
+        <h2 className="mb-3 text-sm font-semibold text-[var(--color-ink)]">Escape story</h2>
         <ApiStateSection
-          state={evolutionState}
+          state={experiments}
+          emptyTitle="No experiments yet"
+          emptyBody="No persisted confrontation or LOAFO artifacts found."
+          render={(data) => <EscapeSummary experiments={data.experiments} />}
+        />
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-[var(--color-ink)]">Closed-loop timeline</h2>
+        <ApiStateSection
+          state={evolution}
           emptyTitle="No closed-loop artifacts yet"
-          emptyBody="Run the pipeline scripts (train baseline, confront, adapt, harden) to populate this timeline."
-          render={(evolution) => <RealEvolutionTimeline evolution={evolution} />}
+          emptyBody="Run the pipeline scripts to populate this timeline."
+          render={(data) => <RealEvolutionTimeline evolution={data} />}
         />
       </Card>
 
-      <Card>
-        <CardHeader
-          title="Hardest surviving attacks"
-          subtitle="Every credible evasion across real confrontations and adaptive rounds, ranked by hardness score."
-          action={<RealDataBadge />}
-        />
-        <ApiStateSection
-          state={hardestState}
-          emptyTitle="No surviving evasions yet"
-          emptyBody="This fills in once a confrontation or adaptive round produces at least one credible evasion."
-          render={(hardest) => (
-            <HardestEvasionsTable evasions={hardest.evasions} totalAvailable={hardest.total_available} />
-          )}
-        />
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Adversarial loop (interactive demo)"
-          subtitle="Each round: Identify -> Generate -> Defend -> Evaluate -> Evolve -> Retrain. Simulated in the browser, not real data."
-          action={
-            <div className="flex items-center gap-2">
-              <MockDataBadge />
-              <button
-                type="button"
-                onClick={runNextRound}
-                disabled={rounds.length >= 6}
-                className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-medium text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {rounds.length === 0 ? "Run round 0" : rounds.length >= 6 ? "Demo complete" : `Run round ${rounds.length}`}
-              </button>
-            </div>
-          }
-        />
-        <LoopDiagram active={latest ? "retrain" : "identify"} compact />
-        <div className="mt-5">
-          <AttackFamilySelector value={family} onChange={setFamily} />
+      <Card padded={false}>
+        <h2 className="px-5 pt-5 text-sm font-semibold text-[var(--color-ink)]">
+          Hardest surviving attacks
+        </h2>
+        <div className="overflow-x-auto px-5 pb-5 pt-3">
+          <ApiStateSection
+            state={hardest}
+            emptyTitle="No surviving evasions"
+            emptyBody="Fills in once a confrontation produces a credible evasion."
+            render={(data) => (
+              <HardestEvasionsTable
+                evasions={data.evasions}
+                totalAvailable={data.total_available}
+              />
+            )}
+          />
         </div>
       </Card>
 
-      <Card>
-        <CardHeader title="Round progress" subtitle="Up to 6 rounds per demo run." />
-        <RoundStepper rounds={rounds} activeIndex={rounds.length} />
-      </Card>
-
-      {!latest && (
-        <EmptyState
-          title="Run the first round"
-          body="Generates an attack batch, scores it with the current detector, evaluates the result, and derives feedback for the next generation."
-        />
-      )}
-
-      {latest && (
-        <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatTile label="Current round" value={`R${latest.roundIndex}`} />
-            <StatTile label="Model version" value={latest.modelVersion} />
-            <StatTile label="Fraud caught" value={caught} tone="positive" />
-            <StatTile label="Fraud evaded" value={evaded} tone={evaded > 0 ? "risk" : "neutral"} />
-          </div>
-
-          <Card>
-            <CardHeader title="Round-over-round metrics" subtitle="Recall should rise as the fraud evasion rate falls." />
-            <MetricsTrendChart rounds={rounds} />
-          </Card>
-
-          <Card>
-            <CardHeader
-              title={`Round ${latest.roundIndex} detail`}
-              subtitle={`Generation ${latest.generation} · blueprint ${latest.blueprint.attack_id}`}
-              action={
-                <Tabs
-                  options={[
-                    { value: "summary", label: "Summary" },
-                    { value: "feedback", label: "Evasion feedback" },
-                  ]}
-                  value={tab}
-                  onChange={setTab}
-                />
-              }
-            />
-
-            {tab === "summary" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="attack">{latest.batch.transactions.length} transactions generated</Badge>
-                <Badge variant="defend">Detector {latest.modelVersion}</Badge>
-                <Badge variant={latest.feedback.evaded ? "risk-high" : "risk-low"}>
-                  {latest.feedback.evaded ? "Attack found an evasion" : "Attack fully caught"}
-                </Badge>
-                <Badge variant="neutral">Defender strength dial: {(latest.defenderStrength * 100).toFixed(0)}%</Badge>
-              </div>
-            ) : (
-              <EvasionFeedbackPanel feedback={latest.feedback} />
+      <Details summary="Interactive browser demo (simulated, not real data)">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <MockDataBadge />
+            <button
+              type="button"
+              onClick={runNextRound}
+              disabled={rounds.length >= 6}
+              className="rounded-lg bg-[var(--color-accent-600)] px-3 py-1.5 text-xs font-semibold text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {rounds.length === 0
+                ? "Run round 0"
+                : rounds.length >= 6
+                  ? "Demo complete"
+                  : `Run round ${rounds.length}`}
+            </button>
+            {latest && (
+              <span className="text-[11px] tabular-nums text-[var(--color-ink-muted)]">
+                R{latest.roundIndex} · recall{" "}
+                {(latest.evaluation.overall.recall * 100).toFixed(0)}%
+              </span>
             )}
-          </Card>
-
-          <Card padded={false}>
-            <div className="p-5 pb-0">
-              <CardHeader title="All rounds" subtitle="Every round run this session, most recent last." />
-            </div>
-            <div className="px-5 pb-5">
-              <DataTable columns={METRIC_COLUMNS} rows={rounds} rowKey={(r) => `${r.roundIndex}`} />
-            </div>
-          </Card>
-        </>
-      )}
+          </div>
+          <LoopDiagram active={latest ? "retrain" : "identify"} compact />
+          <AttackFamilySelector value={family} onChange={setFamily} />
+          <p>
+            A deterministic client-side toy, kept as a fallback if the API becomes unreachable
+            mid-demo. It shares no code and no numbers with the real pipeline above.
+          </p>
+        </div>
+      </Details>
     </div>
   );
 }

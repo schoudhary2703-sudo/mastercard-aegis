@@ -75,3 +75,9 @@ export const ResetIcon = () => (
     <path d="M4 3v4h4" />
   </svg>
 );
+
+export const MenuIcon = () => (
+  <svg {...base} width={18} height={18}>
+    <path d="M3 6h18M3 12h18M3 18h18" />
+  </svg>
+);
