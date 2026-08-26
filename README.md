@@ -23,6 +23,14 @@ successful evasions back into training as signal for the next round.
 IDENTIFY -> GENERATE -> DEFEND -> EVALUATE -> EVOLVE -> RETRAIN
 ```
 
+**GenAI performs attack ideation, blueprint reasoning, and detector
+blind-spot analysis. Deterministic simulators generate reproducible synthetic
+transactions, and XGBoost performs detection.** A language model reasons at
+exactly two points in the loop and never emits a transaction row, fits a
+model, or produces a reported number — see
+[`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md) and "GenAI reasoning layer"
+below.
+
 | Stage | Module | Consumes | Produces |
 | --- | --- | --- | --- |
 | IDENTIFY | `identify/` | `IdentificationContext` | `AttackBlueprint` |
@@ -65,6 +73,7 @@ src/aegis/
   defend/        detector, action policy, hardening, metrics
   evaluate/      evaluator interface + confrontation reports
   loop/          attacker evolution (adaptive mutation)
+  genai/         GenAI reasoning: attack ideation + blind-spot analysis
   api/           read-only artifact API (FastAPI)
 web/             judge-facing UI (React + Vite), real data + labeled mock demo
 scripts/         reproducible entry points (train, confront, harden, benchmark)
@@ -156,6 +165,42 @@ other two; mule-network structuring does not transfer at all in this
 benchmark. Generalization is **partial**, not universal -- see
 [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) for exactly what is and is
 not supported by this result.
+
+## GenAI reasoning layer
+
+A language model is used for **reasoning only**, at two points that bracket
+the deterministic core:
+
+```
+research/taxonomy -> [GenAI ATTACK ANALYST] -> structured blueprint parameters
+                  -> deterministic simulator -> XGBoost defender
+                  -> evasion + fidelity feedback
+                  -> [GenAI BLIND-SPOT ANALYST] -> bounded mutation proposal
+                  -> next simulation
+```
+
+* **Attack Analyst** turns researched fraud-taxonomy material into a
+  structured attack hypothesis with recommended simulator parameters.
+* **Blind-Spot Analyst** reads a real detector's real failures (missed
+  transactions, the risk scores actually assigned, the signals that drove
+  them) and proposes bounded next-generation mutations.
+
+The numeric simulator stays deterministic on purpose: every corpus must be
+reproducible from its seed, fidelity is a structural gate rather than a
+judgement call, and mutation proposals are bounded to parameters the
+blueprint declares mutable (rejected, never clamped, if out of bounds). If no
+API key is configured the layer **fails loudly** — there is no fallback that
+produces default reasoning text, and an offline replay is always stamped
+`live: false` in its artifact.
+
+```bash
+python -m pip install -e ".[genai]"
+export ANTHROPIC_API_KEY=...    # never committed
+python scripts/run_genai_analysis.py attack-analyst --scenario synthetic-identity-bustout
+```
+
+Full contract, artifact format, configuration, and the exact claims this
+supports: [`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md).
 
 ## Real API + UI
 
@@ -267,6 +312,7 @@ no-backend fallback path: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 | [`docs/SYNTHETIC_IDENTITY_BUSTOUT.md`](docs/SYNTHETIC_IDENTITY_BUSTOUT.md), [`docs/MULE_NETWORK_STRUCTURING.md`](docs/MULE_NETWORK_STRUCTURING.md), [`docs/ADAPTIVE_DETECTOR_EVASION.md`](docs/ADAPTIVE_DETECTOR_EVASION.md) | The three Red Team generators, one doc each. |
 | [`docs/ADAPTIVE_ATTACK_EVOLUTION.md`](docs/ADAPTIVE_ATTACK_EVOLUTION.md), [`docs/RED_BLUE_CONFRONTATION.md`](docs/RED_BLUE_CONFRONTATION.md) | Adaptive evolution and the confrontation harness. |
 | [`docs/UI_DESIGN_SYSTEM.md`](docs/UI_DESIGN_SYSTEM.md) | The UI's screens, real-vs-mock labeling, and visual language. |
+| [`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md) | Where GenAI reasons, and why the simulator stays deterministic. |
 | [`docs/DEMO_FLOW.md`](docs/DEMO_FLOW.md) | Running the judge demo. |
 | [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) | What this submission does and does not claim. |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploying the demo. |

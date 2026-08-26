@@ -17,6 +17,7 @@ are implemented **in parallel, by separate agents**, in the same repo.
 | `src/aegis/features/**` | **Blue Team (lead)** | Blue Team edits; Red Team reads `feature_names`. |
 | `src/aegis/evaluate/**` | **Both, jointly** | Needs sign-off from both. Decides what "better" means. |
 | `src/aegis/loop/**` | **Integration owner** | Phase 2. Not before both teams have working implementations. |
+| `src/aegis/genai/**` | **Integration owner** | Reasoning layer only. Must never generate transactions, fit a model, or produce a reported number - see `docs/GENAI_LAYER.md`. |
 | `src/aegis/api/**`, `web/**` | **Integration owner** | Phase 3. |
 | `tests/**` | Whoever owns the code under test | Add tests beside your module; do not edit another team's tests. |
 | `docs/**`, `README.md`, `AGENTS.md` | **Both** | Update when your change makes them wrong. |

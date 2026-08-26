@@ -52,6 +52,7 @@ generate/ -> shared
 features/ -> shared
 defend/   -> shared
 evaluate/ -> shared
+genai/    -> shared
 loop/     -> shared, and (uniquely) both teams' packages
 api/      -> shared, and read-only views of results
 ```
@@ -62,6 +63,10 @@ api/      -> shared, and read-only views of results
 * `loop/` is the only AEGIS package allowed to import from both sides. No AEGIS
   package imports from `loop/`; integration entry-point scripts may invoke it.
 * `api/` and `web/` are read-only consumers of contracts. They compute nothing.
+* `genai/` imports `shared/` only. It reasons over already-persisted artifact
+  data passed in as plain values, so it needs neither team's packages - and
+  must never gain them, since a reasoning layer that could call a generator
+  or a detector directly would break the determinism boundary below.
 
 Import direction is the architecture. If a task seems to require breaking one
 of these rules, the contract is wrong - fix the contract, do not add the import.
@@ -79,6 +84,8 @@ src/aegis/
   defend/        detector interface + action policy     (Blue Team)
   evaluate/      evaluator interface                    (shared, sign-off)
   loop/          attacker evolution orchestration       (Phase 2 v1)
+  genai/         GenAI reasoning: attack ideation +
+                 detector blind-spot analysis           (see docs/GENAI_LAYER.md)
   api/           read-only artifact index + FastAPI     (Phase 3, integration owner)
 web/             demo UI + typed real-data client       (Phase 3, integration owner)
 data/            datasets and generated corpora         (git-ignored)
@@ -130,6 +137,15 @@ alongside (never over) the prior one:
 Not yet done: multi-round self-play (retrain -> fresh Red generation ->
 retrain, repeated beyond the sequence already run) -- see README
 "Limitations".
+
+`genai/` adds the reasoning layer that brackets this deterministic core:
+an **Attack Analyst** turns researched taxonomy material into structured
+simulator parameters, and a **Blind-Spot Analyst** turns a detector's real,
+already-persisted failures into bounded mutation proposals. It produces no
+transactions and no metrics -- the simulators and detectors above remain the
+only things that generate numbers, which is what keeps every corpus
+reproducible from its seed. Full contract and enforcement:
+`docs/GENAI_LAYER.md`.
 
 `api/` reads those persisted artifacts (models, confrontations, adaptive
 rounds, hardening runs, LOAFO fold reports) through a discovery/lineage

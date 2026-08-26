@@ -29,6 +29,7 @@ data/synthetic/*
 data/external/*
 data/hardening/*
 data/reports/*
+data/genai/*
 !data/**/.gitkeep
 !data/**/README.md
 

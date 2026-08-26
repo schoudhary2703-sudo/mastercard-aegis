@@ -32,10 +32,13 @@ dev = [
     "mypy>=1.10",
 ]
 # `api` powers the implemented read-only FastAPI service (`src/aegis/api/`,
-# `uvicorn aegis.api.app:app`); not installed by default so the minimal
-# training/generation path stays dependency-light. `viz` is a placeholder
-# extra with no current use in this repo.
+# `uvicorn aegis.api.app:app`); `genai` powers the live reasoning layer
+# (`src/aegis/genai/`, `scripts/run_genai_analysis.py`). Neither is installed
+# by default so the training/generation path stays dependency-light, and
+# `aegis.genai`'s schemas, prompts and tests all work without the SDK
+# present. `viz` is a placeholder extra with no current use in this repo.
 api = ["fastapi>=0.110", "uvicorn>=0.29"]
+genai = ["anthropic>=0.40"]
 viz = ["matplotlib>=3.8"]
 
 [tool.hatch.build.targets.wheel]
@@ -107,6 +110,13 @@ disallow_untyped_decorators = false
 # pandas/numpy stubs are optional; the contracts do not depend on their types.
 [[tool.mypy.overrides]]
 module = ["pandas.*", "numpy.*"]
+ignore_missing_imports = true
+
+# `anthropic` ships with the optional `genai` extra only, and is imported
+# lazily inside AnthropicProvider, so a checkout without the extra must still
+# typecheck clean.
+[[tool.mypy.overrides]]
+module = ["anthropic.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]
