@@ -1,0 +1,171 @@
+{
+  "benchmark_version": "generation-scale-v1",
+  "benchmark_scope": "Generation only: no detector scoring, PaySim pipeline run, fitting, or retraining.",
+  "environment": {
+    "python": "3.14.7",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "implementation": "cpython"
+  },
+  "families": [
+    {
+      "attack_family": "synthetic_identity_bustout",
+      "blueprint_id": "synthetic-identity-bustout-v1",
+      "generator_name": "synthetic-identity-bustout",
+      "generator_version": "1.0.0",
+      "seed": 20261001,
+      "scenarios_generated": 1000,
+      "transactions_generated": 15000,
+      "fraud_transactions_generated": 3000,
+      "generation_seconds": 0.908164399999805,
+      "throughput_transactions_per_second": 16516.833295825316,
+      "reference_basis": "precomputed_paysim_train_features",
+      "reference_sample_count": 4459944,
+      "distributional_fidelity_score": 0.7448207476666138,
+      "fidelity_excluding_constraints": 0.8497464156287522,
+      "generator_reported_overall_fidelity_score": 0.8797971325030017,
+      "family_specific_fidelity_components": {
+        "amount_distribution": {
+          "warmup_amount_similarity": 0.7555556947043409
+        },
+        "temporal_behavior": {
+          "temporal_spacing_reasonableness": 1.0
+        },
+        "transaction_type_behavior": {
+          "transaction_type_similarity": 0.7340858006288867
+        },
+        "structural_topology": {
+          "transition_multiplier_similarity": 0.909344167181781
+        }
+      },
+      "constraint_violation_rate": 0.0,
+      "constraint_valid_percentage": 100.0,
+      "violations_detected": false,
+      "deterministic_reproducibility": {
+        "verified": true,
+        "first_fingerprint_sha256": "86c12c6e6ca707cb57a138f681aaa4caaa83d59ab9a85b563afd24f2332cd5c0",
+        "repeat_fingerprint_sha256": "86c12c6e6ca707cb57a138f681aaa4caaa83d59ab9a85b563afd24f2332cd5c0",
+        "repeat_generation_seconds": 0.8516308000016579
+      },
+      "historical_scenario_id_overlap_count": 0,
+      "historical_scenario_id_overlaps": [],
+      "limitations": [
+        "Fidelity is descriptive similarity to the declared train-only reference, not certification of real fraud realism.",
+        "Constraint validity reports simulator invariants and is not distributional fidelity.",
+        "Throughput is a single-process development-machine observation, not an SLA."
+      ]
+    },
+    {
+      "attack_family": "mule_network_structuring",
+      "blueprint_id": "mule-network-structuring-v1",
+      "generator_name": "mule-network-structuring",
+      "generator_version": "1.0.0",
+      "seed": 20261002,
+      "scenarios_generated": 1000,
+      "transactions_generated": 26000,
+      "fraud_transactions_generated": 12000,
+      "generation_seconds": 1.2050378999992972,
+      "throughput_transactions_per_second": 21576.084868380625,
+      "reference_basis": "precomputed_paysim_train_features",
+      "reference_sample_count": 4459944,
+      "distributional_fidelity_score": 0.39052671076018924,
+      "fidelity_excluding_constraints": 0.80493226040465,
+      "generator_reported_overall_fidelity_score": 0.8266064536930222,
+      "family_specific_fidelity_components": {
+        "amount_distribution": {
+          "amount_distribution_realism": 0.509038975921623
+        },
+        "temporal_behavior": {
+          "temporal_spacing_reasonableness": 1.0
+        },
+        "transaction_type_behavior": {
+          "transfer_type_realism": 0.27201444559875554
+        },
+        "structural_topology": {
+          "fan_out_reasonableness": 1.0,
+          "fan_in_reasonableness": 1.0,
+          "mule_account_reuse_score": 0.6666666666666666,
+          "destination_diversity_score": 1.0,
+          "structuring_consistency": 0.9917379950501548
+        }
+      },
+      "constraint_violation_rate": 0.0,
+      "constraint_valid_percentage": 100.0,
+      "violations_detected": false,
+      "deterministic_reproducibility": {
+        "verified": true,
+        "first_fingerprint_sha256": "125cbfb2c3cfe9b6038596fd77d9b3cec562c58183c7b46500810dca7b7afb79",
+        "repeat_fingerprint_sha256": "125cbfb2c3cfe9b6038596fd77d9b3cec562c58183c7b46500810dca7b7afb79",
+        "repeat_generation_seconds": 1.3430450999985624
+      },
+      "historical_scenario_id_overlap_count": 0,
+      "historical_scenario_id_overlaps": [],
+      "limitations": [
+        "Fidelity is descriptive similarity to the declared train-only reference, not certification of real fraud realism.",
+        "Constraint validity reports simulator invariants and is not distributional fidelity.",
+        "Throughput is a single-process development-machine observation, not an SLA."
+      ]
+    },
+    {
+      "attack_family": "adaptive_detector_evasion",
+      "blueprint_id": "adaptive-detector-evasion-v1",
+      "generator_name": "adaptive-detector-evasion",
+      "generator_version": "1.0.0",
+      "seed": 20261003,
+      "scenarios_generated": 1000,
+      "transactions_generated": 14000,
+      "fraud_transactions_generated": 4000,
+      "generation_seconds": 0.6462802999994892,
+      "throughput_transactions_per_second": 21662.42727808826,
+      "reference_basis": "precomputed_paysim_train_features",
+      "reference_sample_count": 4459944,
+      "distributional_fidelity_score": 0.6173927747119682,
+      "fidelity_excluding_constraints": 0.7927709666422749,
+      "generator_reported_overall_fidelity_score": 0.8186745958119905,
+      "family_specific_fidelity_components": {
+        "amount_distribution": {
+          "context_amount_similarity": 0.7555551442428825,
+          "fraud_amount_similarity": 0.6501569876345256
+        },
+        "temporal_behavior": {
+          "temporal_pacing_reasonableness": 1.0
+        },
+        "transaction_type_behavior": {
+          "transaction_type_similarity": 0.4464661922584963
+        },
+        "structural_topology": {
+          "history_blend_consistency": 0.6983434423600198,
+          "destination_diversity_score": 1.0,
+          "perturbation_budget_score": 0.998875
+        }
+      },
+      "constraint_violation_rate": 0.0,
+      "constraint_valid_percentage": 100.0,
+      "violations_detected": false,
+      "deterministic_reproducibility": {
+        "verified": true,
+        "first_fingerprint_sha256": "9ccd9de36b78b85fde295ccb7010f464bf0eead1f18bb40c9e81a2ad5391dcf0",
+        "repeat_fingerprint_sha256": "9ccd9de36b78b85fde295ccb7010f464bf0eead1f18bb40c9e81a2ad5391dcf0",
+        "repeat_generation_seconds": 0.808382299999721
+      },
+      "historical_scenario_id_overlap_count": 0,
+      "historical_scenario_id_overlaps": [],
+      "limitations": [
+        "Fidelity is descriptive similarity to the declared train-only reference, not certification of real fraud realism.",
+        "Constraint validity reports simulator invariants and is not distributional fidelity.",
+        "Throughput is a single-process development-machine observation, not an SLA."
+      ]
+    }
+  ],
+  "summary": {
+    "family_count": 3,
+    "total_scenarios": 3000,
+    "total_transactions": 55000,
+    "total_fraud_transactions": 19000,
+    "total_generation_seconds": 2.7594825999985915,
+    "aggregate_throughput_transactions_per_second": 19931.27262336355,
+    "all_constraints_valid": true,
+    "all_deterministic": true,
+    "historical_scenario_id_overlap_count": 0,
+    "deeply_simulated_families": 3
+  }
+}

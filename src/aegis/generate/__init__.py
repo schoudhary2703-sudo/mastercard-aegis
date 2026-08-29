@@ -36,6 +36,18 @@ from aegis.generate.paysim import (
     prepare_paysim,
     validate_paysim_schema,
 )
+from aegis.generate.reference_snapshot import (
+    GenerationReferenceSnapshot,
+    SnapshotArtifact,
+    build_reference_snapshot,
+    sha256_file,
+)
+from aegis.generate.scale_benchmark import (
+    FamilyGenerationBenchmark,
+    GenerationBenchmarkCase,
+    GenerationScaleBenchmark,
+    run_generation_scale_benchmark,
+)
 from aegis.generate.synthetic_identity import (
     BustOutFidelitySummary,
     PaySimReferenceProfile,
@@ -55,7 +67,11 @@ __all__ = [
     "BaseGenerator",
     "BlueprintNotSupportedError",
     "BustOutFidelitySummary",
+    "FamilyGenerationBenchmark",
+    "GenerationBenchmarkCase",
     "GenerationConfig",
+    "GenerationReferenceSnapshot",
+    "GenerationScaleBenchmark",
     "MuleNetworkConfigurationError",
     "MuleNetworkFidelitySummary",
     "MuleNetworkReferenceProfile",
@@ -67,10 +83,14 @@ __all__ = [
     "PaySimRowError",
     "PaySimSchemaError",
     "PaySimSplitMode",
+    "SnapshotArtifact",
     "SyntheticIdentityBustOutGenerator",
     "SyntheticIdentityConfigurationError",
+    "build_reference_snapshot",
     "map_paysim_row",
     "prepare_paysim",
+    "run_generation_scale_benchmark",
+    "sha256_file",
     "validate_paysim_schema",
     "write_synthetic_identity_artifacts",
 ]

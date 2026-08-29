@@ -21,6 +21,14 @@ from aegis.identify.synthetic_identity import (
     SyntheticIdentityBlueprintIdentifier,
     build_synthetic_identity_blueprint,
 )
+from aegis.identify.taxonomy import (
+    FraudScenario,
+    FraudTaxonomy,
+    ImplementationStatus,
+    SimulationReadiness,
+    TaxonomySummary,
+    build_fraud_taxonomy,
+)
 
 __all__ = [
     "ADAPTIVE_EVASION_BLUEPRINT_PROMPT",
@@ -28,10 +36,16 @@ __all__ = [
     "SYNTHETIC_IDENTITY_BLUEPRINT_PROMPT",
     "AdaptiveEvasionBlueprintIdentifier",
     "BaseAttackIdentifier",
+    "FraudScenario",
+    "FraudTaxonomy",
     "IdentificationContext",
+    "ImplementationStatus",
     "MuleNetworkBlueprintIdentifier",
+    "SimulationReadiness",
     "SyntheticIdentityBlueprintIdentifier",
+    "TaxonomySummary",
     "build_adaptive_evasion_blueprint",
+    "build_fraud_taxonomy",
     "build_mule_network_blueprint",
     "build_synthetic_identity_blueprint",
 ]

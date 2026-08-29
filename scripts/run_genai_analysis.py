@@ -86,7 +86,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--confrontation-dir",
         type=Path,
         required=True,
-        help="a data/synthetic/confrontations/<id>/ directory",
+        help="any family confrontation directory containing confrontation/blueprint artifacts",
+    )
+    blind.add_argument(
+        "--request-only",
+        action="store_true",
+        help=(
+            "validate and print the Blind-Spot request without building a provider or using credits"
+        ),
     )
 
     return parser
@@ -161,6 +168,11 @@ def _build_blind_spot_request(
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.command == "blind-spot" and args.request_only:
+        blind_request, _ = _build_blind_spot_request(args.confrontation_dir)
+        print(blind_request.to_json(indent=2))
+        return 0
 
     try:
         provider = build_provider(

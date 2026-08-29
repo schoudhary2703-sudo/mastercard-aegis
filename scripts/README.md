@@ -16,6 +16,12 @@ root with no arguments, or with `--help` explaining what it needs.
 | `harden_defender.py` | Blue Hardening Round 1: promote prior Red-Team false negatives into training-only hard positives, retrain Defender v2, and compare it against the frozen baseline on untouched PaySim test. |
 | `harden_defender_crossfamily.py` | Defender v3: promote prior real hard positives from all three attack families into training-only rows, retrain, and compare v1/v2/v3 on untouched PaySim test. |
 | `run_loafo_benchmark.py` | LOAFO: three Leave-One-Attack-Family-Out folds, each trained on two families and scored on one fresh scenario of the third, compared against Defender v3's memorization. |
+| `export_attack_taxonomy.py` | Export the evidence-backed broad fraud taxonomy while keeping exactly three deep simulations. |
+| `build_generation_reference_snapshot.py` | Build hash-bound train-only reference statistics and Defender v3 freshness membership for fast runs. |
+| `run_generation_scale_benchmark.py` | Measure deterministic generation throughput, per-family fidelity, constraint validity, and historical ID separation without detector scoring. |
+| `run_genai_analysis.py` | Run GenAI attack/blind-spot analysis, or validate multi-family blind-spot input with `--request-only` and no provider call. |
+| `run_genai_guided_generation.py` | Apply a persisted GenAI artifact under mutation bounds, generate deterministically, and score with a frozen detector. |
+| `run_fast_genai_guided_demo.py` | Judge-window guided run using the persisted live artifact, precomputed reference snapshot, and frozen Defender v3; no provider call or retraining. |
 
 Rules:
 

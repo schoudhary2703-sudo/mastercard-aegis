@@ -143,6 +143,35 @@ Analyze one real persisted evasion (Blind-Spot Analyst):
 python scripts/run_genai_analysis.py blind-spot --confrontation-dir submission/artifacts/data/synthetic/confrontations/confrontation-416e606888de1ffa
 ```
 
+The same input path accepts mule-network and adaptive-evasion confrontation
+directories because all three persist the common blueprint, confrontation and
+hardest-evasion evidence needed by the request builder. Inspect either request
+without building a provider or spending API credits:
+
+```bash
+python scripts/run_genai_analysis.py blind-spot \
+  --confrontation-dir data/synthetic/mule_confrontations/<run-id> \
+  --request-only
+python scripts/run_genai_analysis.py blind-spot \
+  --confrontation-dir data/synthetic/adaptive_evasion_confrontations/<run-id> \
+  --request-only
+```
+
+Omit `--request-only` only when a human explicitly wants a live analysis. No
+live mule or adaptive artifact is included or implied by this input support.
+
+Run the judge-window path using the already-persisted live bust-out artifact,
+hash-bound train-only reference statistics and frozen Defender v3:
+
+```bash
+python scripts/run_fast_genai_guided_demo.py
+```
+
+This path still validates mutation bounds and freshness. Base PaySim rows are
+proven disjoint by their frozen `paysim-` ID namespace and absence of scenario
+IDs; the 67 additional Defender v3 training rows are checked by exact persisted
+transaction/scenario membership. It does not call a GenAI provider or retrain.
+
 Replay a prior run with no network or key:
 
 ```bash
