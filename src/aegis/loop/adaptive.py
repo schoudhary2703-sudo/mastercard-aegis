@@ -629,6 +629,38 @@ def compare_rounds(round0: RoundAttackMetrics, round1: RoundAttackMetrics) -> Ro
     )
 
 
+def move_parameter(
+    spec: ParameterSpec,
+    current: Any,
+    direction: MutationDirection,
+    magnitude: float,
+) -> int | float:
+    """Public reuse surface for the deterministic single-parameter step.
+
+    Exposed so a second caller (the GenAI handoff adapter in
+    `aegis.loop.genai_handoff`) applies the *same* bounded arithmetic as the
+    built-in optimizer instead of reimplementing it. Behaviour is unchanged;
+    this only delegates.
+    """
+    return _move_parameter(spec, current, direction, magnitude)
+
+
+def build_mutated_blueprint(
+    parent: AttackBlueprint,
+    changes: Mapping[str, Mapping[str, Any]],
+    *,
+    seed: int,
+    index: int = 0,
+) -> AttackBlueprint:
+    """Public reuse surface for deterministic child-blueprint construction.
+
+    Same contract as the internal path: the child's `attack_id` is a hash of
+    (parent, seed, index, changes), so an identical seed and identical
+    changes always reproduce an identical blueprint.
+    """
+    return _mutated_blueprint(parent, changes, seed=seed, index=index)
+
+
 def _move_parameter(
     spec: ParameterSpec,
     current: Any,

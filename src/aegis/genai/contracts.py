@@ -37,6 +37,22 @@ MAX_MUTATION_PROPOSALS: int = 6
 """Upper bound on proposals per blind-spot run, so one call cannot enumerate
 an unbounded search space."""
 
+MutationScalar = bool | int | float | str | None
+"""Every value a blueprint parameter can legally take, and nothing else.
+
+`ParameterSpec.param_type` spans int / float / duration_seconds / bool /
+string / categorical, so a SET proposal needs one scalar per declared type --
+but never a container. Excluding `list` and `dict` is the point: a structured
+`proposed_value` is the one shape that could carry transaction rows across the
+GenAI boundary, and typing it out makes that a validation failure rather than
+something a downstream check has to catch. Every parameter every AEGIS
+blueprint actually declares today is int or float; the wider scalar set exists
+so a SET on a bool/string/categorical parameter stays expressible.
+
+This is also what makes the schema transmittable: `Any` renders as a schema
+with no `type`, which Anthropic's structured-output compiler rejects.
+"""
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -153,8 +169,12 @@ class BoundedMutationProposal(AegisModel):
 
     parameter: str = Field(..., min_length=1, description="Must name a mutable ParameterSpec.")
     direction: MutationDirection = Field(...)
-    proposed_value: Any = Field(
-        default=None, description="Required when direction is SET; advisory otherwise."
+    proposed_value: MutationScalar = Field(
+        default=None,
+        description=(
+            "Required when direction is SET; advisory otherwise. Scalars only -- "
+            "a list or object here is an attempt to hand over transaction rows."
+        ),
     )
     magnitude: float | None = Field(
         default=None,

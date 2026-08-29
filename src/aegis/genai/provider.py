@@ -13,6 +13,12 @@ synthesizes plausible reasoning. If no provider is configured, the layer
 raises `GenAIConfigurationError` rather than inventing an answer -- a canned
 paragraph presented as model reasoning is exactly the failure this project
 cannot afford.
+
+This module is also where *provider-specific* schema quirks are absorbed.
+Anthropic's structured-output compiler accepts only a subset of JSON Schema
+and rejects annotations such as `minimum`/`maximum`; the strict Pydantic
+schema is therefore sanitized on its way out to that one provider, and
+nowhere else. See `sanitize_json_schema_for_anthropic`.
 """
 
 from __future__ import annotations
@@ -21,6 +27,8 @@ import json
 import os
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -72,6 +80,122 @@ class GenAIProvider(ABC):
         json_schema: dict[str, Any] | None = None,
     ) -> ProviderResult:
         """Return the model's raw response text. Raises `GenAIProviderError`."""
+
+
+# ---------------------------------------------------------------------------
+# Anthropic-specific JSON Schema sanitation
+# ---------------------------------------------------------------------------
+#
+# Anthropic's structured-output compiler supports a *subset* of JSON Schema.
+# Numeric bounds are rejected outright:
+#
+#     output_config.format.schema: For 'number' type, properties maximum,
+#     minimum are not supported
+#
+# The same applies to string-length and array-length constraints. Pydantic
+# emits all of them from `Field(ge=..., le=..., min_length=..., max_length=...)`,
+# so the strict schema cannot be transmitted verbatim.
+#
+# The resolution is deliberately one-directional: the *transmitted* schema is
+# stripped of annotations this one provider cannot compile; the *validating*
+# schema -- the Pydantic model itself -- is untouched. Every bound removed here
+# is still enforced in `aegis.genai.analysts._parse_response`, which validates
+# the model's reply against the original strict model before anything
+# downstream sees it. A response with `confidence: 1.4` or a mutation
+# `magnitude: 0.9` is therefore still rejected locally; the model simply is not
+# told about the ceiling in-band.
+#
+# This lives in the Anthropic adapter on purpose. It is not a property of the
+# contracts (`aegis.genai.contracts`), and no other provider sees a sanitized
+# schema.
+
+_UNSUPPORTED_NUMERIC_KEYWORDS: frozenset[str] = frozenset(
+    {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"}
+)
+"""Numeric bounds. These are what the live call currently fails on."""
+
+_UNSUPPORTED_STRING_KEYWORDS: frozenset[str] = frozenset({"minLength", "maxLength"})
+"""String-length constraints; emitted by `Field(min_length=...)`."""
+
+_UNSUPPORTED_ARRAY_KEYWORDS: frozenset[str] = frozenset(
+    {"minItems", "maxItems", "uniqueItems", "minContains", "maxContains"}
+)
+"""Array cardinality constraints; emitted by `Field(max_length=...)` on a list."""
+
+UNSUPPORTED_SCHEMA_KEYWORDS: frozenset[str] = (
+    _UNSUPPORTED_NUMERIC_KEYWORDS | _UNSUPPORTED_STRING_KEYWORDS | _UNSUPPORTED_ARRAY_KEYWORDS
+)
+"""Every annotation stripped from a schema before it is sent to Anthropic."""
+
+# Keys whose *values* are maps of name -> subschema. Their keys are user-chosen
+# names, so a property legitimately named "minimum" must survive.
+_SUBSCHEMA_MAP_KEYS: frozenset[str] = frozenset(
+    {"properties", "$defs", "definitions", "patternProperties"}
+)
+
+# Keys whose values are literal data, not schemas. Never walked into: a
+# `default` object may contain a key that happens to be called "maximum".
+_LITERAL_VALUE_KEYS: frozenset[str] = frozenset({"default", "const", "enum", "examples"})
+
+
+def _sanitize_node(node: Any) -> Any:
+    """Recursively rebuild `node` without the unsupported keywords."""
+    if isinstance(node, list):
+        return [_sanitize_node(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+    out: dict[str, Any] = {}
+    for key, value in node.items():
+        if key in UNSUPPORTED_SCHEMA_KEYWORDS:
+            continue
+        if key in _LITERAL_VALUE_KEYS:
+            out[key] = deepcopy(value)
+        elif key in _SUBSCHEMA_MAP_KEYS and isinstance(value, dict):
+            out[key] = {name: _sanitize_node(sub) for name, sub in value.items()}
+        else:
+            out[key] = _sanitize_node(value)
+    return out
+
+
+def sanitize_json_schema_for_anthropic(json_schema: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of `json_schema` that Anthropic's compiler will accept.
+
+    Removes only annotations -- no type, property, `required` entry, `$ref` or
+    `additionalProperties: false` is touched, so the transmitted schema still
+    describes exactly the same shape. The input dict is never mutated: callers
+    keep handing the strict Pydantic schema to validation.
+    """
+    sanitized = _sanitize_node(json_schema)
+    if not isinstance(sanitized, dict):  # pragma: no cover - a schema is always an object
+        msg = f"json schema must be an object, got {type(json_schema).__name__}"
+        raise GenAIProviderError(msg)
+    return sanitized
+
+
+def iter_unsupported_schema_keywords(json_schema: dict[str, Any]) -> Iterator[tuple[str, str]]:
+    """Yield `(json_pointer, keyword)` for every unsupported annotation present.
+
+    Used by the regression tests to assert the transmitted schema is clean and
+    the original is not.
+    """
+
+    def walk(node: Any, pointer: str) -> Iterator[tuple[str, str]]:
+        if isinstance(node, list):
+            for index, item in enumerate(node):
+                yield from walk(item, f"{pointer}/{index}")
+            return
+        if not isinstance(node, dict):
+            return
+        for key, value in node.items():
+            child = f"{pointer}/{key}"
+            if key in UNSUPPORTED_SCHEMA_KEYWORDS:
+                yield (pointer or "/", key)
+                continue
+            if key in _LITERAL_VALUE_KEYS:
+                continue
+            yield from walk(value, child)
+
+    yield from walk(json_schema, "")
 
 
 class AnthropicProvider(GenAIProvider):
@@ -146,8 +270,20 @@ class AnthropicProvider(GenAIProvider):
             "thinking": {"type": "adaptive"},
         }
         if json_schema is not None:
+            # `output_config.format` accepts exactly two keys -- `type` and
+            # `schema` (anthropic.types.JSONOutputFormatParam). Anything else,
+            # `name` included, is rejected with "Extra inputs are not
+            # permitted", so `schema_name` stays a local label: it names the
+            # stage in prompts and artifacts and never goes on the wire.
+            #
+            # The schema is sanitized on the way out only. `json_schema` itself
+            # is left alone, and the reply is validated against the strict
+            # Pydantic model one layer up regardless of what was transmitted.
             request["output_config"] = {
-                "format": {"type": "json_schema", "name": schema_name, "schema": json_schema}
+                "format": {
+                    "type": "json_schema",
+                    "schema": sanitize_json_schema_for_anthropic(json_schema),
+                }
             }
 
         last_error: Exception | None = None
@@ -271,9 +407,12 @@ __all__ = [
     "DEFAULT_MAX_ATTEMPTS",
     "DEFAULT_MODEL",
     "DEFAULT_TIMEOUT_SECONDS",
+    "UNSUPPORTED_SCHEMA_KEYWORDS",
     "AnthropicProvider",
     "GenAIProvider",
     "ProviderResult",
     "RecordedProvider",
     "build_provider",
+    "iter_unsupported_schema_keywords",
+    "sanitize_json_schema_for_anthropic",
 ]

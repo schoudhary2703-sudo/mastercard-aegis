@@ -37,6 +37,7 @@ from aegis.api.dto import (
     ExperimentDTO,
     ExperimentsResponseDTO,
     FinalBenchmarkSummaryDTO,
+    GenAIGuidedGenerationDTO,
     GenAIResponseDTO,
     GenAIRunDTO,
     HardeningSummaryDTO,
@@ -55,6 +56,7 @@ from aegis.api.genai_runs import (
     ATTACK_ANALYST_STAGE,
     BLIND_SPOT_ANALYST_STAGE,
     build_genai_runs,
+    build_guided_generations,
     latest_by_stage,
 )
 from aegis.api.index import (
@@ -816,17 +818,36 @@ def build_experiments_response(
 
 
 def build_genai_response(settings: Settings) -> GenAIResponseDTO:
-    """Persisted GenAI reasoning runs. Empty when none exist -- the UI says so
-    rather than showing placeholder reasoning."""
-    raw = build_genai_runs(settings.artifacts_root)
+    """Persisted GenAI reasoning runs and guided generations.
+
+    Everything is empty when nothing has been run -- the UI reports that
+    honestly rather than showing placeholder reasoning. The `live_*` fields
+    are filtered to genuinely live calls so a recorded replay can never be
+    surfaced under a live badge.
+    """
+    root = settings.artifacts_root
+    raw = build_genai_runs(root)
     runs = [GenAIRunDTO(**entry) for entry in raw]
+
     latest = latest_by_stage(raw)
+    live_latest = latest_by_stage(raw, live_only=True)
     attack = latest.get(ATTACK_ANALYST_STAGE)
     blind = latest.get(BLIND_SPOT_ANALYST_STAGE)
+    live_attack = live_latest.get(ATTACK_ANALYST_STAGE)
+    live_blind = live_latest.get(BLIND_SPOT_ANALYST_STAGE)
+
+    guided_raw = build_guided_generations(root)
+    guided = [GenAIGuidedGenerationDTO(**entry) for entry in guided_raw]
+
     return GenAIResponseDTO(
         runs=runs,
         attack_analyst=GenAIRunDTO(**attack) if attack else None,
         blind_spot_analyst=GenAIRunDTO(**blind) if blind else None,
+        live_attack_analyst=GenAIRunDTO(**live_attack) if live_attack else None,
+        live_blind_spot_analyst=GenAIRunDTO(**live_blind) if live_blind else None,
+        guided_generations=guided,
+        latest_guided_generation=guided[0] if guided else None,
+        has_live_genai=bool(live_attack or live_blind),
         meta=_meta(settings),
     )
 

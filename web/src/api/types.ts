@@ -410,11 +410,80 @@ export interface GenAIRunDTO {
   failure: string | null;
   response: Record<string, unknown> | null;
   source_artifact: string;
+  attack_hypothesis: string;
+  genai_enablement: string;
+  blind_spot_hypothesis: string;
+  evidence: string[];
+  observable_signals: string[];
+  confidence: number | null;
+  proposed_mutations: ProposedMutationDTO[];
+}
+
+export interface ProposedMutationDTO {
+  parameter: string;
+  direction: string;
+  magnitude: number | null;
+  rationale: string;
+  confidence: number | null;
+}
+
+export interface AppliedMutationDTO {
+  parameter: string;
+  direction: string;
+  magnitude: number | null;
+  from_value: number | null;
+  to_value: number | null;
+  rationale: string;
+  confidence: number | null;
+}
+
+export interface RejectedMutationDTO {
+  parameter: string;
+  direction: string;
+  magnitude: number | null;
+  reason: string;
+}
+
+export interface GenAIGuidedGenerationDTO {
+  generation_id: string;
+  created_at: string | null;
+  attack_family: string | null;
+  genai_run_id: string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  live: boolean;
+  seed: number | null;
+  source_confrontation_id: string;
+  detector_model_version: string;
+  blind_spot_hypothesis: string;
+  applied_mutations: AppliedMutationDTO[];
+  rejected_mutations: RejectedMutationDTO[];
+  parent_blueprint_id: string;
+  resulting_blueprint_id: string;
+  scenario_id: string | null;
+  fraud_count: number | null;
+  caught_count: number | null;
+  escaped_count: number | null;
+  recall: number | null;
+  fidelity_score: number | null;
+  hardest_survivor: Record<string, unknown> | null;
+  dry_run: boolean;
+  /** Server-computed: complete provenance AND at least one applied mutation.
+   * Never re-derive this in the UI. */
+  genai_guided: boolean;
+  source_artifact: string;
 }
 
 export interface GenAIResponseDTO {
   runs: GenAIRunDTO[];
   attack_analyst: GenAIRunDTO | null;
   blind_spot_analyst: GenAIRunDTO | null;
+  /** Restricted to genuinely live calls. Badge "LIVE GENAI" off these only. */
+  live_attack_analyst: GenAIRunDTO | null;
+  live_blind_spot_analyst: GenAIRunDTO | null;
+  guided_generations: GenAIGuidedGenerationDTO[];
+  latest_guided_generation: GenAIGuidedGenerationDTO | null;
+  has_live_genai: boolean;
   meta: MetaDTO;
 }

@@ -1,9 +1,10 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import { fetchBenchmark, fetchExperiments, fetchOverview } from "../api/client";
+import { fetchBenchmark, fetchExperiments, fetchGenAI, fetchOverview } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO } from "../api/types";
 import { ApiStateSection } from "../components/real/ApiStateSection";
+import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { ClosedLoopFlow } from "../components/loop/ClosedLoopFlow";
 import { Card } from "../components/ui/Card";
 import { Details } from "../components/ui/Details";
@@ -73,10 +74,12 @@ export function MissionControlPage() {
   const overviewFetch = useCallback((s: AbortSignal) => fetchOverview(s), []);
   const experimentsFetch = useCallback((s: AbortSignal) => fetchExperiments(s), []);
   const benchmarkFetch = useCallback((s: AbortSignal) => fetchBenchmark(s), []);
+  const genaiFetch = useCallback((s: AbortSignal) => fetchGenAI(s), []);
 
   const overview = useApiResource(overviewFetch, []);
   const experiments = useApiResource(experimentsFetch, []);
   const benchmark = useApiResource(benchmarkFetch, []);
+  const genai = useApiResource(genaiFetch, []);
 
   const current = overview.status === "ready" ? overview.data.current_model : null;
   const v3 =
@@ -143,6 +146,24 @@ export function MissionControlPage() {
               </div>
             );
           }}
+        />
+      </Card>
+
+      <Card>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-[var(--color-ink)]">GenAI in the loop</h2>
+          <Link
+            to="/attack-lab"
+            className="text-[11px] font-semibold text-[var(--color-accent-600)] hover:underline"
+          >
+            Full reasoning →
+          </Link>
+        </div>
+        <ApiStateSection
+          state={genai}
+          emptyTitle="No GenAI runs yet"
+          emptyBody="Run scripts/run_genai_analysis.py to produce a reasoning artifact."
+          render={(data) => <LiveGenAIEvidence genai={data} />}
         />
       </Card>
 

@@ -419,6 +419,16 @@ class ExperimentsResponseDTO(ApiModel):
 # -- GenAI reasoning runs ---------------------------------------------------
 
 
+class ProposedMutationDTO(ApiModel):
+    """What the analyst asked for -- not necessarily what the bounds allowed."""
+
+    parameter: str = ""
+    direction: str = ""
+    magnitude: float | None = None
+    rationale: str = ""
+    confidence: float | None = None
+
+
 class GenAIRunDTO(ApiModel):
     run_id: str
     stage: str
@@ -431,12 +441,81 @@ class GenAIRunDTO(ApiModel):
     failure: str | None = None
     response: dict[str, Any] | None = None
     source_artifact: str = ""
+    # Projections of `response` for compact rendering. Empty when the field
+    # is absent from the artifact -- never a synthesized placeholder.
+    attack_hypothesis: str = ""
+    genai_enablement: str = ""
+    blind_spot_hypothesis: str = ""
+    evidence: list[str] = []
+    observable_signals: list[str] = []
+    confidence: float | None = None
+    proposed_mutations: list[ProposedMutationDTO] = []
+
+
+class AppliedMutationDTO(ApiModel):
+    parameter: str
+    direction: str = ""
+    magnitude: float | None = None
+    from_value: float | None = None
+    to_value: float | None = None
+    rationale: str = ""
+    confidence: float | None = None
+
+
+class RejectedMutationDTO(ApiModel):
+    parameter: str = ""
+    direction: str = ""
+    magnitude: float | None = None
+    reason: str = ""
+
+
+class GenAIGuidedGenerationDTO(ApiModel):
+    """One GenAI-guided next generation, with full provenance.
+
+    `genai_guided` is computed server-side from complete provenance plus at
+    least one surviving mutation -- the UI must not re-derive it, so a record
+    lacking provenance can never be badged as GenAI-guided.
+    """
+
+    generation_id: str
+    created_at: str | None = None
+    attack_family: str | None = None
+    genai_run_id: str = ""
+    provider: str = ""
+    model: str = ""
+    prompt_version: str = ""
+    live: bool = False
+    seed: int | None = None
+    source_confrontation_id: str = ""
+    detector_model_version: str = ""
+    blind_spot_hypothesis: str = ""
+    applied_mutations: list[AppliedMutationDTO] = []
+    rejected_mutations: list[RejectedMutationDTO] = []
+    parent_blueprint_id: str = ""
+    resulting_blueprint_id: str = ""
+    scenario_id: str | None = None
+    fraud_count: int | None = None
+    caught_count: int | None = None
+    escaped_count: int | None = None
+    recall: float | None = None
+    fidelity_score: float | None = None
+    hardest_survivor: dict[str, Any] | None = None
+    dry_run: bool = True
+    genai_guided: bool = False
+    source_artifact: str = ""
 
 
 class GenAIResponseDTO(ApiModel):
     runs: list[GenAIRunDTO] = []
     attack_analyst: GenAIRunDTO | None = None
     blind_spot_analyst: GenAIRunDTO | None = None
+    # Restricted to genuinely live calls, so the UI can badge "LIVE GENAI"
+    # without ever promoting a recorded replay.
+    live_attack_analyst: GenAIRunDTO | None = None
+    live_blind_spot_analyst: GenAIRunDTO | None = None
+    guided_generations: list[GenAIGuidedGenerationDTO] = []
+    latest_guided_generation: GenAIGuidedGenerationDTO | None = None
+    has_live_genai: bool = False
     meta: MetaDTO
 
 

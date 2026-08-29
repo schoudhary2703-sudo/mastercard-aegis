@@ -45,6 +45,11 @@ from aegis.loop.adaptive_evasion import (
     adapt_blueprint_from_evasions,
     build_adaptive_evasion_feedback,
 )
+from aegis.loop.genai_handoff import (
+    GenAIHandoffError,
+    HandoffResult,
+    apply_blind_spot_proposals,
+)
 
 __all__ = [
     "AdaptiveCandidateResult",
@@ -53,13 +58,16 @@ __all__ = [
     "AdaptiveRoundExecution",
     "AdaptiveRoundReport",
     "BlindSpotAnalysis",
+    "GenAIHandoffError",
     "GuidedAdaptation",
+    "HandoffResult",
     "MutationCandidate",
     "ParameterRegionEvidence",
     "RoundAttackMetrics",
     "RoundComparison",
     "adapt_blueprint_from_evasions",
     "analyze_blind_spots",
+    "apply_blind_spot_proposals",
     "build_adaptive_evasion_feedback",
     "build_evasion_feedback",
     "calculate_attack_fitness",

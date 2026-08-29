@@ -3,6 +3,7 @@ import { fetchExperiments, fetchGenAI } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO } from "../api/types";
 import { GenAIAnalystPanel } from "../components/genai/GenAIAnalystPanel";
+import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { OutcomeBadge, ReplayStream } from "../components/lab/ReplayStream";
 import { ScoreBoard } from "../components/lab/ScoreBoard";
 import { useReplay } from "../components/lab/useReplay";
@@ -287,7 +288,12 @@ export function AttackLabPage() {
                 </h2>
                 <ApiStateSection
                   state={genai}
-                  render={(data) => <GenAIAnalystPanel genai={data} />}
+                  render={(data) => (
+                    <div className="space-y-3">
+                      <LiveGenAIEvidence genai={data} />
+                      <GenAIAnalystPanel genai={data} />
+                    </div>
+                  )}
                 />
               </div>
 

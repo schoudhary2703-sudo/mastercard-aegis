@@ -297,6 +297,195 @@ class TestGenAIEndpoint:
         assert blind["live"] is False
         settings_module.clear_settings_cache()
 
+    def test_empty_state_includes_the_live_and_guided_fields(
+        self, empty_client: TestClient
+    ) -> None:
+        """Task-4 readiness: every field the UI needs exists and is honestly
+        empty, so the panel renders "not run yet" rather than breaking."""
+        body = empty_client.get("/api/genai").json()
+        assert body["live_attack_analyst"] is None
+        assert body["live_blind_spot_analyst"] is None
+        assert body["guided_generations"] == []
+        assert body["latest_guided_generation"] is None
+        assert body["has_live_genai"] is False
+
+    def test_recorded_run_is_never_offered_as_a_live_run(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A replay populates `blind_spot_analyst` but must leave the `live_*`
+        slot empty -- the UI badges LIVE off the live slot only."""
+        _write_json(
+            tmp_path / "data" / "genai" / "blind_spot_analyst" / "recorded.json",
+            {
+                "run_id": "blind_spot-recorded",
+                "stage": "blind_spot_analyst",
+                "created_at": "2026-08-02T00:00:00Z",
+                "provenance": {
+                    "provider": "recorded",
+                    "model": "claude-opus-5",
+                    "prompt_version": "genai-prompts-v1",
+                    "live": False,
+                    "attempts": 1,
+                    "source_artifacts": [],
+                },
+                "request": {},
+                "response": {"blind_spot_hypothesis": "replayed", "confidence": 0.5},
+                "schema_valid": True,
+                "failure": None,
+            },
+        )
+        monkeypatch.setenv("AEGIS_ARTIFACTS_ROOT", str(tmp_path))
+        settings_module.clear_settings_cache()
+        body = TestClient(app).get("/api/genai").json()
+
+        assert body["blind_spot_analyst"] is not None
+        assert body["blind_spot_analyst"]["live"] is False
+        assert body["live_blind_spot_analyst"] is None
+        assert body["has_live_genai"] is False
+        settings_module.clear_settings_cache()
+
+    def test_live_run_populates_the_live_slot(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_json(
+            tmp_path / "data" / "genai" / "attack_analyst" / "live.json",
+            {
+                "run_id": "attack_analyst-live",
+                "stage": "attack_analyst",
+                "created_at": "2026-08-05T00:00:00Z",
+                "provenance": {
+                    "provider": "anthropic",
+                    "model": "claude-opus-5",
+                    "prompt_version": "genai-prompts-v1",
+                    "live": True,
+                    "attempts": 1,
+                    "source_artifacts": [],
+                },
+                "request": {},
+                "response": {
+                    "attack_hypothesis": "Nurture then burst.",
+                    "genai_enablement": "Drafting warm-up cheaply.",
+                    "observable_signals": ["temporal.amount"],
+                    "confidence": 0.6,
+                },
+                "schema_valid": True,
+                "failure": None,
+            },
+        )
+        monkeypatch.setenv("AEGIS_ARTIFACTS_ROOT", str(tmp_path))
+        settings_module.clear_settings_cache()
+        body = TestClient(app).get("/api/genai").json()
+
+        live = body["live_attack_analyst"]
+        assert live is not None
+        assert live["live"] is True
+        assert body["has_live_genai"] is True
+        # Projections the UI renders as one-liners.
+        assert live["attack_hypothesis"] == "Nurture then burst."
+        assert live["genai_enablement"] == "Drafting warm-up cheaply."
+        assert live["observable_signals"] == ["temporal.amount"]
+        settings_module.clear_settings_cache()
+
+    def test_guided_generation_is_exposed_with_provenance(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_json(
+            tmp_path / "data" / "genai" / "guided_generations" / "gen-1.json",
+            {
+                "generation_id": "gen-1",
+                "created_at": "2026-08-10T00:00:00Z",
+                "attack_family": "synthetic_identity_bustout",
+                "provenance": {
+                    "genai_run_id": "blind_spot-abc",
+                    "provider": "anthropic",
+                    "model": "claude-opus-5",
+                    "prompt_version": "genai-prompts-v1",
+                    "live": True,
+                    "seed": 20260101,
+                    "source_confrontation_id": "confrontation-test",
+                    "detector_model_version": "xgboost-hardened-crossfamily-20260301",
+                },
+                "blind_spot_hypothesis": "velocity under-weights fan-out",
+                "applied_mutations": [
+                    {
+                        "parameter": "destination_diversity",
+                        "direction": "increase",
+                        "magnitude": 0.2,
+                        "from_value": 3.0,
+                        "to_value": 5.0,
+                        "rationale": "spread the burst",
+                        "confidence": 0.6,
+                    }
+                ],
+                "rejected_mutations": [],
+                "parent_blueprint_id": "synthetic-identity-bustout-v1",
+                "resulting_blueprint_id": "synthetic-identity-bustout-v1-g1-abc123",
+                "scenario_id": "bustout-guided-0001",
+                "fraud_count": 3,
+                "caught_count": 1,
+                "escaped_count": 2,
+                "recall": 0.3333,
+                "dry_run": False,
+            },
+        )
+        monkeypatch.setenv("AEGIS_ARTIFACTS_ROOT", str(tmp_path))
+        settings_module.clear_settings_cache()
+        body = TestClient(app).get("/api/genai").json()
+
+        gen = body["latest_guided_generation"]
+        assert gen is not None
+        assert gen["genai_guided"] is True
+        assert gen["seed"] == 20260101
+        assert gen["scenario_id"] == "bustout-guided-0001"
+        assert gen["caught_count"] == 1 and gen["escaped_count"] == 2
+        mutation = gen["applied_mutations"][0]
+        assert mutation["parameter"] == "destination_diversity"
+        assert mutation["from_value"] == 3.0 and mutation["to_value"] == 5.0
+        settings_module.clear_settings_cache()
+
+    def test_guided_generation_without_provenance_is_not_labelled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Served, but never badged GenAI-guided -- nothing to audit."""
+        _write_json(
+            tmp_path / "data" / "genai" / "guided_generations" / "gen-2.json",
+            {
+                "generation_id": "gen-2",
+                "created_at": "2026-08-11T00:00:00Z",
+                "provenance": {"provider": "", "model": "", "prompt_version": ""},
+                "applied_mutations": [
+                    {"parameter": "destination_diversity", "direction": "increase"}
+                ],
+                "dry_run": True,
+            },
+        )
+        monkeypatch.setenv("AEGIS_ARTIFACTS_ROOT", str(tmp_path))
+        settings_module.clear_settings_cache()
+        body = TestClient(app).get("/api/genai").json()
+
+        assert body["latest_guided_generation"]["genai_guided"] is False
+        settings_module.clear_settings_cache()
+
+    def test_guided_generations_dir_is_not_read_as_an_analyst_stage(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_json(
+            tmp_path / "data" / "genai" / "guided_generations" / "gen-3.json",
+            {
+                "generation_id": "gen-3",
+                "provenance": {"provider": "anthropic", "model": "m", "prompt_version": "v"},
+                "applied_mutations": [],
+            },
+        )
+        monkeypatch.setenv("AEGIS_ARTIFACTS_ROOT", str(tmp_path))
+        settings_module.clear_settings_cache()
+        body = TestClient(app).get("/api/genai").json()
+
+        assert body["runs"] == []
+        assert body["attack_analyst"] is None
+        assert len(body["guided_generations"]) == 1
+        settings_module.clear_settings_cache()
+
     def test_failed_run_is_not_promoted_as_the_latest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
