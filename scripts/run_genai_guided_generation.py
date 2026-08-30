@@ -42,9 +42,20 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from time import perf_counter
+from typing import Any
 
 from aegis.defend import XGBoostDetector
-from aegis.evaluate import BustOutConfrontationReport, build_bustout_confrontation_report
+from aegis.evaluate import (
+    AdaptiveEvasionConfrontationReport,
+    BustOutConfrontationReport,
+    MuleNetworkConfrontationReport,
+    TrainingOverlapScan,
+    build_adaptive_evasion_confrontation_report,
+    build_bustout_confrontation_report,
+    build_mule_network_confrontation_report,
+    scan_training_overlap,
+)
 from aegis.features import TemporalBaselineFeatureExtractor, load_transactions_jsonl
 from aegis.genai.contracts import BlindSpotAnalystResponse, GenAIRunArtifact
 from aegis.genai.handoff_contracts import (
@@ -52,8 +63,12 @@ from aegis.genai.handoff_contracts import (
     GenAIHandoffProvenance,
 )
 from aegis.generate import (
+    AdaptiveDetectorEvasionGenerator,
+    AdaptiveEvasionReferenceProfile,
     GenerationConfig,
     GenerationReferenceSnapshot,
+    MuleNetworkReferenceProfile,
+    MuleNetworkStructuringGenerator,
     PaySimReferenceProfile,
     SyntheticIdentityBustOutGenerator,
     sha256_file,
@@ -61,7 +76,7 @@ from aegis.generate import (
 from aegis.loop.genai_handoff import HandoffResult, apply_blind_spot_proposals
 from aegis.shared.base import AegisModel
 from aegis.shared.contracts import AttackBlueprint, DetectorOutput, Transaction, TransactionBatch
-from aegis.shared.enums import DataSplit
+from aegis.shared.enums import AttackFamily, DataSplit
 
 # Direct `python scripts/...` execution puts scripts/, not the repo root, on
 # sys.path -- same import dance the other confrontation scripts use. The
@@ -108,7 +123,7 @@ class GenAIGuidedResult:
 
     record: GenAIGuidedGeneration
     handoff: HandoffResult
-    report: BustOutConfrontationReport
+    report: _FamilyReport
     batch: TransactionBatch
     outputs: list[DetectorOutput]
     artifact_path: Path
@@ -171,6 +186,183 @@ def _snapshot_training_skeletons(
         for index, scenario_id in enumerate(snapshot.additional_training_scenario_ids)
     )
     return skeletons
+
+
+# ---------------------------------------------------------------------------
+# per-family generation and scoring
+# ---------------------------------------------------------------------------
+#
+# The three deep families share the guided pipeline but differ in three
+# places: which generator produces the batch, which evaluator validates it,
+# and what the freshness evidence looks like (the bust-out evaluator takes
+# training rows, the other two take a bounded overlap scan). Everything else
+# -- the bounds check, the frozen detector, the reject-never-clamp rule -- is
+# identical, so only these three are dispatched.
+
+_FamilyReport = (
+    BustOutConfrontationReport | MuleNetworkConfrontationReport | AdaptiveEvasionConfrontationReport
+)
+
+
+@dataclass(frozen=True)
+class _ScenarioOutcome:
+    """One scored scenario, normalized across the three family report shapes."""
+
+    report: _FamilyReport
+    batch: TransactionBatch
+    outputs: list[DetectorOutput]
+    scenario_id: str
+    fraud_count: int
+    caught_count: int
+    escaped_count: int
+    recall: float
+    fidelity_score: float | None
+    hardest_survivor: dict[str, Any] | None
+
+
+def _snapshot_overlap_scan(
+    snapshot: GenerationReferenceSnapshot,
+    batch: TransactionBatch,
+    *,
+    snapshot_path: Path,
+) -> TrainingOverlapScan:
+    """The same freshness proof as `_snapshot_training_skeletons`, in the
+    shape the mule/adaptive evaluators expect.
+
+    Not a weaker check: it is an exact membership test against every appended
+    hard-positive ID and scenario plus the base PaySim namespace invariant.
+    `_snapshot_training_skeletons` raises before this returns if either fails.
+    """
+    _snapshot_training_skeletons(snapshot, batch)
+    return TrainingOverlapScan(
+        source=f"snapshot:{snapshot_path.as_posix()}",
+        training_transaction_count=snapshot.total_training_transaction_count,
+        generated_transaction_count=len(batch.transactions),
+        transaction_id_overlaps=[],
+        scenario_id_overlaps=[],
+        train_only_verified=True,
+    )
+
+
+def _fidelity_of(scenario: Any) -> float | None:
+    """Read the scenario's fidelity however its family records it."""
+    direct = getattr(scenario, "fidelity_score", None)
+    if isinstance(direct, (int, float)):
+        return float(direct)
+    summary = getattr(scenario, "fidelity_summary", None)
+    value = summary.get("overall_fidelity_score") if isinstance(summary, dict) else None
+    return float(value) if isinstance(value, (int, float)) else None
+
+
+def _fraud_count_of(scenario: Any) -> int:
+    """Each family names its fraud counter after its own attack shape."""
+    for field in (
+        "fraudulent_bustout_count",
+        "fraudulent_structuring_count",
+        "fraudulent_perturbation_count",
+    ):
+        value = getattr(scenario, field, None)
+        if isinstance(value, int):
+            return value
+    msg = f"{type(scenario).__name__} carries no recognized fraud counter"
+    raise GenAIGuidedGenerationError(msg)
+
+
+def _build_generator(
+    family: AttackFamily,
+    *,
+    snapshot: GenerationReferenceSnapshot | None,
+    processed_dir: Path,
+    reference_max_rows: int | None,
+) -> Any:
+    """The family's deterministic simulator, fed from the snapshot when the
+    fast path is in use and from a full PaySim TRAIN stream otherwise."""
+    if family is AttackFamily.SYNTHETIC_IDENTITY_BUSTOUT:
+        profile = (
+            snapshot.to_bustout_profile()
+            if snapshot is not None
+            else PaySimReferenceProfile.from_processed_paysim(
+                processed_dir, max_rows=reference_max_rows
+            )
+        )
+        return SyntheticIdentityBustOutGenerator(profile)
+    if family is AttackFamily.MULE_NETWORK_STRUCTURING:
+        mule_profile = (
+            snapshot.to_mule_profile()
+            if snapshot is not None
+            else MuleNetworkReferenceProfile.from_processed_paysim(
+                processed_dir, max_rows=reference_max_rows
+            )
+        )
+        return MuleNetworkStructuringGenerator(mule_profile)
+    if family is AttackFamily.ADAPTIVE_DETECTOR_EVASION:
+        adaptive_profile = (
+            snapshot.to_adaptive_profile()
+            if snapshot is not None
+            else AdaptiveEvasionReferenceProfile.from_processed_paysim(
+                processed_dir, max_rows=reference_max_rows
+            )
+        )
+        return AdaptiveDetectorEvasionGenerator(adaptive_profile)
+    msg = f"no guided-generation path for attack family {family}"
+    raise GenAIGuidedGenerationError(msg)
+
+
+def _build_family_report(
+    family: AttackFamily,
+    *,
+    batch: TransactionBatch,
+    outputs: Sequence[DetectorOutput],
+    parent_blueprint_id: str,
+    snapshot: GenerationReferenceSnapshot | None,
+    snapshot_path: Path | None,
+    train_path: Path,
+    training_dataset_id: str,
+    data_basis: str,
+) -> _FamilyReport:
+    """Validate and score the batch with the family's own evaluator."""
+    if family is AttackFamily.SYNTHETIC_IDENTITY_BUSTOUT:
+        training_transactions = (
+            _snapshot_training_skeletons(snapshot, batch)
+            if snapshot is not None
+            else _training_id_skeletons(train_path)
+        )
+        return build_bustout_confrontation_report(
+            batch=batch,
+            outputs=outputs,
+            training_transactions=training_transactions,
+            training_dataset_id=training_dataset_id,
+            data_basis=data_basis,
+            integration_only=False,
+        )
+
+    if snapshot is not None:
+        assert snapshot_path is not None
+        scan = _snapshot_overlap_scan(snapshot, batch, snapshot_path=snapshot_path)
+    else:
+        scan = scan_training_overlap(train_path, batch.transactions)
+    if not scan.is_fresh:
+        msg = f"generated batch overlaps TRAIN: {scan.transaction_id_overlaps[:3]}"
+        raise GenAIGuidedGenerationError(msg)
+
+    if family is AttackFamily.MULE_NETWORK_STRUCTURING:
+        return build_mule_network_confrontation_report(
+            batch=batch,
+            outputs=outputs,
+            training_overlap_scan=scan,
+            training_dataset_id=training_dataset_id,
+            data_basis=data_basis,
+            integration_only=False,
+        )
+    return build_adaptive_evasion_confrontation_report(
+        batch=batch,
+        blueprint_parent_id=parent_blueprint_id,
+        outputs=outputs,
+        training_overlap_scan=scan,
+        training_dataset_id=training_dataset_id,
+        data_basis=data_basis,
+        integration_only=False,
+    )
 
 
 def _load_reference_snapshot(
@@ -243,6 +435,23 @@ def _build_provenance(
     )
 
 
+def _parent_blueprint_path(confrontation_dir: Path) -> Path:
+    """The blueprint the persisted scores belong to.
+
+    Bust-out and mule runs write `blueprint.json`; an adaptive-evasion run
+    writes the *adapted* blueprint that actually produced the scored batch.
+    """
+    for name in ("blueprint.json", "adapted_blueprint.json"):
+        candidate = confrontation_dir / name
+        if candidate.is_file():
+            return candidate
+    msg = (
+        f"no blueprint artifact in {confrontation_dir}: expected blueprint.json or "
+        "adapted_blueprint.json"
+    )
+    raise GenAIGuidedGenerationError(msg)
+
+
 def _known_scenario_ids(roots: Sequence[Path]) -> set[str]:
     """Scenario ids any previously persisted confrontation already used."""
     known: set[str] = set()
@@ -271,13 +480,16 @@ def _generation_id(*, genai_run_id: str, blueprint_id: str, seed: int) -> str:
     return f"genai-guided-{digest}"
 
 
-def _hardest_survivor(report: BustOutConfrontationReport) -> dict[str, object] | None:
+def _hardest_survivor(report: _FamilyReport) -> dict[str, object] | None:
     ranked = report.hardest_evasions or report.successful_evasions
     return ranked[0].model_dump(mode="json") if ranked else None
 
 
 def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
     """Apply one live blind-spot artifact and score exactly one fresh scenario."""
+    # Timed from here so the persisted `runtime_seconds` is the run's own
+    # work -- not interpreter startup, which a caller can report separately.
+    started = perf_counter()
     artifact_path = Path(config.genai_artifact)
     artifact = _load_genai_artifact(artifact_path)
     if config.require_live and not artifact.provenance.live:
@@ -288,13 +500,33 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
         raise GenAIGuidedGenerationError(msg)
     response = BlindSpotAnalystResponse.model_validate(artifact.response)
 
+    # An empty `mutation_proposals` array is the analyst declining to propose,
+    # not the bounds check refusing anything. Reporting it as a rejection
+    # would blame the guardrails for a model decision, so the two are
+    # distinguished before the adapter is even called.
+    if not response.mutation_proposals:
+        msg = (
+            f"{artifact_path} carries zero mutation proposals: the Blind-Spot Analyst returned "
+            "an empty `mutation_proposals` array, so the bounds check had nothing to evaluate. "
+            "This is the model's own output -- re-run the Blind-Spot call for this family to "
+            "obtain proposals; the artifact must not be edited."
+        )
+        raise GenAIGuidedGenerationError(msg)
+
     confrontation_dir = Path(config.confrontation_dir)
     parent_blueprint = AttackBlueprint.model_validate_json(
-        (confrontation_dir / "blueprint.json").read_text(encoding="utf-8")
+        _parent_blueprint_path(confrontation_dir).read_text(encoding="utf-8")
     )
-    parent_report = BustOutConfrontationReport.model_validate_json(
+    # Only the report *id* is needed for provenance, and the three families'
+    # report models differ, so this reads the field rather than picking a
+    # concrete report class to validate against.
+    parent_report_payload = json.loads(
         (confrontation_dir / "confrontation.json").read_text(encoding="utf-8")
     )
+    parent_confrontation_id = str(parent_report_payload.get("report_id", ""))
+    if not parent_confrontation_id:
+        msg = f"{confrontation_dir / 'confrontation.json'} has no report_id"
+        raise GenAIGuidedGenerationError(msg)
 
     model_dir = Path(config.model_dir)
     model_path = model_dir / "model.json"
@@ -310,7 +542,7 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
     provenance = _build_provenance(
         artifact,
         artifact_path=artifact_path,
-        confrontation_id=parent_report.report_id,
+        confrontation_id=parent_confrontation_id,
         source_artifact=(confrontation_dir / "confrontation.json").as_posix(),
         detector_model_version=detector.model_version,
     )
@@ -322,9 +554,15 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
         dry_run=False,
     )
     if handoff.blueprint is None or not handoff.applied:
+        # Every proposal is accounted for: the adapter appends either an
+        # applied or a rejected record for each one, so this lists them all.
+        rejections = "; ".join(
+            f"{rejected.parameter or '(unnamed)'}: {rejected.reason}"
+            for rejected in handoff.rejected
+        )
         msg = (
-            "no proposal survived the bounds check; nothing was generated. "
-            f"rejections: {[r.reason for r in handoff.rejected]}"
+            f"all {len(response.mutation_proposals)} proposal(s) were refused by the bounds "
+            f"check; nothing was generated. rejections: {rejections}"
         )
         raise GenAIGuidedGenerationError(msg)
     child = handoff.blueprint
@@ -345,11 +583,13 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
             detector_model_version=detector.model_version,
             model_sha256=model_hash_before,
         )
-        reference = snapshot.to_bustout_profile()
-    else:
-        reference = PaySimReferenceProfile.from_processed_paysim(
-            processed_dir, max_rows=config.reference_max_rows
-        )
+    family = child.attack_family
+    generator = _build_generator(
+        family,
+        snapshot=snapshot,
+        processed_dir=processed_dir,
+        reference_max_rows=config.reference_max_rows,
+    )
     generation_config = GenerationConfig(
         seed=config.seed,
         n_scenarios=1,
@@ -359,7 +599,7 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
         generation=child.generation,
         deterministic=True,
     )
-    batch = SyntheticIdentityBustOutGenerator(reference).generate(child, generation_config)
+    batch = generator.generate(child, generation_config)
     if len(batch.scenario_ids) != 1:
         msg = f"expected exactly one fresh scenario, got {len(batch.scenario_ids)}"
         raise GenAIGuidedGenerationError(msg)
@@ -380,22 +620,20 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
         [txn.transaction_id for txn in batch.transactions],
         explain=False,
     )
-    training_transactions = (
-        _snapshot_training_skeletons(snapshot, batch)
-        if snapshot is not None
-        else _training_id_skeletons(train_path)
-    )
-    report = build_bustout_confrontation_report(
+    report = _build_family_report(
+        family,
         batch=batch,
         outputs=outputs,
-        training_transactions=training_transactions,
+        parent_blueprint_id=parent_blueprint.attack_id,
+        snapshot=snapshot,
+        snapshot_path=config.reference_snapshot,
+        train_path=train_path,
         training_dataset_id=snapshot.dataset_id if snapshot is not None else processed_dir.name,
         data_basis=(
             "precomputed_paysim_train_reference"
             if snapshot is not None
             else "processed_paysim"
         ),
-        integration_only=False,
     )
     if snapshot is not None:
         assert config.reference_snapshot is not None
@@ -423,7 +661,6 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
         raise GenAIGuidedGenerationError(msg)
 
     scenario = report.scenario_reports[0]
-    fidelity = scenario.fidelity_summary.get("overall_fidelity_score")
     record = GenAIGuidedGeneration(
         generation_id=_generation_id(
             genai_run_id=artifact.run_id, blueprint_id=child.attack_id, seed=config.seed
@@ -438,12 +675,13 @@ def run_genai_guided_generation(config: GenAIGuidedConfig) -> GenAIGuidedResult:
         resulting_blueprint_id=child.attack_id,
         resulting_blueprint=child.model_dump(mode="json"),
         scenario_id=scenario_id,
-        fraud_count=scenario.fraudulent_bustout_count,
+        fraud_count=_fraud_count_of(scenario),
         caught_count=scenario.caught_fraud_count,
         escaped_count=scenario.evaded_fraud_count,
         recall=scenario.fraud_recall,
-        fidelity_score=float(fidelity) if isinstance(fidelity, (int, float)) else None,
+        fidelity_score=_fidelity_of(scenario),
         hardest_survivor=_hardest_survivor(report),
+        runtime_seconds=perf_counter() - started,
         dry_run=False,
         notes=(
             f"Scored against frozen {detector.model_version}; no training occurred "
@@ -500,7 +738,7 @@ def _write_artifacts(
     config: GenAIGuidedConfig,
     *,
     record: GenAIGuidedGeneration,
-    report: BustOutConfrontationReport,
+    report: _FamilyReport,
     batch: TransactionBatch,
     outputs: Sequence[DetectorOutput],
     child: AttackBlueprint,

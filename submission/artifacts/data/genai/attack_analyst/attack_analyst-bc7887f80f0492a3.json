@@ -1,0 +1,137 @@
+{
+  "created_at": "2026-08-29T23:49:49.006771Z",
+  "failure": null,
+  "provenance": {
+    "attempts": 1,
+    "latency_ms": 40262.881700000435,
+    "live": true,
+    "model": "claude-opus-5",
+    "prompt_version": "genai-prompts-v1",
+    "provider": "anthropic",
+    "request_id": "req_011CeXwAu978zxsYD7EAK4vU",
+    "source_artifacts": [
+      "taxonomy:adaptive-detector-evasion"
+    ]
+  },
+  "raw_response_text": null,
+  "request": {
+    "available_simulator_parameters": [
+      "probe_transaction_count",
+      "amount_scale",
+      "amount_jitter_ratio",
+      "inter_transaction_delay_hours",
+      "counterparty_count",
+      "active_hour_start",
+      "active_hour_end",
+      "escalation_ratio"
+    ],
+    "candidate_families": [
+      "synthetic_identity_bustout",
+      "mule_network_structuring",
+      "adaptive_detector_evasion"
+    ],
+    "known_constraints": [
+      "Synthetic data only -- never reference real institutions, real account identifiers, or real customers.",
+      "Propose simulator parameters, never concrete transaction rows.",
+      "Stay inside the three in-scope attack families; do not invent a fourth.",
+      "An evasion that requires implausible traffic is a bug, not a finding."
+    ],
+    "payment_context": "A PaySim-derived mobile-money world: accounts send PAYMENT, TRANSFER, CASH_IN, CASH_OUT and DEBIT operations. A detector sees only decision-time-safe features derived from the current transaction and strictly earlier events for the accounts involved: amount, hour of day, balances before, per-account transaction counts and velocities over 1h and 24h windows, deviation from that account's own historical amounts, and distinct-counterparty counts. It never sees attack labels, blueprint parameters, or which scenario a transaction belongs to.",
+    "research_summary": "An attacker with query access to a scoring system probes it, observes which attempts are approved versus declined or stepped up, and infers roughly which behavioral dimensions move the score. Subsequent attempts are adjusted along those dimensions -- smaller amounts, longer gaps, more counterparties, different hours -- until they land below the decision threshold while still achieving the attacker's objective. The distinguishing feature is that the attack is a feedback-driven search rather than a fixed pattern, so a detector hardened against yesterday's parameter values is not necessarily hardened against the search process that produced them. Generative tooling makes the search cheaper: variants can be drafted and prioritized far faster than a human could enumerate them.",
+    "scenario_name": "Adaptive detector evasion"
+  },
+  "response": {
+    "attack_family": "adaptive_detector_evasion",
+    "attack_hypothesis": "A cohort of attacker-controlled mobile-money accounts runs a two-phase feedback-driven search against the scoring system. Phase 1 (probe): a modest number of low-value TRANSFER/CASH_OUT attempts are fanned across several counterparties at varied hours to learn which behavioral dimensions move the score -- amount magnitude relative to the account's own history, 1h/24h velocity, distinct-counterparty growth, and hour-of-day novelty. Phase 2 (exploit): the surviving parameter region is exploited by holding each transaction inside the account's established amount envelope (small amount_scale with modest jitter so no single value looks templated), stretching inter-transaction delays so 1h and 24h velocity counters never fill, spreading value across a wider counterparty set so no single pair concentrates, and confining activity to the account's already-normal daytime hours. Value extraction is then escalated only gradually (escalation_ratio just above 1.0) so that each step is a small deviation from the account's own rolling history rather than a step change, letting the cumulative extracted value grow while every individual decision-time feature vector stays inside the benign region. The distinguishing artifact for the blue team is not any single parameter value but the probe-then-narrow trajectory: an early diffuse exploration burst followed by a low-variance, threshold-hugging exploitation regime.",
+    "confidence": 0.79,
+    "genai_enablement": "Generative tooling collapses the cost of the search loop: an LLM-driven agent can draft, mutate and rank hundreds of candidate behavioral variants (amount envelopes, delay schedules, counterparty fan-out patterns, hour windows) per hour, summarize approve/decline/step-up feedback into a hypothesis about which features carry weight, and auto-generate the next generation of variants. It also lets an attacker write plausible per-account behavioral 'personas' so that each mule's exploit-phase traffic is individually consistent with its own synthetic history, rather than all accounts sharing one detectable template.",
+    "observable_signals": [
+      "Early cluster of low-amount attempts with high decline/step-up rate, followed by a sharp drop in decline rate at near-constant volume (the signature of a completed search).",
+      "Amount distribution that is tightly bounded just below the account's historical high-water mark, with low but non-zero jitter -- suspiciously low variance compared with organic accounts.",
+      "Inter-transaction gaps clustered just above the 1h and 24h velocity window boundaries rather than exponentially distributed.",
+      "Distinct-counterparty count rising quickly during the probe phase then plateauing during exploitation.",
+      "Hour-of-day activity narrowing over time into the account's own historically most common band (novelty-seeking then novelty-avoiding).",
+      "Slow monotone upward drift in per-transaction amount (escalation_ratio) with no matching drift in CASH_IN / balance-before, so extraction outpaces legitimate funding.",
+      "Cohort-level correlation: several accounts independently converging on the same amount/delay/hour region at the same time."
+    ],
+    "payment_system_assumptions": [
+      "Attacker receives an observable, near-real-time outcome per attempt (approve / decline / step-up), so a feedback loop is possible.",
+      "The detector scores each transaction using only decision-time-safe features from the current transaction plus strictly earlier events for the involved accounts, so there is no future leakage the attacker must fear.",
+      "Velocity features are computed over fixed 1h and 24h windows, so sufficiently long inter-transaction gaps reset the counters.",
+      "Amount deviation is measured against each account's own historical amounts, so an account can raise its baseline over time by gradual escalation.",
+      "Distinct-counterparty count grows monotonically, so fan-out is cheap early and progressively more conspicuous.",
+      "Probing attempts are low-cost: declines do not permanently block or freeze the probing account.",
+      "Multiple attacker-controlled accounts exist and can be operated independently without a shared cross-account identity signal visible to the detector."
+    ],
+    "realism_risks": [
+      "Delays snapped exactly to just-past the 1h/24h boundaries would produce a degenerate, near-deterministic gap distribution no real user exhibits; jitter must be applied to delays as well as amounts.",
+      "Very low amount_jitter_ratio combined with fixed amount_scale can make the exploit phase look like machine-generated fixed-size payments, which is itself a trivially detectable anomaly rather than an evasion.",
+      "A high-decline probe burst on a brand-new account is unrealistic: real scoring systems would step up or throttle, so probe_transaction_count must stay modest and probes should be spread across the cohort.",
+      "Escalation without any corresponding CASH_IN or balance-before growth produces accounts that extract more than they ever received -- arithmetically implausible balances.",
+      "Identical parameter values across all attacker accounts creates an artificial cohort signature; per-account randomization is needed or the 'evasion' is an artifact of a shared template.",
+      "Confining every transaction to a 9-20 window with zero weekend or off-hour activity is over-clean; organic accounts show occasional out-of-band events.",
+      "Counterparty_count of 7 with perfectly even value distribution is unrealistic; organic fan-out is heavy-tailed."
+    ],
+    "recommended_simulator_parameters": [
+      {
+        "name": "probe_transaction_count",
+        "rationale": "Enough attempts to plausibly map a handful of feature dimensions via approve/decline feedback without generating an implausibly large decline burst on one account.",
+        "unit": "transactions",
+        "value": 18
+      },
+      {
+        "name": "amount_scale",
+        "rationale": "Keeps each exploit-phase amount well inside the account's own historical envelope so per-account amount-deviation features stay flat.",
+        "unit": "ratio of account historical mean amount",
+        "value": 0.35
+      },
+      {
+        "name": "amount_jitter_ratio",
+        "rationale": "Adds organic-looking dispersion so amounts do not form a detectable near-constant template, while staying below the variance of genuinely erratic accounts.",
+        "unit": "ratio",
+        "value": 0.22
+      },
+      {
+        "name": "inter_transaction_delay_hours",
+        "rationale": "Long enough that the 1h velocity window is always empty and the 24h window holds only a few events, but short enough to remain a plausible active mobile-money user.",
+        "unit": "hours",
+        "value": 5.5
+      },
+      {
+        "name": "counterparty_count",
+        "rationale": "Spreads value so no single counterparty pair concentrates, while staying inside the distinct-counterparty range typical of an ordinary active retail account.",
+        "unit": "accounts",
+        "value": 7
+      },
+      {
+        "name": "active_hour_start",
+        "rationale": "Confines exploitation to normal daytime hours where hour-of-day is unremarkable for the population and for the account's own history.",
+        "unit": "hour of day",
+        "value": 9
+      },
+      {
+        "name": "active_hour_end",
+        "rationale": "An 11-hour daytime window gives the search room to shift hours without ever touching the low-volume overnight band that most strongly moves the score.",
+        "unit": "hour of day",
+        "value": 20
+      },
+      {
+        "name": "escalation_ratio",
+        "rationale": "Slow per-step growth lets extracted value compound while each transaction is only a small deviation from the account's freshly updated own history.",
+        "unit": "multiplier per transaction",
+        "value": 1.06
+      }
+    ],
+    "safety_constraints": [
+      "All traffic is generated by the deterministic seeded PaySim-derived simulator; no parameter here is applied to any real payment network.",
+      "No real institution, account identifier, customer, product name or geography is referenced or implied.",
+      "Output is limited to simulator parameter values; no transaction rows, amounts-per-row, or account identifiers are emitted by this stage.",
+      "Stays strictly within the adaptive_detector_evasion family from the closed in-scope list.",
+      "Any evasion achieved only via traffic flagged under realism_risks is reported to the blue team as a simulator bug, not as a detector finding.",
+      "Findings are used solely to harden the detector (e.g. adding trajectory- and cohort-level features); no operational playbook or ordering of live probes is produced."
+    ]
+  },
+  "run_id": "attack_analyst-bc7887f80f0492a3",
+  "schema_valid": true,
+  "stage": "attack_analyst"
+}

@@ -468,6 +468,8 @@ export interface GenAIGuidedGenerationDTO {
   recall: number | null;
   fidelity_score: number | null;
   hardest_survivor: Record<string, unknown> | null;
+  /** Wall-clock of the run itself, when it was measured. */
+  runtime_seconds: number | null;
   dry_run: boolean;
   /** Server-computed: complete provenance AND at least one applied mutation.
    * Never re-derive this in the UI. */
@@ -485,5 +487,174 @@ export interface GenAIResponseDTO {
   guided_generations: GenAIGuidedGenerationDTO[];
   latest_guided_generation: GenAIGuidedGenerationDTO | null;
   has_live_genai: boolean;
+  /** Recommended vs actionable. Server-computed; `applied` is always false. */
+  attack_recommendations: AttackRecommendationPreviewDTO | null;
+  /** Per-family coverage across the three deeply simulated families. */
+  family_coverage: GenAIFamilySummaryDTO | null;
+  meta: MetaDTO;
+}
+
+export interface StageCoverageDTO {
+  /** Live AND schema-valid. A recorded replay never sets this. */
+  available: boolean;
+  run_id: string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  live: boolean;
+  created_at: string;
+  source_artifact: string;
+  reason: string;
+}
+
+export interface GuidedCoverageDTO {
+  available: boolean;
+  generation_id: string;
+  scenario_id: string;
+  applied_mutation_count: number;
+  rejected_mutation_count: number;
+  seed: number | null;
+  detector_model_version: string;
+  fraud_count: number | null;
+  caught_count: number | null;
+  escaped_count: number | null;
+  recall: number | null;
+  fidelity_score: number | null;
+  runtime_seconds: number | null;
+  hardest_survivor_id: string;
+  reason: string;
+}
+
+export interface FamilyCoverageDTO {
+  attack_family: string;
+  label: string;
+  attack_analyst: StageCoverageDTO;
+  blind_spot_analyst: StageCoverageDTO;
+  guided_generation: GuidedCoverageDTO;
+  has_live_genai: boolean;
+  is_fully_covered: boolean;
+}
+
+export interface GenAIFamilySummaryDTO {
+  summary_version: string;
+  families: FamilyCoverageDTO[];
+  live_family_count: number;
+  fully_covered_family_count: number;
+  guided_family_count: number;
+  limitations: string[];
+}
+
+export interface RecommendedParameterDTO {
+  name: string;
+  recommended_value: string | number | boolean | null;
+  unit: string | null;
+  rationale: string;
+  actionable: boolean;
+  reason: string;
+  current_value: string | number | boolean | null;
+  minimum: number | null;
+  maximum: number | null;
+  param_type: string;
+}
+
+export interface AttackRecommendationPreviewDTO {
+  blueprint_id: string;
+  genai_run_id: string;
+  recommended_count: number;
+  actionable_count: number;
+  parameters: RecommendedParameterDTO[];
+  /** Always false: recommendations are surfaced, never auto-applied. */
+  applied: boolean;
+}
+
+export interface TaxonomyEvidenceSourceDTO {
+  title: string;
+  url: string;
+}
+
+export interface TaxonomyScenarioDTO {
+  id: string;
+  name: string;
+  category: string;
+  channels: string[];
+  rails: string[];
+  genai_abuse_mechanism: string;
+  observable_signals: string[];
+  plausibility_evidence_note: string;
+  evidence_sources: TaxonomyEvidenceSourceDTO[];
+  simulation_readiness: string;
+  implementation_status: string;
+  /** The only flag that licenses showing detector numbers for an entry. */
+  deeply_simulated: boolean;
+  attack_family: string | null;
+}
+
+export interface TaxonomyDTO {
+  taxonomy_version: string;
+  scope_note: string;
+  total_attacks_identified: number | null;
+  deeply_simulated: number | null;
+  category_count: number;
+  channel_count: number;
+  rail_count: number;
+  categories: string[];
+  channels: string[];
+  rails: string[];
+  scenarios: TaxonomyScenarioDTO[];
+  source_artifact: string;
+}
+
+export interface FidelityMetricDTO {
+  name: string;
+  score: number | null;
+}
+
+export interface FidelityComponentGroupDTO {
+  group: string;
+  metrics: FidelityMetricDTO[];
+}
+
+export interface GenerationScaleFamilyDTO {
+  attack_family: string;
+  blueprint_id: string;
+  generator_name: string;
+  seed: number | null;
+  scenarios_generated: number | null;
+  transactions_generated: number | null;
+  fraud_transactions_generated: number | null;
+  generation_seconds: number | null;
+  throughput_transactions_per_second: number | null;
+  fidelity_excluding_constraints: number | null;
+  distributional_fidelity_score: number | null;
+  generator_reported_overall_fidelity_score: number | null;
+  constraint_valid_percentage: number | null;
+  constraint_violation_rate: number | null;
+  deterministic_verified: boolean;
+  historical_scenario_id_overlap_count: number | null;
+  fidelity_components: FidelityComponentGroupDTO[];
+  limitations: string[];
+}
+
+export interface GenerationScaleDTO {
+  benchmark_version: string;
+  benchmark_scope: string;
+  platform: string;
+  family_count: number | null;
+  total_scenarios: number | null;
+  total_transactions: number | null;
+  total_fraud_transactions: number | null;
+  total_generation_seconds: number | null;
+  aggregate_throughput_transactions_per_second: number | null;
+  all_constraints_valid: boolean;
+  all_deterministic: boolean;
+  historical_scenario_id_overlap_count: number | null;
+  families: GenerationScaleFamilyDTO[];
+  fidelity_caveat: string;
+  source_artifact: string;
+}
+
+export interface LandscapeResponseDTO {
+  taxonomy: TaxonomyDTO | null;
+  generation_scale: GenerationScaleDTO | null;
   meta: MetaDTO;
 }

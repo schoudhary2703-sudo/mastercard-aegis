@@ -76,7 +76,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     elapsed = perf_counter() - started
     record = result.record
-    print(f"runtime_seconds  {elapsed:.3f}")
+    # Two numbers, both real: what the run itself took (persisted on the
+    # record) and what the caller waited for, which includes imports.
+    print(f"runtime_seconds  {elapsed:.3f} (persisted run: {record.runtime_seconds:.3f})")
     print(
         f"live_artifact    {record.provenance.genai_run_id} "
         f"({record.provenance.provider}/{record.provenance.model}, "

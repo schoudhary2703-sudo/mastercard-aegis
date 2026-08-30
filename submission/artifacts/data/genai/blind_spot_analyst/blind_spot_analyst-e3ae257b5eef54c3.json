@@ -1,0 +1,145 @@
+{
+  "created_at": "2026-08-29T23:50:49.752556Z",
+  "failure": null,
+  "provenance": {
+    "attempts": 1,
+    "latency_ms": 40500.877700000274,
+    "live": true,
+    "model": "claude-opus-5",
+    "prompt_version": "genai-prompts-v1",
+    "provider": "anthropic",
+    "request_id": "req_011CeXwFMm7BveVsCkHaExoL",
+    "source_artifacts": [
+      "data\\synthetic\\mule_confrontations\\mule-confrontation-020370716736fb95\\confrontation.json",
+      "data\\synthetic\\mule_confrontations\\mule-confrontation-020370716736fb95\\blueprint.json"
+    ]
+  },
+  "raw_response_text": null,
+  "request": {
+    "attack_family": "mule_network_structuring",
+    "blueprint_id": "mule-network-structuring-v1",
+    "caught_transaction_count": 6,
+    "detector_context": "XGBoost gradient-boosted detector over decision-time-safe temporal features, trained on PaySim plus promoted hard positives. It never observes blueprint parameters or attack labels.",
+    "detector_model_version": "xgboost-hardened-crossfamily-20260301",
+    "detector_threshold": null,
+    "fidelity_score": 0.8270789840001774,
+    "important_signals": [
+      "temporal.amount",
+      "temporal.source_velocity_1h",
+      "temporal.destination_velocity_1h",
+      "temporal.source_txn_count_before",
+      "graph.fan_out",
+      "graph.fan_in",
+      "graph.layering_depth"
+    ],
+    "missed_transaction_count": 6,
+    "mutable_parameters": [
+      "cash_out_probability",
+      "context_amount_mean",
+      "context_amount_stddev",
+      "context_duration_days",
+      "context_transaction_count_per_account",
+      "destination_diversity",
+      "fan_in",
+      "fan_out",
+      "inter_transfer_delay_minutes",
+      "layering_depth",
+      "mule_account_count",
+      "per_transfer_cap",
+      "source_allocation_concentration",
+      "temporal_spread_hours",
+      "transfer_amount_mean",
+      "transfer_amount_stddev",
+      "transfer_count"
+    ],
+    "observed_risk_scores": [
+      0.9234819412231445,
+      0.9709582924842834,
+      0.9776861667633057,
+      0.9826942086219788,
+      0.9854887127876282,
+      0.986645519733429
+    ]
+  },
+  "response": {
+    "blind_spot_hypothesis": "The detector's high-confidence hits are driven by short-horizon burst concentration rather than by the structuring pattern itself: 1-hour source/destination velocity spikes plus a high instantaneous fan-out/fan-in ratio at a small number of mule nodes. Because the same blueprint produced a clean 50/50 split (6 caught at 0.92-0.99, 6 missed), the discriminating factor is almost certainly not amount shape but per-node temporal density -- transfers that land inside the same 1h window on the same source or destination node cross a learned velocity/fan threshold and saturate the score, while structurally identical transfers that fall outside that window drop below it. The blind spot is therefore a time-window/edge-density gap: the model has essentially no cross-window aggregation, so spreading the same total value across more mule nodes and longer inter-transfer gaps preserves the laundering topology while starving temporal.source_velocity_1h, temporal.destination_velocity_1h and graph.fan_in/fan_out of signal.",
+    "confidence": 0.72,
+    "evidence": [
+      "All six caught transactions score 0.92-0.99 with near-saturation (four above 0.97), indicating a threshold-crossing feature rather than a graded amount-based judgement.",
+      "Exactly half the transactions in the same attack (same amount distribution, same blueprint parameters) were missed, so the separating feature must vary within the run -- consistent with per-node temporal density, not with amount or global topology.",
+      "The top signals are dominated by 1-hour velocity counters (temporal.source_velocity_1h, temporal.destination_velocity_1h) and instantaneous graph degree (graph.fan_out, graph.fan_in), both of which are window-local and reset once transfers are spaced out.",
+      "temporal.source_txn_count_before appears as an important signal, implying mules with thin prior history are penalised; the missed subset likely rode accounts with more accumulated benign context.",
+      "graph.layering_depth is listed as important yet did not prevent six misses, suggesting depth alone is weakly weighted compared with edge-density features.",
+      "No detector threshold was reported, and observed scores cluster at the ceiling, which is the signature of a saturated decision region reachable only by burst-like edges."
+    ],
+    "expected_trade_offs": [
+      "Longer inter-transfer delays and a wider temporal spread reduce laundering throughput and increase exposure time, so the attack becomes slower and easier for any batch/retrospective graph review to assemble even if the real-time model misses it.",
+      "Increasing temporal_spread_hours materially may push the campaign across day boundaries and interact with diurnal PaySim patterns, which can create a new anomaly (activity in atypical hours) and cost fidelity if not paired with realistic scheduling.",
+      "Adding mule accounts raises operational cost and the chance that some of the added accounts are themselves flagged by account-opening or dormancy heuristics; it also thins per-account value, which may fall below plausible cash-out economics.",
+      "Lowering fan_out and fan_in reduces the aggregation efficiency of the network and may require more layering hops to move the same value, partially re-exposing graph.layering_depth.",
+      "Boosting context_transaction_count_per_account improves realism of account history but increases the synthetic context volume and can drift the benign/attack mix ratio of the corpus, so downstream class balance must be rechecked.",
+      "All six proposals move in the same direction (dilution). Applied together at full magnitude they risk over-shooting into a regime where the attack is no longer recognisably mule_network_structuring, which would be an evasion win with no research value; they should be applied incrementally and evaluated for family fidelity."
+    ],
+    "mutation_proposals": [
+      {
+        "confidence": 0.78,
+        "direction": "increase",
+        "magnitude": 0.2,
+        "parameter": "inter_transfer_delay_minutes",
+        "proposed_value": null,
+        "rationale": "Directly decays temporal.source_velocity_1h and temporal.destination_velocity_1h by pushing consecutive hops out of the same 1-hour aggregation window, which is the feature pair that saturated the caught transactions."
+      },
+      {
+        "confidence": 0.75,
+        "direction": "increase",
+        "magnitude": 0.25,
+        "parameter": "temporal_spread_hours",
+        "proposed_value": null,
+        "rationale": "Widens the overall campaign window so that no single mule node accumulates multiple inbound or outbound edges inside one velocity bucket, reproducing the condition that the six missed transactions apparently satisfied."
+      },
+      {
+        "confidence": 0.7,
+        "direction": "increase",
+        "magnitude": 0.2,
+        "parameter": "mule_account_count",
+        "proposed_value": null,
+        "rationale": "More mule nodes carry the same total value with fewer edges per node, mechanically lowering per-node fan_in and destination_velocity_1h without changing the structuring economics."
+      },
+      {
+        "confidence": 0.66,
+        "direction": "decrease",
+        "magnitude": 0.15,
+        "parameter": "fan_out",
+        "proposed_value": null,
+        "rationale": "graph.fan_out is a top signal and the caught edges likely originated at the widest-degree source node; trimming per-source branching moves those nodes toward the benign degree distribution."
+      },
+      {
+        "confidence": 0.64,
+        "direction": "decrease",
+        "magnitude": 0.15,
+        "parameter": "fan_in",
+        "proposed_value": null,
+        "rationale": "Symmetric to fan_out: collector-side concentration is the strongest graph tell for mule aggregation, and reducing inbound degree per collector removes the funnel shape the detector keys on."
+      },
+      {
+        "confidence": 0.6,
+        "direction": "increase",
+        "magnitude": 0.18,
+        "parameter": "context_transaction_count_per_account",
+        "proposed_value": null,
+        "rationale": "Raises temporal.source_txn_count_before so mule accounts no longer look freshly minted, diluting the thin-history penalty and making velocity counters read as a smaller relative deviation from each account's own baseline."
+      }
+    ],
+    "safety_constraints": [
+      "All parameters remain within the declared mutable set; no structural parameter (schema, seed policy, family topology definition) is touched.",
+      "Every magnitude is at or below the 0.25 relative-step ceiling and no proposal uses SET, so no absolute value is injected out of band.",
+      "No transaction rows, amounts-per-row, account identifiers, timestamps or payment records are emitted; the seeded deterministic simulator remains the sole generator of the corpus.",
+      "Scope is confined to PaySim-derived synthetic mobile-money data; no real institution, rail, or customer is referenced or targeted.",
+      "Fidelity must be re-scored after mutation and the run rejected if fidelity_score falls materially below the current 0.827, so evasion cannot be bought by destroying realism.",
+      "Mutations are advisory proposals for the loop controller; they carry no execution authority and must pass the existing bounds validator before any regeneration."
+    ]
+  },
+  "run_id": "blind_spot_analyst-e3ae257b5eef54c3",
+  "schema_valid": true,
+  "stage": "blind_spot_analyst"
+}

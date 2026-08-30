@@ -22,13 +22,16 @@ from pydantic import ValidationError
 from aegis.genai.contracts import (
     MAX_MUTATION_MAGNITUDE,
     MAX_MUTATION_PROPOSALS,
+    AttackAnalystResponse,
     BlindSpotAnalystResponse,
     BoundedMutationProposal,
+    SimulatorParameterProposal,
 )
 from aegis.genai.handoff_contracts import GenAIGuidedGeneration, GenAIHandoffProvenance
 from aegis.loop.genai_handoff import (
     GenAIHandoffError,
     apply_blind_spot_proposals,
+    preview_attack_recommendations,
 )
 from aegis.shared.contracts import AttackBlueprint, ParameterSpec
 from aegis.shared.enums import AttackFamily, MutationDirection, ParameterType
@@ -583,3 +586,97 @@ class TestGuidedGenerationArtifact:
         )
         assert record.dry_run is True
         assert record.scenario_id is None
+
+
+# ---------------------------------------------------------------------------
+# Attack Analyst recommendations -- preview only, never applied
+# ---------------------------------------------------------------------------
+
+
+def _attack_response(*params: dict[str, Any]) -> AttackAnalystResponse:
+    """TEST-ONLY validated Attack Analyst response."""
+    return AttackAnalystResponse(
+        attack_family=AttackFamily.SYNTHETIC_IDENTITY_BUSTOUT,
+        attack_hypothesis="Warm up, then drain.",
+        genai_enablement="Identity fabrication at scale.",
+        recommended_simulator_parameters=[
+            SimulatorParameterProposal(**p) for p in params
+        ],
+        confidence=0.8,
+    )
+
+
+def _recommendation(name: str, value: Any) -> dict[str, Any]:
+    return {"name": name, "value": value, "rationale": "because the evidence says so"}
+
+
+class TestAttackRecommendationPreview:
+    def test_in_range_recommendation_is_actionable(self) -> None:
+        preview = preview_attack_recommendations(
+            _attack_response(_recommendation("bustout_amount_multiplier", 9.0)), _blueprint()
+        )
+        assert preview.actionable_count == 1
+        assert preview.parameters[0].actionable is True
+        assert preview.parameters[0].reason == ""
+        assert preview.parameters[0].current_value == 8.0
+
+    def test_above_maximum_is_rejected_with_the_bound_it_broke(self) -> None:
+        preview = preview_attack_recommendations(
+            _attack_response(_recommendation("destination_diversity", 99)), _blueprint()
+        )
+        rejected = preview.parameters[0]
+        assert rejected.actionable is False
+        assert "exceeds the declared maximum" in rejected.reason
+        # Rejected, never clamped: the recommendation is reported as given.
+        assert rejected.recommended_value == 99
+
+    def test_below_minimum_is_rejected(self) -> None:
+        preview = preview_attack_recommendations(
+            _attack_response(_recommendation("bustout_amount_multiplier", 0.5)), _blueprint()
+        )
+        assert preview.parameters[0].actionable is False
+        assert "below the declared minimum" in preview.parameters[0].reason
+
+    def test_undeclared_parameter_is_rejected(self) -> None:
+        preview = preview_attack_recommendations(
+            _attack_response(_recommendation("not_a_parameter", 1)), _blueprint()
+        )
+        assert preview.parameters[0].actionable is False
+        assert "not a declared parameter" in preview.parameters[0].reason
+
+    def test_immutable_parameter_is_rejected(self) -> None:
+        preview = preview_attack_recommendations(
+            _attack_response(_recommendation("randomness_seed_offset", 5)), _blueprint()
+        )
+        assert preview.parameters[0].actionable is False
+        assert "structural" in preview.parameters[0].reason
+
+    def test_non_numeric_value_for_a_numeric_spec_is_rejected(self) -> None:
+        preview = preview_attack_recommendations(
+            _attack_response(_recommendation("destination_diversity", "seven")), _blueprint()
+        )
+        assert preview.parameters[0].actionable is False
+        assert "not numeric" in preview.parameters[0].reason
+
+    def test_nothing_is_ever_applied(self) -> None:
+        preview = preview_attack_recommendations(
+            _attack_response(
+                _recommendation("bustout_amount_multiplier", 9.0),
+                _recommendation("destination_diversity", 99),
+            ),
+            _blueprint(),
+            genai_run_id="attack_analyst-fixture",
+        )
+        assert preview.applied is False
+        assert preview.recommended_count == 2
+        assert preview.actionable_count == 1
+        assert preview.genai_run_id == "attack_analyst-fixture"
+        assert preview.blueprint_id == _blueprint().attack_id
+
+    def test_preview_does_not_mutate_the_blueprint(self) -> None:
+        blueprint = _blueprint()
+        before = blueprint.model_dump(mode="json")
+        preview_attack_recommendations(
+            _attack_response(_recommendation("bustout_amount_multiplier", 9.0)), blueprint
+        )
+        assert blueprint.model_dump(mode="json") == before

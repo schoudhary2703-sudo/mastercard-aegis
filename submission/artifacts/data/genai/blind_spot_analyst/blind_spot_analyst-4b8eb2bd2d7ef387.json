@@ -1,0 +1,136 @@
+{
+  "created_at": "2026-08-30T00:04:27.551004Z",
+  "failure": null,
+  "provenance": {
+    "attempts": 1,
+    "latency_ms": 35177.102300000115,
+    "live": true,
+    "model": "claude-opus-5",
+    "prompt_version": "genai-prompts-v1",
+    "provider": "anthropic",
+    "request_id": "req_011CeXxJ36QJAsNUxufSk5eu",
+    "source_artifacts": [
+      "data\\synthetic\\adaptive_evasion_confrontations\\adaptive-evasion-confrontation-e4a1c07bb4038843\\confrontation.json",
+      "data\\synthetic\\adaptive_evasion_confrontations\\adaptive-evasion-confrontation-e4a1c07bb4038843\\adapted_blueprint.json"
+    ]
+  },
+  "raw_response_text": null,
+  "request": {
+    "attack_family": "adaptive_detector_evasion",
+    "blueprint_id": "adaptive-detector-evasion-v1-g1-036dfaa8db1e",
+    "caught_transaction_count": 3,
+    "detector_context": "XGBoost gradient-boosted detector over decision-time-safe temporal features, trained on PaySim plus promoted hard positives. It never observes blueprint parameters or attack labels.",
+    "detector_model_version": "xgboost-hardened-crossfamily-20260301",
+    "detector_threshold": null,
+    "fidelity_score": 0.8129440998968662,
+    "important_signals": [
+      "temporal.amount",
+      "temporal.amount_deviation_from_source_history",
+      "temporal.source_txn_count_before",
+      "temporal.source_velocity_1h",
+      "temporal.destination_velocity_1h",
+      "temporal.seconds_since_source_previous_txn"
+    ],
+    "missed_transaction_count": 1,
+    "mutable_parameters": [
+      "amount_jitter_ratio",
+      "context_amount_mean",
+      "context_amount_stddev",
+      "context_duration_days",
+      "context_transaction_count",
+      "destination_diversity",
+      "fraud_amount_mean",
+      "fraud_amount_stddev",
+      "fraud_transaction_count",
+      "history_blend_ratio",
+      "inter_event_delay_hours",
+      "per_transaction_cap",
+      "timestamp_jitter_minutes",
+      "transfer_probability"
+    ],
+    "observed_risk_scores": [
+      0.9893602132797241
+    ]
+  },
+  "response": {
+    "blind_spot_hypothesis": "The detector's decision surface is dominated by per-transaction amount magnitude relative to a thin source history plus short-window burst velocity. The 3 caught events almost certainly presented large amounts that were extreme deviations from a sparse source history and arrived inside a 1h window with near-zero seconds-since-previous-txn, producing a saturated score (0.989 -- effectively the top of the model's range). The single miss indicates the detector has no independent notion of cumulative extraction across a longer horizon: an event whose amount falls inside the blended legitimate amount envelope and whose inter-event spacing exceeds the 1h velocity windows is scored as benign. The blind spot is therefore aggregate-over-time extraction executed as many in-distribution, well-spaced, destination-fanned transfers rather than few large bursts.",
+    "confidence": 0.63,
+    "evidence": [
+      "3 of 4 transactions caught with an observed risk score of 0.9894, i.e. score saturation rather than a marginal threshold crossing -- the caught events are far inside the detector's high-confidence fraud region, not borderline.",
+      "Exactly one transaction evaded, showing the family already contains a viable evasive mode; the generation is a mixture of loud and quiet events rather than uniformly loud.",
+      "Top signals 'temporal.amount' and 'temporal.amount_deviation_from_source_history' rank first, implying absolute magnitude and z-score-like deviation against a thin prior drive the score.",
+      "'temporal.source_txn_count_before' being important suggests low prior-count sources are penalised: the synthetic context history is too short to normalise the fraud amounts.",
+      "Three velocity/recency features ('source_velocity_1h', 'destination_velocity_1h', 'seconds_since_source_previous_txn') are all 1-hour or last-event scoped -- no feature spans days, so spacing beyond that horizon is invisible.",
+      "Fidelity 0.813 leaves limited headroom: mutations must stay small or the corpus stops resembling PaySim and the result is an uninformative evasion."
+    ],
+    "expected_trade_offs": [
+      "Longer inter_event_delay_hours stretches the campaign duration, which lowers realism for fast cash-out narratives and increases exposure to any future long-horizon aggregate feature the blue team adds.",
+      "Higher history_blend_ratio reduces the distinctness of the attack signature and may make some events indistinguishable from benign activity, weakening the corpus as a labelled hard-positive source.",
+      "Larger context_transaction_count inflates simulation cost and, if pushed too far, produces implausibly hyperactive mobile-money accounts relative to PaySim base rates -- a fidelity loss.",
+      "Lower per_transaction_cap and lower fraud_amount_stddev require more events for the same extracted total, which can re-create burst velocity signatures unless the delay increase is applied jointly; also risks a suspiciously uniform amount pattern detectable by a variance-based feature.",
+      "Higher destination_diversity may exceed realistic mule-network sizes for a single source and could trip fan-out (rather than fan-in) heuristics.",
+      "All amount-shaping changes trade evasion against the 0.813 fidelity score; combined magnitudes should be validated to avoid net fidelity regression."
+    ],
+    "mutation_proposals": [
+      {
+        "confidence": 0.72,
+        "direction": "increase",
+        "magnitude": 0.22,
+        "parameter": "inter_event_delay_hours",
+        "proposed_value": null,
+        "rationale": "Pushes successive fraud events outside the detector's 1h velocity windows and raises seconds_since_source_previous_txn, directly attacking the three recency/velocity signals that co-fired on the caught events."
+      },
+      {
+        "confidence": 0.7,
+        "direction": "increase",
+        "magnitude": 0.18,
+        "parameter": "history_blend_ratio",
+        "proposed_value": null,
+        "rationale": "Draws fraud amounts closer to the source's own legitimate amount distribution, shrinking amount_deviation_from_source_history, the second-ranked signal."
+      },
+      {
+        "confidence": 0.65,
+        "direction": "increase",
+        "magnitude": 0.2,
+        "parameter": "context_transaction_count",
+        "proposed_value": null,
+        "rationale": "A thicker prior history raises source_txn_count_before and widens the empirical amount envelope, so the same extraction total looks less anomalous per event."
+      },
+      {
+        "confidence": 0.68,
+        "direction": "decrease",
+        "magnitude": 0.2,
+        "parameter": "per_transaction_cap",
+        "proposed_value": null,
+        "rationale": "Caps the tail events that most likely produced the 0.989 saturation on temporal.amount; the same aggregate is reached via more, smaller events."
+      },
+      {
+        "confidence": 0.6,
+        "direction": "increase",
+        "magnitude": 0.15,
+        "parameter": "destination_diversity",
+        "proposed_value": null,
+        "rationale": "Spreads value across more sinks so destination_velocity_1h stays low per destination, removing the fan-in concentration cue."
+      },
+      {
+        "confidence": 0.55,
+        "direction": "decrease",
+        "magnitude": 0.12,
+        "parameter": "fraud_amount_stddev",
+        "proposed_value": null,
+        "rationale": "Tightens the fraud amount spread so no single event lands in the extreme upper tail that the deviation feature keys on; reduces the loud/quiet mixture that got 3 of 4 flagged."
+      }
+    ],
+    "safety_constraints": [
+      "All parameters remain within the declared mutable set; no structural or schema-level parameter is touched.",
+      "No transaction rows, amounts-per-row, account identifiers, timestamps, or any concrete payment record are emitted -- only relative parameter directions for the seeded simulator.",
+      "Every magnitude is within [0.0, 0.25]; no proposal is a jump to an out-of-distribution regime.",
+      "Scope is confined to PaySim-derived synthetic data; nothing here is applicable to or executable against a live payment network.",
+      "Mutations must be re-scored for fidelity; any candidate whose fidelity falls materially below 0.813 should be rejected as an unrealistic evasion rather than promoted.",
+      "Proposals are defensive: their purpose is to generate hard positives that expose the detector's missing long-horizon aggregate feature, which should be reported to the blue team."
+    ]
+  },
+  "run_id": "blind_spot_analyst-4b8eb2bd2d7ef387",
+  "schema_valid": true,
+  "stage": "blind_spot_analyst"
+}

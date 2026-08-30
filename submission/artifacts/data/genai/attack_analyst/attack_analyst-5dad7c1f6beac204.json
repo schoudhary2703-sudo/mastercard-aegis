@@ -1,0 +1,138 @@
+{
+  "created_at": "2026-08-29T23:48:34.248358Z",
+  "failure": null,
+  "provenance": {
+    "attempts": 2,
+    "latency_ms": 43371.69189999986,
+    "live": true,
+    "model": "claude-opus-5",
+    "prompt_version": "genai-prompts-v1",
+    "provider": "anthropic",
+    "request_id": "req_011CeXw5AjJhaex5QYWbXbJh",
+    "source_artifacts": [
+      "taxonomy:mule-network-structuring"
+    ]
+  },
+  "raw_response_text": null,
+  "request": {
+    "available_simulator_parameters": [
+      "mule_account_count",
+      "fan_out_transaction_count",
+      "layering_depth",
+      "layering_transaction_count",
+      "structuring_threshold",
+      "amount_jitter_ratio",
+      "inter_transfer_delay_hours",
+      "cash_out_count"
+    ],
+    "candidate_families": [
+      "synthetic_identity_bustout",
+      "mule_network_structuring",
+      "adaptive_detector_evasion"
+    ],
+    "known_constraints": [
+      "Synthetic data only -- never reference real institutions, real account identifiers, or real customers.",
+      "Propose simulator parameters, never concrete transaction rows.",
+      "Stay inside the three in-scope attack families; do not invent a fourth.",
+      "An evasion that requires implausible traffic is a bug, not a finding."
+    ],
+    "payment_context": "A PaySim-derived mobile-money world: accounts send PAYMENT, TRANSFER, CASH_IN, CASH_OUT and DEBIT operations. A detector sees only decision-time-safe features derived from the current transaction and strictly earlier events for the accounts involved: amount, hour of day, balances before, per-account transaction counts and velocities over 1h and 24h windows, deviation from that account's own historical amounts, and distinct-counterparty counts. It never sees attack labels, blueprint parameters, or which scenario a transaction belongs to.",
+    "research_summary": "A coordinator account distributes illicit funds across a set of mule accounts, which then layer the money through intermediate transfers before consolidating it toward a cash-out point. Individual amounts are deliberately kept unremarkable -- often below reporting or review thresholds -- so that no single transaction looks anomalous in isolation. The signal lives in the topology rather than the magnitudes: an account paying six distinct counterparties once each is structurally different from one paying the same counterparty six times, even though per-transaction volume features cannot tell them apart. Mule accounts are frequently recruited rather than fabricated, so they may carry real, legitimate history.",
+    "scenario_name": "Mule network structuring"
+  },
+  "response": {
+    "attack_family": "mule_network_structuring",
+    "attack_hypothesis": "A coordinator account fans illicit funds out to a moderately large set of recruited mule accounts in single, unremarkable-sized transfers held just under the review threshold, with per-transfer amounts jittered so no account's amount distribution deviates sharply from its own history. Each mule then layers funds through two to three hops of intermediate mule-to-mule transfers, spread over delays long enough that 1h and 24h velocity counters never spike, before funds re-converge on a small number of cash-out points. The core bet is that a detector limited to per-transaction magnitude, per-account velocity and own-history deviation features cannot separate 'one transfer to each of many distinct counterparties' from ordinary low-value payment activity, because the discriminative signal is the fan-out/fan-in topology and the coordinated timing across accounts, not any single transaction's features. Recruited mules with legitimate prior history further suppress own-history deviation scores, so the attack should evade amount- and velocity-based thresholds while remaining visible only to graph-aware or cross-account aggregation logic. Success criterion: high recall loss for the incumbent detector at fixed false-positive budget, achieved with traffic whose per-account amount and velocity marginals stay inside plausible mobile-money ranges.",
+    "confidence": 0.82,
+    "genai_enablement": "Generative AI lowers the cost of the human-facing parts of this scheme: LLM-driven chat agents can recruit and script money mules at scale across many languages, keeping each recruit compliant with instructions on amount ceilings and timing windows; generative models can draft the plausible pretexts and 'job offer' narratives that make recruitment convincing. On the operational side, a model fitted to publicly known thresholds and to feedback about which transfers were reviewed can propose per-mule amount and delay schedules that mimic each mule's own legitimate history, automating the amount-jitter and delay-scheduling work that previously required a skilled human coordinator, and allowing the topology to be re-planned quickly whenever a branch is frozen.",
+    "observable_signals": [
+      "Elevated distinct-counterparty count for the coordinator account within a short window, with a near-1.0 ratio of distinct counterparties to transactions.",
+      "Fan-in concentration at cash-out accounts: many distinct senders, few or no outgoing transfers.",
+      "Per-transaction amounts clustered just below the structuring threshold with narrow dispersion after jitter.",
+      "Mule accounts showing an unusual balance-before pattern: near-zero resting balance followed by receive-then-forward with little residual.",
+      "24h transaction counts for mules that are modestly above their own historical baseline while 1h velocity stays flat, due to imposed inter-transfer delays.",
+      "Short receive-to-forward latency distribution that is tighter than legitimate account behaviour, even when absolute delays are long.",
+      "Repeated TRANSFER-then-CASH_OUT sequencing at the consolidation accounts.",
+      "Amount deviation from own history that is deliberately small for recruited mules but larger for any mule with a low-value legitimate baseline."
+    ],
+    "payment_system_assumptions": [
+      "Accounts can send TRANSFER between accounts and CASH_OUT to an exit point without per-hop identity re-verification.",
+      "A review or reporting threshold exists that scales with amount, so staying below it materially reduces the chance of manual review.",
+      "Detector scoring is per-transaction and decision-time-safe: it sees only the current transaction plus strictly earlier events for the involved accounts, with no cross-account graph aggregation and no forward-looking information.",
+      "Mule accounts can be pre-existing with legitimate transaction history, so own-history amount deviation is a weak signal for them.",
+      "Transfers settle fast enough that multi-hop layering completes within a few days.",
+      "No hard cap on distinct counterparties per account per day that would block fan-out."
+    ],
+    "realism_risks": [
+      "Amounts pinned uniformly just under the threshold with too little jitter produce an implausible spike in the amount histogram that no legitimate population would show; such an evasion would be a simulator artefact, not a finding.",
+      "Uniform inter-transfer delays across all mules create a synthetic periodicity absent from human mobile-money behaviour; delays need per-account variation.",
+      "Mules forwarding almost exactly the received amount leaves near-zero residual balances, which is both unrealistic and a strong giveaway; a fee or retained fraction is more plausible.",
+      "Layering transaction counts that give every mule an identical in-degree and out-degree yield a regular graph unlike real recruited networks, where activity is heavily skewed.",
+      "Fan-out of 18 transfers from a single coordinator inside a short window may exceed plausible per-account counterparty rates for the mobile-money population; the fan-out should be spread over time.",
+      "Mules with no synthetic prior history would show extreme own-history deviation, contradicting the research premise that recruited mules carry legitimate history.",
+      "Cash-out amounts that are the exact arithmetic sum of upstream hops make the topology trivially recoverable and are unrealistically clean.",
+      "Overall injected volume large enough to shift population-level statistics would make the attack detectable for reasons unrelated to its actual tradecraft."
+    ],
+    "recommended_simulator_parameters": [
+      {
+        "name": "mule_account_count",
+        "rationale": "Large enough that fan-out topology is the dominant signal and per-mule load stays low, but small enough to remain a plausible recruited cohort rather than a fabricated farm.",
+        "unit": "accounts",
+        "value": 18
+      },
+      {
+        "name": "fan_out_transaction_count",
+        "rationale": "One transfer per mule keeps the distinct-counterparty-to-transaction ratio at 1.0, which is exactly the topology case that per-transaction volume features cannot distinguish.",
+        "unit": "transactions",
+        "value": 18
+      },
+      {
+        "name": "layering_depth",
+        "rationale": "Three hops obscures the coordinator-to-cash-out path while staying within the few-day settlement window and avoiding implausibly long chains for mobile money.",
+        "unit": "hops",
+        "value": 3
+      },
+      {
+        "name": "layering_transaction_count",
+        "rationale": "Roughly two to three layering transfers per mule across three hops, enough to diffuse funds without pushing any single mule's 24h count outside its plausible baseline.",
+        "unit": "transactions",
+        "value": 42
+      },
+      {
+        "name": "structuring_threshold",
+        "rationale": "Sets a ceiling comfortably below a round review threshold so that jitter never pushes a transfer over it, while keeping amounts high enough that the scheme is economically sensible.",
+        "unit": "USD",
+        "value": 9200
+      },
+      {
+        "name": "amount_jitter_ratio",
+        "rationale": "Moderate jitter breaks the tell-tale tight cluster just under the threshold and keeps each amount within a plausible spread of the account's own history, without so much variance that transfers approach the threshold.",
+        "unit": "ratio",
+        "value": 0.18
+      },
+      {
+        "name": "inter_transfer_delay_hours",
+        "rationale": "Delays long enough to keep 1h velocity counters flat and 24h counters low, while still completing three layering hops within a few days.",
+        "unit": "hours",
+        "value": 9
+      },
+      {
+        "name": "cash_out_count",
+        "rationale": "Several exit points rather than one reduces fan-in concentration at any single account, but staying few preserves the consolidation economics that make the attack realistic.",
+        "unit": "transactions",
+        "value": 5
+      }
+    ],
+    "safety_constraints": [
+      "Operate exclusively on PaySim-derived synthetic data; no real institutions, account identifiers, customers or products are referenced or inferable.",
+      "Emit only simulator parameter values drawn from the exposed parameter list; never emit transaction rows, amounts-per-row, or account identifiers.",
+      "All traffic is produced by the deterministic seeded simulator so the corpus stays reproducible from its seed; no out-of-band data injection.",
+      "No operationally actionable guidance on mule recruitment, threshold discovery at specific institutions, or account-opening evasion; the recruitment discussion stays at taxonomy level.",
+      "Findings are only accepted if the generated traffic passes population-level plausibility checks, so evasions that depend on synthetic artefacts are discarded.",
+      "Outputs are used solely to strengthen detector coverage, specifically to motivate graph and cross-account aggregation features, and stay inside the three in-scope attack families."
+    ]
+  },
+  "run_id": "attack_analyst-5dad7c1f6beac204",
+  "schema_valid": true,
+  "stage": "attack_analyst"
+}

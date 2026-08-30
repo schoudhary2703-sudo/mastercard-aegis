@@ -3,6 +3,8 @@ import { fetchExperiments, fetchGenAI } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO } from "../api/types";
 import { GenAIAnalystPanel } from "../components/genai/GenAIAnalystPanel";
+import { AttackRecommendations } from "../components/genai/AttackRecommendations";
+import { GenAIFamilyCoverage } from "../components/genai/GenAIFamilyCoverage";
 import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { OutcomeBadge, ReplayStream } from "../components/lab/ReplayStream";
 import { ScoreBoard } from "../components/lab/ScoreBoard";
@@ -291,6 +293,12 @@ export function AttackLabPage() {
                   render={(data) => (
                     <div className="space-y-3">
                       <LiveGenAIEvidence genai={data} />
+                      {data.family_coverage && (
+                        <GenAIFamilyCoverage coverage={data.family_coverage} />
+                      )}
+                      {data.attack_recommendations && (
+                        <AttackRecommendations preview={data.attack_recommendations} />
+                      )}
                       <GenAIAnalystPanel genai={data} />
                     </div>
                   )}

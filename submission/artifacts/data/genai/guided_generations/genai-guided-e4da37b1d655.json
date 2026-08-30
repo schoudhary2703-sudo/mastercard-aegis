@@ -1,0 +1,394 @@
+{
+  "generation_id": "genai-guided-e4da37b1d655",
+  "created_at": "2026-08-30T00:06:12.281025Z",
+  "attack_family": "adaptive_detector_evasion",
+  "provenance": {
+    "genai_run_id": "blind_spot_analyst-4b8eb2bd2d7ef387",
+    "provider": "anthropic",
+    "model": "claude-opus-5",
+    "prompt_version": "genai-prompts-v1",
+    "live": true,
+    "genai_artifact": "data/genai/blind_spot_analyst/blind_spot_analyst-4b8eb2bd2d7ef387.json",
+    "source_confrontation_id": "adaptive-evasion-confrontation-e4a1c07bb4038843",
+    "source_artifact": "data/synthetic/adaptive_evasion_confrontations/adaptive-evasion-confrontation-e4a1c07bb4038843/confrontation.json",
+    "detector_model_version": "xgboost-hardened-crossfamily-20260301",
+    "seed": 20261202
+  },
+  "blind_spot_hypothesis": "The detector's decision surface is dominated by per-transaction amount magnitude relative to a thin source history plus short-window burst velocity. The 3 caught events almost certainly presented large amounts that were extreme deviations from a sparse source history and arrived inside a 1h window with near-zero seconds-since-previous-txn, producing a saturated score (0.989 -- effectively the top of the model's range). The single miss indicates the detector has no independent notion of cumulative extraction across a longer horizon: an event whose amount falls inside the blended legitimate amount envelope and whose inter-event spacing exceeds the 1h velocity windows is scored as benign. The blind spot is therefore aggregate-over-time extraction executed as many in-distribution, well-spaced, destination-fanned transfers rather than few large bursts.",
+  "proposed_mutation_count": 6,
+  "applied_mutations": [
+    {
+      "parameter": "inter_event_delay_hours",
+      "direction": "increase",
+      "magnitude": 0.22,
+      "from_value": 6.0,
+      "to_value": 16.45,
+      "rationale": "Pushes successive fraud events outside the detector's 1h velocity windows and raises seconds_since_source_previous_txn, directly attacking the three recency/velocity signals that co-fired on the caught events.",
+      "confidence": 0.72
+    },
+    {
+      "parameter": "history_blend_ratio",
+      "direction": "increase",
+      "magnitude": 0.18,
+      "from_value": 0.6,
+      "to_value": 0.726,
+      "rationale": "Draws fraud amounts closer to the source's own legitimate amount distribution, shrinking amount_deviation_from_source_history, the second-ranked signal.",
+      "confidence": 0.7
+    },
+    {
+      "parameter": "context_transaction_count",
+      "direction": "increase",
+      "magnitude": 0.2,
+      "from_value": 10.0,
+      "to_value": 15.0,
+      "rationale": "A thicker prior history raises source_txn_count_before and widens the empirical amount envelope, so the same extraction total looks less anomalous per event.",
+      "confidence": 0.65
+    },
+    {
+      "parameter": "per_transaction_cap",
+      "direction": "decrease",
+      "magnitude": 0.2,
+      "from_value": 5000.0,
+      "to_value": 3100.0,
+      "rationale": "Caps the tail events that most likely produced the 0.989 saturation on temporal.amount; the same aggregate is reached via more, smaller events.",
+      "confidence": 0.68
+    },
+    {
+      "parameter": "destination_diversity",
+      "direction": "increase",
+      "magnitude": 0.15,
+      "from_value": 4.0,
+      "to_value": 5.0,
+      "rationale": "Spreads value across more sinks so destination_velocity_1h stays low per destination, removing the fan-in concentration cue.",
+      "confidence": 0.6
+    },
+    {
+      "parameter": "fraud_amount_stddev",
+      "direction": "decrease",
+      "magnitude": 0.12,
+      "from_value": 1000.0,
+      "to_value": 882.4,
+      "rationale": "Tightens the fraud amount spread so no single event lands in the extreme upper tail that the deviation feature keys on; reduces the loud/quiet mixture that got 3 of 4 flagged.",
+      "confidence": 0.55
+    }
+  ],
+  "rejected_mutations": [],
+  "parent_blueprint_id": "adaptive-detector-evasion-v1-g1-036dfaa8db1e",
+  "resulting_blueprint_id": "adaptive-detector-evasion-v1-g1-036dfaa8db1e-g2-f8d3f5106847",
+  "resulting_blueprint": {
+    "contract_version": "1.0.0",
+    "attack_id": "adaptive-detector-evasion-v1-g1-036dfaa8db1e-g2-f8d3f5106847",
+    "attack_family": "adaptive_detector_evasion",
+    "name": "Bounded feedback-guided payment perturbation",
+    "description": "A benchmark-only sequence establishes ordinary single-account history, then emits bounded fraudulent payments whose declared controls can be mutated from EvasionFeedback.",
+    "objective": "Measure whether detector-visible attribution can guide small, realistic, bounded synthetic changes that lower fraud risk without changing ground truth.",
+    "target_features": [
+      "temporal.amount",
+      "temporal.amount_deviation_from_source_history",
+      "temporal.source_txn_count_before",
+      "temporal.source_velocity_1h",
+      "temporal.destination_velocity_1h",
+      "temporal.seconds_since_source_previous_txn"
+    ],
+    "sequence": [
+      {
+        "step_id": "behavioral-context",
+        "order": 0,
+        "action": "emit_legitimate_single_account_history",
+        "description": "Build strictly earlier legitimate context for one synthetic source.",
+        "channel": "mobile",
+        "offset_seconds": 0.0,
+        "repeat": 1,
+        "amount_policy": {
+          "distribution": "bounded_reference_normal"
+        },
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "adaptive-pacing",
+        "order": 1,
+        "action": "schedule_bounded_perturbation_window",
+        "description": "Apply a declared delay and jitter envelope before fraud events.",
+        "channel": "mobile",
+        "offset_seconds": 1216800.0,
+        "repeat": 1,
+        "amount_policy": {},
+        "parameters": {},
+        "metadata": {}
+      },
+      {
+        "step_id": "adversarial-transfers",
+        "order": 2,
+        "action": "emit_bounded_fraud_perturbations",
+        "description": "Emit fraud-labelled transfers or cash-outs within the declared amount, destination, and timing envelope.",
+        "channel": "mobile",
+        "offset_seconds": 1224000.0,
+        "repeat": 1,
+        "amount_policy": {
+          "distribution": "history_blended_bounded_normal"
+        },
+        "parameters": {},
+        "metadata": {}
+      }
+    ],
+    "parameters": {
+      "context_transaction_count": {
+        "name": "context_transaction_count",
+        "param_type": "int",
+        "default": 15,
+        "description": "",
+        "minimum": 4.0,
+        "maximum": 30.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "transactions"
+      },
+      "context_duration_days": {
+        "name": "context_duration_days",
+        "param_type": "int",
+        "default": 14,
+        "description": "",
+        "minimum": 3.0,
+        "maximum": 45.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "days"
+      },
+      "context_amount_mean": {
+        "name": "context_amount_mean",
+        "param_type": "float",
+        "default": 441.2,
+        "description": "",
+        "minimum": 10.0,
+        "maximum": 500.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "context_amount_stddev": {
+        "name": "context_amount_stddev",
+        "param_type": "float",
+        "default": 200.0,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 200.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "fraud_transaction_count": {
+        "name": "fraud_transaction_count",
+        "param_type": "int",
+        "default": 4,
+        "description": "",
+        "minimum": 2.0,
+        "maximum": 8.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "transactions"
+      },
+      "fraud_amount_mean": {
+        "name": "fraud_amount_mean",
+        "param_type": "float",
+        "default": 2652.0,
+        "description": "",
+        "minimum": 100.0,
+        "maximum": 3000.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "fraud_amount_stddev": {
+        "name": "fraud_amount_stddev",
+        "param_type": "float",
+        "default": 882.4,
+        "description": "",
+        "minimum": 20.0,
+        "maximum": 1000.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "per_transaction_cap": {
+        "name": "per_transaction_cap",
+        "param_type": "float",
+        "default": 3100.0,
+        "description": "",
+        "minimum": 500.0,
+        "maximum": 10000.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "XXX"
+      },
+      "history_blend_ratio": {
+        "name": "history_blend_ratio",
+        "param_type": "float",
+        "default": 0.726,
+        "description": "Blend fraud target toward prior context amounts.",
+        "minimum": 0.2,
+        "maximum": 0.9,
+        "choices": null,
+        "mutable": true,
+        "unit": "ratio"
+      },
+      "inter_event_delay_hours": {
+        "name": "inter_event_delay_hours",
+        "param_type": "float",
+        "default": 16.45,
+        "description": "",
+        "minimum": 0.5,
+        "maximum": 48.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "hours"
+      },
+      "destination_diversity": {
+        "name": "destination_diversity",
+        "param_type": "int",
+        "default": 5,
+        "description": "",
+        "minimum": 1.0,
+        "maximum": 8.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "destinations"
+      },
+      "transfer_probability": {
+        "name": "transfer_probability",
+        "param_type": "float",
+        "default": 0.75,
+        "description": "",
+        "minimum": 0.25,
+        "maximum": 1.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "probability"
+      },
+      "amount_jitter_ratio": {
+        "name": "amount_jitter_ratio",
+        "param_type": "float",
+        "default": 0.08,
+        "description": "",
+        "minimum": 0.01,
+        "maximum": 0.25,
+        "choices": null,
+        "mutable": true,
+        "unit": "ratio"
+      },
+      "timestamp_jitter_minutes": {
+        "name": "timestamp_jitter_minutes",
+        "param_type": "float",
+        "default": 15.0,
+        "description": "",
+        "minimum": 0.0,
+        "maximum": 120.0,
+        "choices": null,
+        "mutable": true,
+        "unit": "minutes"
+      },
+      "max_parameter_changes": {
+        "name": "max_parameter_changes",
+        "param_type": "int",
+        "default": 2,
+        "description": "Immutable bound on one feedback-guided adaptation step.",
+        "minimum": 1.0,
+        "maximum": 3.0,
+        "choices": null,
+        "mutable": false,
+        "unit": "parameters"
+      },
+      "randomness_seed_offset": {
+        "name": "randomness_seed_offset",
+        "param_type": "int",
+        "default": 0,
+        "description": "",
+        "minimum": 0.0,
+        "maximum": 1000000.0,
+        "choices": null,
+        "mutable": false,
+        "unit": "seed offset"
+      }
+    },
+    "realism_constraints": {
+      "min_amount": 1.0,
+      "max_amount": 10000.0,
+      "allowed_currencies": [
+        "XXX"
+      ],
+      "allowed_channels": [
+        "mobile"
+      ],
+      "max_transactions_per_account_per_day": 12,
+      "max_accounts_involved": 12,
+      "min_sequence_length": 6,
+      "max_sequence_length": 38,
+      "active_hours_utc": [],
+      "custom": {
+        "benchmark_only": true,
+        "single_feedback_step": true,
+        "unrestricted_search": false,
+        "real_system_targeting": false
+      }
+    },
+    "parent_blueprint_id": "adaptive-detector-evasion-v1-g1-036dfaa8db1e",
+    "generation": 2,
+    "source": "mutation",
+    "created_at": "2026-03-01T00:00:00Z",
+    "metadata": {
+      "reference_basis": "processed_paysim_train",
+      "simulator_version": "1.0.0",
+      "adaptation_channel": "EvasionFeedback_only",
+      "safety_scope": "synthetic_benchmark_only",
+      "mutation_seed": 20261202,
+      "changed_parameters": {
+        "inter_event_delay_hours": {
+          "from": 6.0,
+          "to": 16.45
+        },
+        "history_blend_ratio": {
+          "from": 0.6,
+          "to": 0.726
+        },
+        "context_transaction_count": {
+          "from": 10,
+          "to": 15
+        },
+        "per_transaction_cap": {
+          "from": 5000.0,
+          "to": 3100.0
+        },
+        "destination_diversity": {
+          "from": 4,
+          "to": 5
+        },
+        "fraud_amount_stddev": {
+          "from": 1000.0,
+          "to": 882.4
+        }
+      },
+      "feedback_ids": [
+        "adaptive-feedback-bdd7136c7dd94a2d"
+      ],
+      "bounded_candidate_count": 1,
+      "genai_guided": true,
+      "genai_run_id": "blind_spot_analyst-4b8eb2bd2d7ef387",
+      "genai_provider": "anthropic",
+      "genai_model": "claude-opus-5",
+      "genai_prompt_version": "genai-prompts-v1",
+      "genai_live": true,
+      "source_confrontation_id": "adaptive-evasion-confrontation-e4a1c07bb4038843",
+      "detector_model_version": "xgboost-hardened-crossfamily-20260301"
+    }
+  },
+  "scenario_id": "adaptive-75fcb13a-20261202-0000",
+  "fraud_count": 4,
+  "caught_count": 4,
+  "escaped_count": 0,
+  "recall": 1.0,
+  "fidelity_score": 0.786165860621999,
+  "hardest_survivor": null,
+  "runtime_seconds": 0.22319900000002235,
+  "dry_run": false,
+  "notes": "Scored against frozen xgboost-hardened-crossfamily-20260301; no training occurred (model.json sha256 ae663894828d unchanged). Fast path used hash-bound reference snapshot data/reports/generation_reference_snapshot.json."
+}

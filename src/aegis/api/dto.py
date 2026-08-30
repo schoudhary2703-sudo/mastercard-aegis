@@ -500,9 +500,89 @@ class GenAIGuidedGenerationDTO(ApiModel):
     recall: float | None = None
     fidelity_score: float | None = None
     hardest_survivor: dict[str, Any] | None = None
+    runtime_seconds: float | None = None
     dry_run: bool = True
     genai_guided: bool = False
     source_artifact: str = ""
+
+
+class RecommendedParameterDTO(ApiModel):
+    """One Attack Analyst recommendation checked against a blueprint's spec."""
+
+    name: str
+    recommended_value: bool | int | float | str | None = None
+    unit: str | None = None
+    rationale: str = ""
+    actionable: bool = False
+    reason: str = ""
+    current_value: bool | int | float | str | None = None
+    minimum: float | None = None
+    maximum: float | None = None
+    param_type: str = ""
+
+
+class AttackRecommendationPreviewDTO(ApiModel):
+    """Recommended vs actionable. `applied` is always False -- see the adapter."""
+
+    blueprint_id: str = ""
+    genai_run_id: str = ""
+    recommended_count: int = 0
+    actionable_count: int = 0
+    parameters: list[RecommendedParameterDTO] = []
+    applied: bool = False
+
+
+class StageCoverageDTO(ApiModel):
+    """One analyst stage for one family. `available` means live AND schema-valid."""
+
+    available: bool = False
+    run_id: str = ""
+    provider: str = ""
+    model: str = ""
+    prompt_version: str = ""
+    live: bool = False
+    created_at: str = ""
+    source_artifact: str = ""
+    reason: str = ""
+
+
+class GuidedCoverageDTO(ApiModel):
+    available: bool = False
+    generation_id: str = ""
+    scenario_id: str = ""
+    applied_mutation_count: int = 0
+    rejected_mutation_count: int = 0
+    seed: int | None = None
+    detector_model_version: str = ""
+    fraud_count: int | None = None
+    caught_count: int | None = None
+    escaped_count: int | None = None
+    recall: float | None = None
+    fidelity_score: float | None = None
+    runtime_seconds: float | None = None
+    hardest_survivor_id: str = ""
+    reason: str = ""
+
+
+class FamilyCoverageDTO(ApiModel):
+    attack_family: str
+    label: str = ""
+    attack_analyst: StageCoverageDTO
+    blind_spot_analyst: StageCoverageDTO
+    guided_generation: GuidedCoverageDTO
+    has_live_genai: bool = False
+    is_fully_covered: bool = False
+
+
+class GenAIFamilySummaryDTO(ApiModel):
+    """Per-family GenAI coverage, computed server-side from persisted artifacts."""
+
+    summary_version: str = ""
+    families: list[FamilyCoverageDTO] = []
+    live_family_count: int = 0
+    fully_covered_family_count: int = 0
+    guided_family_count: int = 0
+    limitations: list[str] = []
 
 
 class GenAIResponseDTO(ApiModel):
@@ -516,6 +596,114 @@ class GenAIResponseDTO(ApiModel):
     guided_generations: list[GenAIGuidedGenerationDTO] = []
     latest_guided_generation: GenAIGuidedGenerationDTO | None = None
     has_live_genai: bool = False
+    # What the live Attack Analyst recommended vs what the canonical blueprint
+    # would accept. Display-only; nothing is applied from it.
+    attack_recommendations: AttackRecommendationPreviewDTO | None = None
+    # Per-family coverage across the three deeply simulated families.
+    family_coverage: GenAIFamilySummaryDTO | None = None
+    meta: MetaDTO
+
+
+# -- Fraud landscape: breadth taxonomy + generation scale ------------------
+
+
+class TaxonomyEvidenceSourceDTO(ApiModel):
+    title: str = ""
+    url: str = ""
+
+
+class TaxonomyScenarioDTO(ApiModel):
+    """One catalogued attack. `deeply_simulated` is the only thing that
+    licenses showing detector numbers for it."""
+
+    id: str
+    name: str = ""
+    category: str = ""
+    channels: list[str] = []
+    rails: list[str] = []
+    genai_abuse_mechanism: str = ""
+    observable_signals: list[str] = []
+    plausibility_evidence_note: str = ""
+    evidence_sources: list[TaxonomyEvidenceSourceDTO] = []
+    simulation_readiness: str = ""
+    implementation_status: str = ""
+    deeply_simulated: bool = False
+    attack_family: str | None = None
+
+
+class TaxonomyDTO(ApiModel):
+    taxonomy_version: str = ""
+    scope_note: str = ""
+    total_attacks_identified: int | None = None
+    deeply_simulated: int | None = None
+    category_count: int = 0
+    channel_count: int = 0
+    rail_count: int = 0
+    categories: list[str] = []
+    channels: list[str] = []
+    rails: list[str] = []
+    scenarios: list[TaxonomyScenarioDTO] = []
+    source_artifact: str = ""
+
+
+class FidelityMetricDTO(ApiModel):
+    name: str
+    score: float | None = None
+
+
+class FidelityComponentGroupDTO(ApiModel):
+    group: str
+    metrics: list[FidelityMetricDTO] = []
+
+
+class GenerationScaleFamilyDTO(ApiModel):
+    attack_family: str
+    blueprint_id: str = ""
+    generator_name: str = ""
+    seed: int | None = None
+    scenarios_generated: int | None = None
+    transactions_generated: int | None = None
+    fraud_transactions_generated: int | None = None
+    generation_seconds: float | None = None
+    throughput_transactions_per_second: float | None = None
+    fidelity_excluding_constraints: float | None = None
+    distributional_fidelity_score: float | None = None
+    generator_reported_overall_fidelity_score: float | None = None
+    constraint_valid_percentage: float | None = None
+    constraint_violation_rate: float | None = None
+    deterministic_verified: bool = False
+    historical_scenario_id_overlap_count: int | None = None
+    fidelity_components: list[FidelityComponentGroupDTO] = []
+    limitations: list[str] = []
+
+
+class GenerationScaleDTO(ApiModel):
+    benchmark_version: str = ""
+    benchmark_scope: str = ""
+    platform: str = ""
+    family_count: int | None = None
+    total_scenarios: int | None = None
+    total_transactions: int | None = None
+    total_fraud_transactions: int | None = None
+    total_generation_seconds: float | None = None
+    aggregate_throughput_transactions_per_second: float | None = None
+    all_constraints_valid: bool = False
+    all_deterministic: bool = False
+    historical_scenario_id_overlap_count: int | None = None
+    families: list[GenerationScaleFamilyDTO] = []
+    fidelity_caveat: str = ""
+    source_artifact: str = ""
+
+
+class LandscapeResponseDTO(ApiModel):
+    """Breadth (what AEGIS identified) and scale (what it generated).
+
+    Both halves are `None` until their artifact exists, so the UI reports
+    "not produced yet" instead of rendering a zero.
+    """
+
+    taxonomy: TaxonomyDTO | None = None
+    generation_scale: GenerationScaleDTO | None = None
     meta: MetaDTO
 
 

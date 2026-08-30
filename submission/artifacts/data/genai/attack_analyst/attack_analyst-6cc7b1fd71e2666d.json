@@ -1,0 +1,162 @@
+{
+  "created_at": "2026-08-29T20:52:47.584764Z",
+  "failure": null,
+  "provenance": {
+    "attempts": 1,
+    "latency_ms": 56948.99429999987,
+    "live": true,
+    "model": "claude-opus-5",
+    "prompt_version": "genai-prompts-v1",
+    "provider": "anthropic",
+    "request_id": "req_011CeXhehp86X7XzqHp3MeNk",
+    "source_artifacts": [
+      "taxonomy:synthetic-identity-bustout"
+    ]
+  },
+  "raw_response_text": null,
+  "request": {
+    "available_simulator_parameters": [
+      "warmup_transaction_count",
+      "warmup_amount_mean",
+      "warmup_amount_stddev",
+      "warmup_duration_days",
+      "account_age_days",
+      "bustout_amount_multiplier",
+      "bustout_transaction_count",
+      "bustout_window_hours",
+      "destination_diversity",
+      "transition_delay_hours",
+      "warmup_transfer_probability"
+    ],
+    "candidate_families": [
+      "synthetic_identity_bustout",
+      "mule_network_structuring",
+      "adaptive_detector_evasion"
+    ],
+    "known_constraints": [
+      "Synthetic data only -- never reference real institutions, real account identifiers, or real customers.",
+      "Propose simulator parameters, never concrete transaction rows.",
+      "Stay inside the three in-scope attack families; do not invent a fourth.",
+      "An evasion that requires implausible traffic is a bug, not a finding."
+    ],
+    "payment_context": "A PaySim-derived mobile-money world: accounts send PAYMENT, TRANSFER, CASH_IN, CASH_OUT and DEBIT operations. A detector sees only decision-time-safe features derived from the current transaction and strictly earlier events for the accounts involved: amount, hour of day, balances before, per-account transaction counts and velocities over 1h and 24h windows, deviation from that account's own historical amounts, and distinct-counterparty counts. It never sees attack labels, blueprint parameters, or which scenario a transaction belongs to.",
+    "research_summary": "A fabricated or blended identity -- assembled from a mix of real and invented attributes -- is used to open an account that behaves unremarkably for weeks or months. The account makes small, regular, plausible payments, builds a transaction history, and earns whatever implicit trust the institution's models assign to established accounts. Once that history exists, the attacker converts it: a short burst of high-value transfers drains the available balance and credit before any manual review cycle completes. The defining property is that the fraudulent phase is preceded by a genuinely benign phase, so any detector relying on account tenure or historical good behavior is being fed exactly the signal the attacker cultivated.",
+    "scenario_name": "Synthetic identity bust-out"
+  },
+  "response": {
+    "attack_family": "synthetic_identity_bustout",
+    "attack_hypothesis": "A synthetic-identity account cultivates a long, statistically boring history and then converts it into cash in a single short window, calibrated so that the bust-out burst stays just inside the detector's own learned tolerance for that account. Concretely: a ~90-day warmup of frequent low-value PAYMENTs with a deliberately WIDE amount distribution (high stddev relative to mean) so the account's historical amount variance is large, plus a modest fraction of TRANSFERs during warmup so transfer-to-new-counterparty is not itself a novel event type. The bust-out then uses a moderate amount multiplier (~9x the warmup mean) rather than an extreme one, spread over ~14 transactions across a ~10-hour window fanned out to ~7 distinct destinations. The intent is that (a) per-transaction z-score deviation-from-own-history is suppressed by the inflated warmup variance, (b) 1h velocity stays low because the burst is paced across ten hours rather than minutes, (c) 24h velocity is only a few multiples of an already-active account's baseline, and (d) no single destination accumulates a conspicuous share. A short transition delay (~36h) after warmup keeps tenure high while avoiding a suspicious dormancy gap. The falsifiable claim: a detector weighting account tenure and own-history deviation will score this burst below the threshold it applies to an equivalent burst from a young, low-variance account, and the aggregate drained value will still be large.",
+    "confidence": 0.82,
+    "genai_enablement": "Generative models materially lower the cost of the two expensive parts of this fraud. First, identity fabrication: LLMs and image/document synthesis produce internally consistent blended personas -- coherent name/address/employment/contact histories and synthetic selfies or document imagery -- that survive KYC consistency checks and liveness heuristics at scale, so hundreds of warmup accounts can be opened where previously a handful could. Second, behavioral choreography: a model conditioned on published or leaked descriptions of the institution's risk features can generate per-account warmup schedules -- amount draws, timing-of-day, counterparty mix -- that are individually plausible and deliberately high-variance, so the later bust-out sits inside each account's own tolerance band. The same tooling automates the dormancy-to-conversion timing across a whole cohort, turning a manual, artisanal fraud into a parameterized campaign. This is exactly why the defensive simulation needs to cover the wide-variance warmup case rather than only the naive spike.",
+    "observable_signals": [
+      "Cumulative outflow in the bust-out window as a multiple of the account's trailing 30-day average outflow.",
+      "24h transaction velocity ratio versus the account's own warmup baseline (expected to rise sharply even though 1h velocity stays modest).",
+      "Distinct-counterparty count in a rolling 24h window jumping from the warmup's narrow set to ~7 new destinations.",
+      "Per-transaction deviation-from-own-history z-score, which this attack deliberately suppresses via high warmup_amount_stddev -- a detector should see a much smaller z than the raw amount ratio implies.",
+      "Ratio of amount to balance-before, trending toward full drain across the burst sequence.",
+      "Shift in transaction-type mix from PAYMENT-dominant warmup to TRANSFER/CASH_OUT-dominant burst.",
+      "Hour-of-day distribution of the burst versus the account's own warmup hour profile.",
+      "Balance trajectory: monotonic depletion with no offsetting CASH_IN, unlike normal churn.",
+      "Account age at time of anomaly -- high tenure, which is the trust signal being exploited.",
+      "Terminal behavior: activity ceasing entirely after the window, giving a truncated lifecycle signature."
+    ],
+    "payment_system_assumptions": [
+      "Account opening can be completed with document/identity attributes only, with no downstream re-verification once the account is live.",
+      "Account tenure and clean transaction history feed, directly or indirectly, into risk scoring or into limit/threshold assignment.",
+      "The detector is decision-time-safe: it sees only the current transaction plus strictly earlier events for the involved accounts, so nothing about the later bust-out can inform scoring of warmup transactions.",
+      "Deviation from an account's own historical amount distribution is computed from that account's realized warmup traffic, so warmup variance is attacker-controllable.",
+      "Manual review and case escalation are slower than the bust-out window, so a burst completed in under ~12 hours faces only automated controls.",
+      "TRANSFER and CASH_OUT to multiple destinations is ordinary mobile-money behavior and not itself blocked.",
+      "Available balance plus any credit headroom can be drained without a per-day aggregate cap that is far below the cumulative burst value."
+    ],
+    "realism_risks": [
+      "The high warmup_amount_stddev is the main plausibility hazard: at stddev 110 on mean 180 the sampler may produce near-zero or negative draws, or a long right tail that no genuine small-value payment account would exhibit. If the simulator does not floor and truncate amounts, the resulting variance is an artifact and any evasion it buys is a bug, not a finding.",
+      "A 90-day warmup with 140 transactions and then permanent silence after a single 10-hour window is a truncated lifecycle; real accounts show gradual decay, occasional dormancy and re-activation, and some CASH_IN inflow.",
+      "Pure monotonic outflow with no CASH_IN during the bust-out is unrealistic for a mobile-money wallet, which normally cycles funds in and out.",
+      "Uniform pacing across the 10-hour window (evenly spaced transactions) is a machine signature; real bursts cluster irregularly, and even spacing could let a detector win for the wrong reason.",
+      "If the 14 burst transactions are drawn from a single tight amount distribution, near-identical repeated amounts become a stronger tell than the aggregate volume itself.",
+      "Draining to exactly zero balance, or an amount-to-balance ratio of precisely 1.0, is a simulator artifact rather than realistic behavior.",
+      "Warmup transactions confined to business hours only, or perfectly regular inter-arrival times, would make the benign phase itself detectable and invalidate the premise that the phase is genuinely benign.",
+      "destination_diversity of 7 destinations that appear nowhere in the warmup and nowhere else in the corpus creates orphan counterparties with no independent history."
+    ],
+    "recommended_simulator_parameters": [
+      {
+        "name": "warmup_transaction_count",
+        "rationale": "Enough history to look like an established account and to give own-history statistics a stable, trusted baseline over roughly three months.",
+        "unit": "transactions",
+        "value": 140
+      },
+      {
+        "name": "warmup_amount_mean",
+        "rationale": "Small, unremarkable everyday mobile-money payment size that will not attract attention during the benign phase.",
+        "unit": "USD",
+        "value": 180.0
+      },
+      {
+        "name": "warmup_amount_stddev",
+        "rationale": "Deliberately wide (stddev ~0.6x mean) so the account's own historical variance is large and the later burst produces a low deviation z-score -- this is the core evasion lever.",
+        "unit": "USD",
+        "value": 110.0
+      },
+      {
+        "name": "warmup_duration_days",
+        "rationale": "Roughly one quarter of clean behavior exceeds typical model lookback and new-account monitoring windows.",
+        "unit": "days",
+        "value": 90
+      },
+      {
+        "name": "account_age_days",
+        "rationale": "Tenure at bust-out time is warmup duration plus transition delay, placing the account outside any new-account elevated-scrutiny cohort.",
+        "unit": "days",
+        "value": 92
+      },
+      {
+        "name": "bustout_amount_multiplier",
+        "rationale": "Moderate rather than extreme: large enough to make the bust-out economically worthwhile, small enough that with the inflated warmup stddev each transaction stays inside a few sigma of the account's own history.",
+        "unit": "multiple of warmup_amount_mean",
+        "value": 9.0
+      },
+      {
+        "name": "bustout_transaction_count",
+        "rationale": "Splits the drain into pieces that each avoid single-large-amount rules while keeping the total count low enough that 24h velocity is not absurd for an account that already transacts frequently.",
+        "unit": "transactions",
+        "value": 14
+      },
+      {
+        "name": "bustout_window_hours",
+        "rationale": "Paces roughly 1.4 transactions per hour so 1h velocity features stay near the warmup baseline, while still completing well inside a manual review cycle.",
+        "unit": "hours",
+        "value": 10
+      },
+      {
+        "name": "destination_diversity",
+        "rationale": "Fans the drain across several counterparties so no single destination concentration stands out, while staying below the count that would look like an obvious fan-out laundering pattern.",
+        "unit": "distinct destinations",
+        "value": 7
+      },
+      {
+        "name": "transition_delay_hours",
+        "rationale": "Short enough to avoid a dormancy gap that reactivation rules would flag, long enough that the burst does not appear contiguous with the final warmup transaction.",
+        "unit": "hours",
+        "value": 36
+      },
+      {
+        "name": "warmup_transfer_probability",
+        "rationale": "Seeds a minority of TRANSFERs into the warmup so the burst's transaction type and new-counterparty behavior are not first-ever events for the account.",
+        "unit": "probability",
+        "value": 0.22
+      }
+    ],
+    "safety_constraints": [
+      "Operates exclusively on PaySim-derived synthetic data; no real institution, account identifier, customer, or document is referenced or required.",
+      "Outputs are structured simulator parameters only -- no transaction rows, no amounts-per-row, no account identifiers -- so the corpus stays reproducible from its seed.",
+      "Contains no operational guidance on fabricating identities, forging documents, or defeating any specific real-world KYC or vendor control; the identity-synthesis discussion stays at taxonomy level.",
+      "Stays inside the three in-scope attack families and uses only parameters from the supplied exposed parameter list.",
+      "Purpose is to generate a detector-hardening test case; any evasion is reported to the blue team with its realism caveats attached, and evasions traceable to sampler artifacts are discarded rather than counted.",
+      "Parameter values are chosen to probe a scoring blind spot, not to maximize simulated financial damage."
+    ]
+  },
+  "run_id": "attack_analyst-6cc7b1fd71e2666d",
+  "schema_valid": true,
+  "stage": "attack_analyst"
+}

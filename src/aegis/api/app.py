@@ -28,6 +28,7 @@ from aegis.api.dto import (
     FinalBenchmarkSummaryDTO,
     GenAIResponseDTO,
     HardestEvasionsResponseDTO,
+    LandscapeResponseDTO,
     OverviewResponseDTO,
     RecentDetectionsResponseDTO,
 )
@@ -135,6 +136,16 @@ def get_genai() -> GenAIResponseDTO:
     layer has not been run -- never placeholder reasoning."""
     settings = get_settings()
     return service.build_genai_response(settings)
+
+
+@app.get("/api/landscape", response_model=LandscapeResponseDTO)
+def get_landscape() -> LandscapeResponseDTO:
+    """The fraud landscape: the breadth taxonomy (what AEGIS identified, and
+    which three families are deeply simulated) and the generation-scale
+    benchmark with its per-family fidelity components. Either half is null
+    until its artifact has been produced."""
+    settings = get_settings()
+    return service.build_landscape_response(settings)
 
 
 @app.get("/api/benchmark", response_model=FinalBenchmarkSummaryDTO)

@@ -99,7 +99,15 @@ export function LiveGenAIEvidence({ genai }: { genai: GenAIResponseDTO }) {
         {stamp && <Chip>{stamp.provider}</Chip>}
         {stamp && <Chip>{stamp.model}</Chip>}
         {stamp && <Chip>{stamp.prompt_version}</Chip>}
-        {guided?.genai_guided && <Chip tone="live">guided generation</Chip>}
+        {guided?.genai_guided && (
+          <Chip tone="live">
+            {/* Provenance is complete and the reasoning was a live call, but the
+                scenario itself was generated and scored in a run that already
+                happened -- so it is recorded evidence of a real run, never a
+                live simulation. */}
+            {guided.live ? "Real GenAI-guided run" : "Recorded GenAI-guided run"}
+          </Chip>
+        )}
       </div>
 
       <Row label="Attack Analyst">
@@ -129,6 +137,7 @@ export function LiveGenAIEvidence({ genai }: { genai: GenAIResponseDTO }) {
       <Row label="Result">
         {guided && guided.fraud_count != null ? (
           <span className="tabular-nums">
+            {guided.fraud_count} fraud ·{" "}
             <span className="font-semibold text-[var(--color-risk-low-600)]">
               {guided.caught_count} caught
             </span>
@@ -140,6 +149,9 @@ export function LiveGenAIEvidence({ genai }: { genai: GenAIResponseDTO }) {
             {pct(guided.recall)}
             {" · fidelity "}
             {num(guided.fidelity_score)}
+            {typeof guided.runtime_seconds === "number" && (
+              <>{` · ${guided.runtime_seconds.toFixed(2)}s`}</>
+            )}
             {guided.detector_model_version && (
               <span className="ml-1.5 font-mono text-[10px] text-[var(--color-ink-faint)]">
                 {guided.detector_model_version}
@@ -156,6 +168,12 @@ export function LiveGenAIEvidence({ genai }: { genai: GenAIResponseDTO }) {
           {guided?.seed != null && ` · seed ${guided.seed}`}
         </span>
       </Row>
+      {guided?.genai_guided && (
+        <p className="border-t border-[var(--color-border)] px-3 py-1.5 text-[10px] text-[var(--color-ink-faint)]">
+          Recorded from a real GenAI-guided run — the reasoning was a live model call, the
+          scenario and its score are persisted artifacts, not a live simulation.
+        </p>
+      )}
     </div>
   );
 }

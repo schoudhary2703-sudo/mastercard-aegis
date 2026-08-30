@@ -1,0 +1,133 @@
+{
+  "created_at": "2026-08-29T21:04:46.668807Z",
+  "failure": null,
+  "provenance": {
+    "attempts": 1,
+    "latency_ms": 49838.305899999796,
+    "live": true,
+    "model": "claude-opus-5",
+    "prompt_version": "genai-prompts-v1",
+    "provider": "anthropic",
+    "request_id": "req_011CeXiaEc1hduewbxbP3ksm",
+    "source_artifacts": [
+      "submission\\artifacts\\data\\synthetic\\confrontations\\confrontation-416e606888de1ffa\\confrontation.json",
+      "submission\\artifacts\\data\\synthetic\\confrontations\\confrontation-416e606888de1ffa\\blueprint.json"
+    ]
+  },
+  "raw_response_text": null,
+  "request": {
+    "attack_family": "synthetic_identity_bustout",
+    "blueprint_id": "synthetic-identity-bustout-v1",
+    "caught_transaction_count": 0,
+    "detector_context": "XGBoost gradient-boosted detector over decision-time-safe temporal features, trained on PaySim plus promoted hard positives. It never observes blueprint parameters or attack labels.",
+    "detector_model_version": "xgboost-baseline-20260101",
+    "detector_threshold": null,
+    "fidelity_score": 0.8289343799338862,
+    "important_signals": [
+      "temporal.account_age_days",
+      "temporal.velocity_24h",
+      "temporal.amount_ratio_to_history",
+      "behavioral.payee_diversity"
+    ],
+    "missed_transaction_count": 3,
+    "mutable_parameters": [
+      "account_age_days",
+      "bustout_amount_multiplier",
+      "bustout_transaction_count",
+      "bustout_window_hours",
+      "destination_diversity",
+      "transition_delay_hours",
+      "warmup_amount_mean",
+      "warmup_amount_stddev",
+      "warmup_duration_days",
+      "warmup_transaction_count",
+      "warmup_transfer_probability"
+    ],
+    "observed_risk_scores": [
+      0.11423835158348083,
+      0.6784510016441345,
+      0.897098958492279
+    ]
+  },
+  "response": {
+    "blind_spot_hypothesis": "The detector is not blind to this family in kind, only in degree: it scores the bust-out burst on a steep monotonic ramp (0.11 -> 0.68 -> 0.90) driven by velocity_24h and amount_ratio_to_history against a thin warmup history, and simply never crosses its operating threshold before the burst ends. The exploitable gap is that the detector's anomaly signals are all ratio-of-recent-to-own-history features with no cross-account or ring-level view, so a deeper, higher-valued warmup baseline plus a burst diluted across a wider window suppresses the ramp entirely. The near-threshold 0.90 on the final transaction also indicates the concentrated payee fan-out at bust-out time (behavioral.payee_diversity) is the single largest late-stage contributor, and the first transaction at 0.11 shows the detector has essentially no prior-to-burst suspicion \u2014 the whole detection budget is spent inside the burst.",
+    "confidence": 0.68,
+    "evidence": [
+      "caught_transaction_count = 0 with all three observed risk scores below the operating threshold: the detector ranked but never actioned the burst.",
+      "Risk scores escalate monotonically (0.114 -> 0.678 -> 0.897), consistent with cumulative within-window features (velocity_24h) and self-referential ratios (amount_ratio_to_history) rather than any point-in-time amount rule.",
+      "The final score of 0.897 is close enough to any plausible threshold that a fourth bust-out transaction, or one more payee, would likely have been caught \u2014 the current evasion is marginal, not structural.",
+      "The first bust-out transaction scores 0.114, indicating temporal.account_age_days and the warmup history alone did not raise suspicion; the account was accepted as established.",
+      "important_signals contains no cross-account, ring, or destination-reuse feature \u2014 only per-account temporal and behavioral aggregates \u2014 so coordination across synthetic identities is invisible to this model version.",
+      "fidelity_score 0.829 leaves limited headroom: mutations that further distort the warmup/bust-out amount relationship risk pushing the corpus out of the realistic band."
+    ],
+    "expected_trade_offs": [
+      "Widening bustout_window_hours lowers realised cash-out speed and increases exposure to any slower batch or end-of-day review process; real bust-outs are fast, so an over-wide window degrades family fidelity.",
+      "Raising warmup_amount_mean makes the warmup phase itself more conspicuous in absolute terms and costs the attacker more funding capital; it may also drift the warmup amount distribution away from the PaySim marginal, lowering fidelity_score.",
+      "Lowering bustout_amount_multiplier reduces total extracted value per identity, so evasion is bought with yield \u2014 the mutation must be paired with unchanged or slightly higher transaction count to stay a meaningful attack.",
+      "Increasing warmup_transaction_count lengthens the setup cost and raises the number of observable events per synthetic identity, giving any future cross-account or ring-level detector more material to correlate.",
+      "Decreasing destination_diversity concentrates flows on fewer mule endpoints, which is more brittle in reality (single endpoint freeze kills the run) and is exactly the pattern a destination-reuse feature would catch if the detector gains one.",
+      "Increasing account_age_days raises the dormancy cost of the scheme and can look implausible if age grows without proportionate history density, so it should not move independently of warmup_duration_days/warmup_transaction_count."
+    ],
+    "mutation_proposals": [
+      {
+        "confidence": 0.75,
+        "direction": "increase",
+        "magnitude": 0.25,
+        "parameter": "bustout_window_hours",
+        "proposed_value": null,
+        "rationale": "velocity_24h is a top signal and drove the monotonic ramp; widening the burst window spreads the same transaction count across more than one 24h bucket and flattens the velocity contribution that produced the 0.897 score."
+      },
+      {
+        "confidence": 0.7,
+        "direction": "increase",
+        "magnitude": 0.2,
+        "parameter": "warmup_amount_mean",
+        "proposed_value": null,
+        "rationale": "amount_ratio_to_history is computed against the account's own warmup baseline; raising the baseline mean lowers the ratio for identical bust-out amounts without changing bust-out sizing at all."
+      },
+      {
+        "confidence": 0.72,
+        "direction": "decrease",
+        "magnitude": 0.15,
+        "parameter": "bustout_amount_multiplier",
+        "proposed_value": null,
+        "rationale": "Directly attacks the numerator of amount_ratio_to_history, the second-strongest ramp contributor; a modest reduction should pull the third transaction well clear of the 0.897 near-miss."
+      },
+      {
+        "confidence": 0.65,
+        "direction": "increase",
+        "magnitude": 0.2,
+        "parameter": "warmup_transaction_count",
+        "proposed_value": null,
+        "rationale": "A thin warmup history makes every ratio feature volatile and lets a single large transfer dominate; more warmup observations stabilise the denominator and raise the account's apparent establishment beyond the 0.114 first-transaction level."
+      },
+      {
+        "confidence": 0.6,
+        "direction": "decrease",
+        "magnitude": 0.12,
+        "parameter": "destination_diversity",
+        "proposed_value": null,
+        "rationale": "behavioral.payee_diversity is the late-stage signal most consistent with the jump from 0.678 to 0.897; concentrating bust-out flows on fewer destinations that were already touched during warmup removes the fan-out novelty spike."
+      },
+      {
+        "confidence": 0.62,
+        "direction": "increase",
+        "magnitude": 0.15,
+        "parameter": "account_age_days",
+        "proposed_value": null,
+        "rationale": "temporal.account_age_days is the highest-ranked signal and is a monotone protective feature in the model; a bounded age increase reduces the residual young-account penalty that keeps all three scores on an elevated base."
+      }
+    ],
+    "safety_constraints": [
+      "All proposals are parameter-level only; no transaction rows, amounts-per-row, account identifiers, or payment records are emitted, and generation remains the deterministic seeded simulator's job.",
+      "Only parameters from the declared mutable list were touched; warmup_amount_stddev, warmup_duration_days, warmup_transfer_probability, bustout_transaction_count and transition_delay_hours are left unchanged this round to keep the ablation interpretable.",
+      "Every magnitude is a relative step within [0.0, 0.25]; no direction=set values are asserted, so absolute parameter bounds stay owned by the blueprint's ParameterSpec clamps.",
+      "Reject the mutated blueprint if fidelity_score drops materially below the current 0.829 \u2014 evasion achieved by leaving the realistic distribution is not a valid finding.",
+      "Applies to PaySim-derived synthetic data only; the diagnosis describes a gap in xgboost-baseline-20260101's feature set (no cross-account or ring view) and is intended to motivate a defensive feature, not an operational evasion recipe.",
+      "Re-verify the score ramp after mutation: if the burst still escalates monotonically toward the threshold, the fix is structural (feature coverage) rather than parametric and should be escalated instead of re-mutated."
+    ]
+  },
+  "run_id": "blind_spot_analyst-4a31d071288af1f5",
+  "schema_valid": true,
+  "stage": "blind_spot_analyst"
+}

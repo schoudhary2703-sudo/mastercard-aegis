@@ -116,7 +116,20 @@ def _build_blind_spot_request(
 ) -> tuple[BlindSpotAnalystRequest, list[str]]:
     """Assemble the request purely from what a prior run already persisted."""
     report = _read_json(confrontation_dir / "confrontation.json")
-    blueprint = _read_json(confrontation_dir / "blueprint.json")
+    # Family runs name their blueprint differently: the bust-out and mule
+    # confrontations write `blueprint.json`, while an adaptive-evasion run
+    # writes the *adapted* blueprint that actually produced the scored batch.
+    # Either way this reads the blueprint the persisted scores belong to.
+    blueprint_path = confrontation_dir / "blueprint.json"
+    if not blueprint_path.is_file():
+        blueprint_path = confrontation_dir / "adapted_blueprint.json"
+    if not blueprint_path.is_file():
+        msg = (
+            f"no blueprint artifact in {confrontation_dir}: expected blueprint.json or "
+            "adapted_blueprint.json"
+        )
+        raise FileNotFoundError(msg)
+    blueprint = _read_json(blueprint_path)
 
     hardest_path = confrontation_dir / "hardest_evasions.json"
     hardest = _read_json(hardest_path) if hardest_path.is_file() else []
@@ -161,7 +174,7 @@ def _build_blind_spot_request(
     )
     sources = [
         str(confrontation_dir / "confrontation.json"),
-        str(confrontation_dir / "blueprint.json"),
+        str(blueprint_path),
     ]
     return request, sources
 

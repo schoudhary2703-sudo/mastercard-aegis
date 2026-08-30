@@ -1,9 +1,16 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import { fetchBenchmark, fetchExperiments, fetchGenAI, fetchOverview } from "../api/client";
+import {
+  fetchBenchmark,
+  fetchExperiments,
+  fetchGenAI,
+  fetchLandscape,
+  fetchOverview,
+} from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO } from "../api/types";
 import { ApiStateSection } from "../components/real/ApiStateSection";
+import { GenAIFamilyCoverage } from "../components/genai/GenAIFamilyCoverage";
 import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { ClosedLoopFlow } from "../components/loop/ClosedLoopFlow";
 import { Card } from "../components/ui/Card";
@@ -75,13 +82,21 @@ export function MissionControlPage() {
   const experimentsFetch = useCallback((s: AbortSignal) => fetchExperiments(s), []);
   const benchmarkFetch = useCallback((s: AbortSignal) => fetchBenchmark(s), []);
   const genaiFetch = useCallback((s: AbortSignal) => fetchGenAI(s), []);
+  const landscapeFetch = useCallback((s: AbortSignal) => fetchLandscape(s), []);
 
   const overview = useApiResource(overviewFetch, []);
   const experiments = useApiResource(experimentsFetch, []);
   const benchmark = useApiResource(benchmarkFetch, []);
   const genai = useApiResource(genaiFetch, []);
+  const landscape = useApiResource(landscapeFetch, []);
 
   const current = overview.status === "ready" ? overview.data.current_model : null;
+  // Every headline number below comes from one of these payloads. Nothing on
+  // this screen is written into the component.
+  const taxonomy = landscape.status === "ready" ? landscape.data.taxonomy : null;
+  const scale = landscape.status === "ready" ? landscape.data.generation_scale : null;
+  const liveGenAI = genai.status === "ready" && genai.data.has_live_genai;
+  const guided = genai.status === "ready" ? genai.data.latest_guided_generation : null;
   const v3 =
     benchmark.status === "ready" ? benchmark.data.model_comparison?.defender_v3 ?? null : null;
 
@@ -119,7 +134,30 @@ export function MissionControlPage() {
                   tone="accent"
                   sub={current?.model_version}
                 />
-                <Metric label="Attack families" value={data.experiments.length} />
+                <Metric
+                  label="Attacks identified"
+                  value={taxonomy?.total_attacks_identified ?? "—"}
+                  sub={`${taxonomy?.deeply_simulated ?? "—"} deeply simulated`}
+                />
+                <Metric
+                  label="Transactions generated"
+                  value={
+                    typeof scale?.total_transactions === "number"
+                      ? `${(scale.total_transactions / 1000).toFixed(0)}k`
+                      : "—"
+                  }
+                  sub={
+                    typeof scale?.aggregate_throughput_transactions_per_second === "number"
+                      ? `${(scale.aggregate_throughput_transactions_per_second / 1000).toFixed(1)}k tx/s`
+                      : undefined
+                  }
+                />
+                <Metric
+                  label="Live GenAI"
+                  value={liveGenAI ? "Yes" : "—"}
+                  tone={liveGenAI ? "good" : "neutral"}
+                  sub={guided?.genai_guided ? "guided generation on disk" : "reasoning artifacts"}
+                />
                 <Metric label="Fraud attempts" value={t.fraud} sub="Defender v3, all families" />
                 <Metric label="Caught" value={t.caught} tone="good" sub="by Defender v3" />
                 <Metric label="Escaped" value={t.escaped} tone="bad" sub="by Defender v3" />
@@ -163,7 +201,12 @@ export function MissionControlPage() {
           state={genai}
           emptyTitle="No GenAI runs yet"
           emptyBody="Run scripts/run_genai_analysis.py to produce a reasoning artifact."
-          render={(data) => <LiveGenAIEvidence genai={data} />}
+          render={(data) => (
+            <div className="space-y-2.5">
+              <LiveGenAIEvidence genai={data} />
+              {data.family_coverage && <GenAIFamilyCoverage coverage={data.family_coverage} />}
+            </div>
+          )}
         />
       </Card>
 

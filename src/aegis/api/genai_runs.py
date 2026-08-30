@@ -188,6 +188,7 @@ def build_guided_generations(root: Path) -> list[dict[str, Any]]:
                 "recall": payload.get("recall"),
                 "fidelity_score": payload.get("fidelity_score"),
                 "hardest_survivor": payload.get("hardest_survivor"),
+                "runtime_seconds": payload.get("runtime_seconds"),
                 "dry_run": bool(payload.get("dry_run", True)),
                 "genai_guided": complete and bool(applied),
                 "source_artifact": f"{GUIDED_DIR}/{path.name}",

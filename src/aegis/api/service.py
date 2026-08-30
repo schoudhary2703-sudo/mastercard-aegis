@@ -19,11 +19,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from aegis.api.benchmark import build_final_benchmark_summary
 from aegis.api.dto import (
     AdaptiveRoundStageStatsDTO,
     AdaptiveRoundSummaryDTO,
     AttackDetailDTO,
+    AttackRecommendationPreviewDTO,
     AttacksResponseDTO,
     AttackSummaryDTO,
     ClassificationMetricsDTO,
@@ -37,12 +40,15 @@ from aegis.api.dto import (
     ExperimentDTO,
     ExperimentsResponseDTO,
     FinalBenchmarkSummaryDTO,
+    GenAIFamilySummaryDTO,
     GenAIGuidedGenerationDTO,
     GenAIResponseDTO,
     GenAIRunDTO,
+    GenerationScaleDTO,
     HardeningSummaryDTO,
     HardestEvasionDTO,
     HardestEvasionsResponseDTO,
+    LandscapeResponseDTO,
     LatencyMetricsDTO,
     MetaDTO,
     ModelSummaryDTO,
@@ -50,6 +56,7 @@ from aegis.api.dto import (
     RecentDetectionsResponseDTO,
     RegressionComparisonDTO,
     RegressionMetricDeltaDTO,
+    TaxonomyDTO,
 )
 from aegis.api.experiments import build_experiments
 from aegis.api.genai_runs import (
@@ -71,9 +78,14 @@ from aegis.api.index import (
     HardeningArtifact,
     ModelArtifact,
 )
+from aegis.api.landscape import build_generation_scale, build_taxonomy
 from aegis.api.paths import resolve_within
 from aegis.api.reader import iter_jsonl
 from aegis.api.settings import Settings, get_settings
+from aegis.genai.contracts import AttackAnalystResponse
+from aegis.genai.coverage import build_family_coverage
+from aegis.identify import build_synthetic_identity_blueprint
+from aegis.loop.genai_handoff import preview_attack_recommendations
 from aegis.shared.enums import AttackFamily
 
 # ---------------------------------------------------------------------------
@@ -848,6 +860,73 @@ def build_genai_response(settings: Settings) -> GenAIResponseDTO:
         guided_generations=guided,
         latest_guided_generation=guided[0] if guided else None,
         has_live_genai=bool(live_attack or live_blind),
+        attack_recommendations=_attack_recommendations(raw),
+        family_coverage=_family_coverage(root),
+        meta=_meta(settings),
+    )
+
+
+def _family_coverage(root: Path) -> GenAIFamilySummaryDTO:
+    """Per-family GenAI coverage, read from the same artifacts the persisted
+    summary is built from -- so the screen and the artifact cannot disagree."""
+    summary = build_family_coverage(root)
+    payload = summary.model_dump(mode="json")
+    payload["families"] = [
+        {
+            **family.model_dump(mode="json"),
+            "has_live_genai": family.has_live_genai,
+            "is_fully_covered": family.is_fully_covered,
+        }
+        for family in summary.families
+    ]
+    return GenAIFamilySummaryDTO(**payload)
+
+
+def _attack_recommendations(runs: list[dict[str, Any]]) -> AttackRecommendationPreviewDTO | None:
+    """Check the live Attack Analyst's parameter recommendations against the
+    canonical blueprint, for a recommended-vs-actionable read.
+
+    Selects the newest live bust-out run specifically, rather than the newest
+    live run of any family: only the bust-out blueprint is canonically
+    buildable without a PaySim reference pass, so a mule or adaptive run being
+    more recent must not blank the panel. Returns `None` when no such run
+    exists, never a partial answer.
+
+    Preview only: `aegis.loop.genai_handoff.preview_attack_recommendations`
+    applies nothing and mutates nothing.
+    """
+    for run in runs:
+        if run.get("stage") != ATTACK_ANALYST_STAGE or not run.get("schema_valid"):
+            continue
+        if not run.get("live") or not isinstance(run.get("response"), dict):
+            continue
+        try:
+            response = AttackAnalystResponse.model_validate(run["response"])
+        except ValidationError:
+            continue
+        if response.attack_family is not AttackFamily.SYNTHETIC_IDENTITY_BUSTOUT:
+            continue
+        preview = preview_attack_recommendations(
+            response,
+            build_synthetic_identity_blueprint(),
+            genai_run_id=str(run.get("run_id", "")),
+        )
+        return AttackRecommendationPreviewDTO(**preview.model_dump(mode="json"))
+    return None
+
+
+def build_landscape_response(settings: Settings) -> LandscapeResponseDTO:
+    """Breadth taxonomy and generation-scale benchmark, straight off disk.
+
+    Either half is `None` when its artifact has not been produced; nothing is
+    synthesized to fill a gap.
+    """
+    root = settings.artifacts_root
+    taxonomy = build_taxonomy(root)
+    scale = build_generation_scale(root)
+    return LandscapeResponseDTO(
+        taxonomy=TaxonomyDTO(**taxonomy) if taxonomy else None,
+        generation_scale=GenerationScaleDTO(**scale) if scale else None,
         meta=_meta(settings),
     )
 

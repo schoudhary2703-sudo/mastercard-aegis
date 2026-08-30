@@ -16,6 +16,7 @@ import type {
   ExperimentsResponseDTO,
   FinalBenchmarkSummaryDTO,
   GenAIResponseDTO,
+  LandscapeResponseDTO,
   HardestEvasionsResponseDTO,
   OverviewResponseDTO,
   RecentDetectionsResponseDTO,
@@ -101,4 +102,8 @@ export function fetchExperiments(signal?: AbortSignal): Promise<ExperimentsRespo
 
 export function fetchGenAI(signal?: AbortSignal): Promise<GenAIResponseDTO> {
   return getJson<GenAIResponseDTO>("/api/genai", signal);
+}
+
+export function fetchLandscape(signal?: AbortSignal): Promise<LandscapeResponseDTO> {
+  return getJson<LandscapeResponseDTO>("/api/landscape", signal);
 }

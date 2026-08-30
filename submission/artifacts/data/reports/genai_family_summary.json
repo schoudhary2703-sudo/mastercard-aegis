@@ -1,0 +1,142 @@
+{
+  "summary_version": "genai-family-coverage-v1",
+  "families": [
+    {
+      "attack_family": "synthetic_identity_bustout",
+      "label": "Synthetic Identity",
+      "attack_analyst": {
+        "available": true,
+        "run_id": "attack_analyst-6cc7b1fd71e2666d",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "prompt_version": "genai-prompts-v1",
+        "live": true,
+        "created_at": "2026-08-29T20:52:47.584764Z",
+        "source_artifact": "data/genai/attack_analyst/attack_analyst-6cc7b1fd71e2666d.json",
+        "reason": ""
+      },
+      "blind_spot_analyst": {
+        "available": true,
+        "run_id": "blind_spot_analyst-4a31d071288af1f5",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "prompt_version": "genai-prompts-v1",
+        "live": true,
+        "created_at": "2026-08-29T21:04:46.668807Z",
+        "source_artifact": "data/genai/blind_spot_analyst/blind_spot_analyst-4a31d071288af1f5.json",
+        "reason": ""
+      },
+      "guided_generation": {
+        "available": true,
+        "generation_id": "genai-guided-7eb9d52e4f9b",
+        "scenario_id": "bustout-7266cf79-20261014-0000",
+        "applied_mutation_count": 5,
+        "rejected_mutation_count": 1,
+        "seed": 20261014,
+        "detector_model_version": "xgboost-hardened-crossfamily-20260301",
+        "fraud_count": 3,
+        "caught_count": 1,
+        "escaped_count": 2,
+        "recall": 0.3333333333333333,
+        "fidelity_score": 0.8895543707470678,
+        "runtime_seconds": 0.21522150000055262,
+        "hardest_survivor_id": "bustout-7266cf79-20261014-0000-bustout-002",
+        "reason": ""
+      }
+    },
+    {
+      "attack_family": "mule_network_structuring",
+      "label": "Mule Network",
+      "attack_analyst": {
+        "available": true,
+        "run_id": "attack_analyst-5dad7c1f6beac204",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "prompt_version": "genai-prompts-v1",
+        "live": true,
+        "created_at": "2026-08-29T23:48:34.248358Z",
+        "source_artifact": "data/genai/attack_analyst/attack_analyst-5dad7c1f6beac204.json",
+        "reason": ""
+      },
+      "blind_spot_analyst": {
+        "available": true,
+        "run_id": "blind_spot_analyst-e3ae257b5eef54c3",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "prompt_version": "genai-prompts-v1",
+        "live": true,
+        "created_at": "2026-08-29T23:50:49.752556Z",
+        "source_artifact": "data/genai/blind_spot_analyst/blind_spot_analyst-e3ae257b5eef54c3.json",
+        "reason": ""
+      },
+      "guided_generation": {
+        "available": true,
+        "generation_id": "genai-guided-ab26f79d91c4",
+        "scenario_id": "mule-4caf95c8-20261201-0000",
+        "applied_mutation_count": 6,
+        "rejected_mutation_count": 0,
+        "seed": 20261201,
+        "detector_model_version": "xgboost-hardened-crossfamily-20260301",
+        "fraud_count": 12,
+        "caught_count": 8,
+        "escaped_count": 4,
+        "recall": 0.6666666666666666,
+        "fidelity_score": 0.8211574680622747,
+        "runtime_seconds": 0.23763510000026145,
+        "hardest_survivor_id": "mule-4caf95c8-20261201-0000-layering-029",
+        "reason": ""
+      }
+    },
+    {
+      "attack_family": "adaptive_detector_evasion",
+      "label": "Adaptive Evasion",
+      "attack_analyst": {
+        "available": true,
+        "run_id": "attack_analyst-bc7887f80f0492a3",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "prompt_version": "genai-prompts-v1",
+        "live": true,
+        "created_at": "2026-08-29T23:49:49.006771Z",
+        "source_artifact": "data/genai/attack_analyst/attack_analyst-bc7887f80f0492a3.json",
+        "reason": ""
+      },
+      "blind_spot_analyst": {
+        "available": true,
+        "run_id": "blind_spot_analyst-4b8eb2bd2d7ef387",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "prompt_version": "genai-prompts-v1",
+        "live": true,
+        "created_at": "2026-08-30T00:04:27.551004Z",
+        "source_artifact": "data/genai/blind_spot_analyst/blind_spot_analyst-4b8eb2bd2d7ef387.json",
+        "reason": ""
+      },
+      "guided_generation": {
+        "available": true,
+        "generation_id": "genai-guided-e4da37b1d655",
+        "scenario_id": "adaptive-75fcb13a-20261202-0000",
+        "applied_mutation_count": 6,
+        "rejected_mutation_count": 0,
+        "seed": 20261202,
+        "detector_model_version": "xgboost-hardened-crossfamily-20260301",
+        "fraud_count": 4,
+        "caught_count": 4,
+        "escaped_count": 0,
+        "recall": 1.0,
+        "fidelity_score": 0.786165860621999,
+        "runtime_seconds": 0.22319900000002235,
+        "hardest_survivor_id": "",
+        "reason": ""
+      }
+    }
+  ],
+  "live_family_count": 3,
+  "fully_covered_family_count": 3,
+  "guided_family_count": 3,
+  "limitations": [
+    "A stage counts as covered only when its artifact is both live and schema-valid; a recorded replay is never counted.",
+    "Guided-generation figures are one fresh scenario per family (3-12 fraud events), directional rather than statistically powered.",
+    "Coverage describes GenAI reasoning artifacts only. It says nothing about detector quality, which the benchmark reports separately."
+  ]
+}

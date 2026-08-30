@@ -33,12 +33,16 @@ from typing import Any
 from aegis.genai.contracts import (
     MAX_MUTATION_MAGNITUDE,
     MAX_MUTATION_PROPOSALS,
+    AttackAnalystResponse,
     BlindSpotAnalystResponse,
     BoundedMutationProposal,
+    SimulatorParameterProposal,
 )
 from aegis.genai.handoff_contracts import (
     AppliedMutation,
+    AttackRecommendationPreview,
     GenAIHandoffProvenance,
+    RecommendedParameter,
     RejectedMutation,
 )
 from aegis.loop.adaptive import AdaptiveEvolutionError, build_mutated_blueprint, move_parameter
@@ -242,9 +246,102 @@ def apply_blind_spot_proposals(
     )
 
 
+# ---------------------------------------------------------------------------
+# Attack Analyst recommendations -- preview only
+# ---------------------------------------------------------------------------
+#
+# The Attack Analyst recommends *parameter values* for a blueprint, which is a
+# different (and looser) thing than the Blind-Spot Analyst's bounded
+# directional mutations. Applying a value directly would let the model author a
+# blueprint, so this function stops one step short: it reports which
+# recommendations a blueprint's declared `ParameterSpec`s would accept and why
+# the others would not. Nothing here generates, mutates, or persists anything.
+
+
+def _check_recommendation(
+    proposal: SimulatorParameterProposal, blueprint: AttackBlueprint
+) -> RecommendedParameter:
+    """Check one recommendation against the blueprint's declared spec."""
+    spec = blueprint.parameters.get(proposal.name)
+    common: dict[str, Any] = {
+        "name": proposal.name,
+        "recommended_value": proposal.value,
+        "unit": proposal.unit,
+        "rationale": proposal.rationale,
+    }
+    if spec is None:
+        return RecommendedParameter(
+            **common,
+            actionable=False,
+            reason=f"{proposal.name!r} is not a declared parameter on this blueprint",
+        )
+    declared: dict[str, Any] = {
+        "current_value": spec.default,
+        "minimum": spec.minimum,
+        "maximum": spec.maximum,
+        "param_type": str(spec.param_type),
+    }
+    if not spec.mutable:
+        return RecommendedParameter(
+            **common, **declared, actionable=False, reason="parameter is structural (mutable=False)"
+        )
+    value = proposal.value
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        if spec.param_type in _NUMERIC_TYPES:
+            return RecommendedParameter(
+                **common,
+                **declared,
+                actionable=False,
+                reason=f"recommended value is not numeric but the spec is {spec.param_type}",
+            )
+        return RecommendedParameter(**common, **declared, actionable=True)
+    if spec.minimum is not None and value < spec.minimum:
+        return RecommendedParameter(
+            **common,
+            **declared,
+            actionable=False,
+            reason=f"{value} is below the declared minimum {spec.minimum}",
+        )
+    if spec.maximum is not None and value > spec.maximum:
+        return RecommendedParameter(
+            **common,
+            **declared,
+            actionable=False,
+            reason=f"{value} exceeds the declared maximum {spec.maximum}",
+        )
+    return RecommendedParameter(**common, **declared, actionable=True)
+
+
+def preview_attack_recommendations(
+    response: AttackAnalystResponse,
+    blueprint: AttackBlueprint,
+    *,
+    genai_run_id: str = "",
+) -> AttackRecommendationPreview:
+    """Report which Attack Analyst recommendations a blueprint would accept.
+
+    Preview only -- `applied` is always False. An out-of-range recommendation is
+    reported with the bound it broke rather than clamped into range, which is
+    the same reject-never-clamp rule the mutation path uses.
+    """
+    parameters = [
+        _check_recommendation(proposal, blueprint)
+        for proposal in response.recommended_simulator_parameters
+    ]
+    return AttackRecommendationPreview(
+        blueprint_id=blueprint.attack_id,
+        genai_run_id=genai_run_id,
+        recommended_count=len(parameters),
+        actionable_count=sum(1 for p in parameters if p.actionable),
+        parameters=parameters,
+        applied=False,
+    )
+
+
 __all__ = [
     "SUPPORTED_DIRECTIONS",
     "GenAIHandoffError",
     "HandoffResult",
     "apply_blind_spot_proposals",
+    "preview_attack_recommendations",
 ]

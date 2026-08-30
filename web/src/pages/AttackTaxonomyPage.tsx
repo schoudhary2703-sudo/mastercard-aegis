@@ -1,7 +1,8 @@
 import { useCallback } from "react";
-import { fetchAttacks } from "../api/client";
+import { fetchAttacks, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import { BlueprintPanel } from "../components/attack/BlueprintPanel";
+import { FraudLandscape } from "../components/landscape/FraudLandscape";
 import { Card, CardHeader } from "../components/ui/Card";
 import { ApiStateSection } from "../components/real/ApiStateSection";
 import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
@@ -12,22 +13,51 @@ import { ATTACK_FAMILIES } from "../types/aegis";
 export function AttackTaxonomyPage() {
   const attacksFetch = useCallback((signal: AbortSignal) => fetchAttacks(signal), []);
   const attacksState = useApiResource(attacksFetch, [], (data) => data.attacks.length === 0);
+  const landscapeFetch = useCallback((signal: AbortSignal) => fetchLandscape(signal), []);
+  const landscape = useApiResource(landscapeFetch, []);
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader
-          title="Three families, deliberately"
-          subtitle="The taxonomy is fixed by design -- no fourth family is added, ever."
+          title="Fraud landscape"
+          subtitle="Identified across the GenAI-enabled payment threat surface. Only the three badged DEEP SIMULATED have a generator, a detector result, and a blueprint."
+          action={<RealDataBadge />}
         />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {ATTACK_FAMILIES.map((f) => (
-            <div key={f.id} className="rounded-lg border border-[var(--color-border)] px-4 py-3">
-              <p className="text-sm font-semibold text-[var(--color-ink)]">{f.label}</p>
-              <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{f.blurb}</p>
-            </div>
-          ))}
-        </div>
+        <ApiStateSection
+          state={landscape}
+          emptyTitle="No taxonomy artifact yet"
+          emptyBody="Run scripts/export_attack_taxonomy.py to populate the breadth catalog."
+          render={(data) => <FraudLandscape landscape={data} section="taxonomy" />}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Generation at scale"
+          subtitle="One generation-only benchmark run: no scoring, no fitting, no retraining."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={landscape}
+          emptyTitle="No scale benchmark yet"
+          emptyBody="Run scripts/run_generation_scale_benchmark.py."
+          render={(data) => <FraudLandscape landscape={data} section="scale" />}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Fidelity breakdown"
+          subtitle="Distributional, behavioral/temporal, and structural components kept separate from constraint validity."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={landscape}
+          emptyTitle="No fidelity breakdown yet"
+          emptyBody="Run scripts/run_generation_scale_benchmark.py."
+          render={(data) => <FraudLandscape landscape={data} section="fidelity" />}
+        />
       </Card>
 
       <Card>

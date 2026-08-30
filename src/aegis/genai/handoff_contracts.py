@@ -88,6 +88,50 @@ class GenAIHandoffProvenance(AegisModel):
         return self.is_complete and self.live
 
 
+class RecommendedParameter(AegisModel):
+    """One Attack Analyst parameter recommendation, checked against a blueprint.
+
+    Display-only. `actionable` means the recommendation *could* be applied to
+    the declared `ParameterSpec` without changing generator semantics -- it does
+    not mean anything was applied. Nothing in AEGIS generates from this record.
+    """
+
+    name: str = Field(..., min_length=1)
+    recommended_value: bool | int | float | str | None = Field(default=None)
+    unit: str | None = Field(default=None)
+    rationale: str = Field(default="")
+    actionable: bool = Field(..., description="Maps cleanly onto a declared ParameterSpec.")
+    reason: str = Field(default="", description="Why it is not actionable. Empty when it is.")
+    current_value: bool | int | float | str | None = Field(
+        default=None, description="The blueprint's declared default, for a before/after read."
+    )
+    minimum: float | None = Field(default=None)
+    maximum: float | None = Field(default=None)
+    param_type: str = Field(default="")
+
+
+class AttackRecommendationPreview(AegisModel):
+    """What the Attack Analyst recommended vs what a blueprint would accept.
+
+    The gap between `actionable_count` and `recommended_count` is the evidence
+    that the blueprint's declared bounds are real: an out-of-range recommendation
+    is reported, never silently clamped into range.
+    """
+
+    blueprint_id: str = Field(default="")
+    genai_run_id: str = Field(default="")
+    recommended_count: int = Field(default=0, ge=0)
+    actionable_count: int = Field(default=0, ge=0)
+    parameters: list[RecommendedParameter] = Field(default_factory=list)
+    applied: bool = Field(
+        default=False,
+        description=(
+            "Always False today: recommendations are surfaced, never auto-applied. "
+            "Applying them would author a new blueprint, which is a separate step."
+        ),
+    )
+
+
 class GenAIGuidedGeneration(AegisModel):
     """The persisted artifact for one GenAI-guided next generation.
 
@@ -118,6 +162,11 @@ class GenAIGuidedGeneration(AegisModel):
     fidelity_score: float | None = Field(default=None)
     hardest_survivor: dict[str, Any] | None = Field(default=None)
 
+    runtime_seconds: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Wall-clock of the run that produced this record, when measured.",
+    )
     dry_run: bool = Field(
         default=True, description="True when no scenario was generated or scored."
     )
@@ -132,7 +181,9 @@ class GenAIGuidedGeneration(AegisModel):
 
 __all__ = [
     "AppliedMutation",
+    "AttackRecommendationPreview",
     "GenAIGuidedGeneration",
     "GenAIHandoffProvenance",
+    "RecommendedParameter",
     "RejectedMutation",
 ]
