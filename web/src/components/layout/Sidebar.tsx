@@ -1,43 +1,58 @@
 import { NavLink } from "react-router-dom";
-import {
-  BenchmarkIcon,
-  DetectionIcon,
-  EvaluationIcon,
-  LoopIcon,
-  OverviewIcon,
-  StudioIcon,
-  TaxonomyIcon,
-} from "./icons";
+import { LOOP_STEPS, OVERVIEW_STEP, RESULTS_STEP, type JourneyStep } from "../../nav/journey";
+import { StudioIcon } from "./icons";
 
 /**
- * Navigation mirrors the challenge's own three pillars -- identify, generate,
- * defend -- then the evidence that backs them. A judge scoring against the
- * rubric can find the screen for each criterion without a map.
+ * Navigation is the walkthrough.
+ *
+ * A judge scoring against the rubric should never have to guess which screen
+ * answers which criterion, so the loop steps are numbered 1-4 in reading
+ * order and every entry comes from `nav/journey.ts` -- the same list that
+ * drives the Overview cards and the per-page "Next" footer.
+ *
+ * Everything simulated lives behind one visually quiet link at the bottom.
+ * Nothing in the numbered path is a browser toy.
  */
-export const PRIMARY_NAV = [
-  { to: "/", label: "Mission Control", icon: OverviewIcon, end: true },
-];
 
-export const LOOP_NAV = [
-  { to: "/attack-taxonomy", label: "Identify", icon: TaxonomyIcon, hint: "Attack atlas" },
-  { to: "/attack-lab", label: "Generate", icon: StudioIcon, hint: "Campaign replay" },
-  { to: "/live-detection", label: "Defend", icon: DetectionIcon, hint: "Live scoring" },
-  { to: "/co-evolution", label: "Evolve", icon: LoopIcon, hint: "Hardening rounds" },
-];
-
-export const EVIDENCE_NAV = [
-  { to: "/final-benchmark", label: "Final Results", icon: BenchmarkIcon, hint: "v1 → v3, LOAFO" },
-  { to: "/evaluation", label: "Evaluation", icon: EvaluationIcon, hint: "Per-model metrics" },
-  { to: "/attack-studio", label: "Studio", icon: StudioIcon, hint: "Simulated demo" },
-];
 
 function linkClasses(isActive: boolean): string {
-  const base =
-    "group flex items-center gap-3 rounded-lg px-3 py-2 transition-standard";
-  if (isActive) {
-    return `${base} bg-[var(--color-navy-800)] text-white`;
-  }
+  const base = "group flex items-center gap-3 rounded-lg px-3 py-2 transition-standard";
+  if (isActive) return `${base} bg-[var(--color-navy-800)] text-white`;
   return `${base} text-[var(--color-navy-300)] hover:bg-[var(--color-navy-900)] hover:text-white`;
+}
+
+function StepBadge({ step, active }: { step: number; active: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums transition-standard ${
+        active
+          ? "bg-[var(--color-accent-600)] text-white"
+          : "bg-[var(--color-navy-800)] text-[var(--color-navy-300)] group-hover:text-white"
+      }`}
+    >
+      {step}
+    </span>
+  );
+}
+
+function JourneyLink({ item, onNavigate }: { item: JourneyStep; onNavigate?: () => void }) {
+  const { to, label, hint, icon: Icon, end, step } = item;
+  return (
+    <NavLink to={to} end={end} onClick={onNavigate} className={({ isActive }) => linkClasses(isActive)}>
+      {({ isActive }) => (
+        <>
+          {step != null ? <StepBadge step={step} active={isActive} /> : <Icon />}
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-medium leading-tight">{label}</span>
+            <span className="block truncate text-[10.5px] leading-tight text-[var(--color-navy-300)] opacity-70">
+              {hint}
+            </span>
+          </span>
+        </>
+      )}
+    </NavLink>
+  );
 }
 
 function NavGroup({
@@ -46,7 +61,7 @@ function NavGroup({
   onNavigate,
 }: {
   heading?: string;
-  items: { to: string; label: string; icon: () => React.ReactElement; hint?: string; end?: boolean }[];
+  items: JourneyStep[];
   onNavigate?: () => void;
 }) {
   return (
@@ -55,24 +70,8 @@ function NavGroup({
         <p className="t-eyebrow mb-2 px-3 text-[var(--color-navy-300)] opacity-60">{heading}</p>
       )}
       <nav className="space-y-0.5">
-        {items.map(({ to, label, icon: Icon, hint, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            onClick={onNavigate}
-            className={({ isActive }) => linkClasses(isActive)}
-          >
-            <Icon />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13.5px] font-medium leading-tight">{label}</span>
-              {hint && (
-                <span className="block truncate text-[10.5px] leading-tight text-[var(--color-navy-300)] opacity-70">
-                  {hint}
-                </span>
-              )}
-            </span>
-          </NavLink>
+        {items.map((item) => (
+          <JourneyLink key={item.to} item={item} onNavigate={onNavigate} />
         ))}
       </nav>
     </div>
@@ -82,9 +81,31 @@ function NavGroup({
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="px-3">
-      <NavGroup items={PRIMARY_NAV} onNavigate={onNavigate} />
-      <NavGroup heading="The loop" items={LOOP_NAV} onNavigate={onNavigate} />
-      <NavGroup heading="Evidence" items={EVIDENCE_NAV} onNavigate={onNavigate} />
+      <NavGroup items={[OVERVIEW_STEP]} onNavigate={onNavigate} />
+      <NavGroup heading="The closed loop" items={LOOP_STEPS} onNavigate={onNavigate} />
+      <NavGroup heading="Evidence" items={[RESULTS_STEP]} onNavigate={onNavigate} />
+
+      <div className="mt-6 border-t border-[var(--color-border)] pt-3">
+        <NavLink
+          to="/sandbox"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[11.5px] transition-standard ${
+              isActive
+                ? "bg-[var(--color-navy-800)] text-white"
+                : "text-[var(--color-navy-300)] opacity-70 hover:bg-[var(--color-navy-900)] hover:text-white hover:opacity-100"
+            }`
+          }
+        >
+          <StudioIcon />
+          <span className="min-w-0 flex-1">
+            <span className="block leading-tight">Sandbox</span>
+            <span className="block truncate text-[10px] leading-tight opacity-70">
+              Simulated · not evidence
+            </span>
+          </span>
+        </NavLink>
+      </div>
     </div>
   );
 }
@@ -112,7 +133,8 @@ export function Sidebar() {
           Live pipeline artifacts
         </p>
         <p className="mt-1.5 text-[10.5px] leading-relaxed text-[var(--color-navy-300)] opacity-80">
-          Every figure is read from a persisted file. Nothing is computed in the browser.
+          Every figure in the numbered path is read from a persisted file. Nothing is computed in
+          the browser.
         </p>
       </div>
     </aside>

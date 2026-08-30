@@ -2,15 +2,23 @@ import { useCallback } from "react";
 import { fetchAttacks, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import { PageHeader } from "../components/ui/PageHeader";
-import { BlueprintPanel } from "../components/attack/BlueprintPanel";
 import { FraudLandscape } from "../components/landscape/FraudLandscape";
 import { Card, CardHeader } from "../components/ui/Card";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { RealDataBadge } from "../components/real/RealBadge";
 import { RealAttackExplorer } from "../components/real/RealAttackExplorer";
-import { BASE_BLUEPRINTS } from "../mock/blueprints";
-import { ATTACK_FAMILIES } from "../types/aegis";
 
+/**
+ * Identify (step 1): breadth. This screen answers exactly one judging
+ * criterion -- diversity of attacks identified -- and nothing else.
+ *
+ * "Generation at scale" and "Fidelity breakdown" used to sit here too. They
+ * are generation evidence, not identification evidence, so they moved to
+ * step 2 where the criterion they answer (fidelity of attacks in simulation)
+ * is being argued. The hand-written illustrative blueprints were removed
+ * outright: mock parameters on the page that establishes breadth invited
+ * exactly the wrong reading of the 14 identified vectors.
+ */
 export function AttackTaxonomyPage() {
   const attacksFetch = useCallback((signal: AbortSignal) => fetchAttacks(signal), []);
   const attacksState = useApiResource(attacksFetch, [], (data) => data.attacks.length === 0);
@@ -20,11 +28,12 @@ export function AttackTaxonomyPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Identify · attack atlas"
+        eyebrow="Step 1 · Identify"
         title="The GenAI-enabled payment fraud surface, mapped — and the three families we simulate end to end."
       >
         Breadth is catalogued with evidence; depth is claimed only where a generator, a detector
-        result, and a blueprint all exist.
+        result and a blueprint all exist. Every card carries its own status badge, so the catalog can
+        never read as "AEGIS simulates all of these".
       </PageHeader>
 
       <Card>
@@ -43,36 +52,8 @@ export function AttackTaxonomyPage() {
 
       <Card>
         <CardHeader
-          title="Generation at scale"
-          subtitle="One generation-only benchmark run: no scoring, no fitting, no retraining."
-          action={<RealDataBadge />}
-        />
-        <ApiStateSection
-          state={landscape}
-          emptyTitle="No scale benchmark yet"
-          emptyBody="Run scripts/run_generation_scale_benchmark.py."
-          render={(data) => <FraudLandscape landscape={data} section="scale" />}
-        />
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Fidelity breakdown"
-          subtitle="Distributional, behavioral/temporal, and structural components kept separate from constraint validity."
-          action={<RealDataBadge />}
-        />
-        <ApiStateSection
-          state={landscape}
-          emptyTitle="No fidelity breakdown yet"
-          emptyBody="Run scripts/run_generation_scale_benchmark.py."
-          render={(data) => <FraudLandscape landscape={data} section="fidelity" />}
-        />
-      </Card>
-
-      <Card>
-        <CardHeader
           title="Real attacks observed"
-          subtitle="Every blueprint the pipeline has actually generated and, where confronted, scored -- pick one to inspect."
+          subtitle="Every blueprint the pipeline has actually generated and, where confronted, scored — pick one to inspect."
           action={<RealDataBadge />}
         />
         <ApiStateSection
@@ -82,22 +63,6 @@ export function AttackTaxonomyPage() {
           render={(data) => <RealAttackExplorer attacks={data.attacks} />}
         />
       </Card>
-
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">Illustrative reference blueprints</h2>
-          <MockDataBadge />
-        </div>
-        <p className="mb-3 text-xs text-[var(--color-ink-muted)]">
-          One canonical, hand-written blueprint per family for orientation -- not fitted to any real
-          run. See "Real attacks observed" above for what the pipeline actually produced.
-        </p>
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-          {ATTACK_FAMILIES.map((f) => (
-            <BlueprintPanel key={f.id} blueprint={BASE_BLUEPRINTS[f.id]} />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

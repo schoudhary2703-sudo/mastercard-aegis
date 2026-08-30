@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Link } from "react-router-dom";
 import { fetchBenchmark } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { FinalBenchmarkSummaryDTO, ModelComparisonEntryDTO } from "../api/types";
@@ -137,8 +138,16 @@ export function FinalBenchmarkPage() {
   return (
     <div className="space-y-14">
       <PageHeader
-        eyebrow="Final benchmark"
+        eyebrow="Evidence · final benchmark"
         title="Did hardening actually generalize — or did the model just memorize what it was shown?"
+        actions={
+          <Link
+            to="/evaluation"
+            className="t-body-sm rounded-lg border border-[var(--color-border-strong)] px-3.5 py-2 font-medium text-[var(--color-ink-muted)] transition-standard hover:text-[var(--color-ink)]"
+          >
+            Per-model metric detail →
+          </Link>
+        }
       >
         Baseline v1 → Defender v2 → Defender v3 on an untouched PaySim test split, plus a
         leave-one-attack-family-out benchmark where the held-out family contributes zero training

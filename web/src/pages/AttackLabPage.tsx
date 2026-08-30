@@ -1,28 +1,36 @@
 import { useCallback, useMemo, useState } from "react";
-import { fetchExperiments, fetchGenAI } from "../api/client";
+import { fetchExperiments, fetchGenAI, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
-import { PageHeader } from "../components/ui/PageHeader";
+import { PageHeader, SectionHeader } from "../components/ui/PageHeader";
 import type { ExperimentDTO } from "../api/types";
 import { GenAIAnalystPanel } from "../components/genai/GenAIAnalystPanel";
 import { AttackRecommendations } from "../components/genai/AttackRecommendations";
 import { GenAIFamilyCoverage } from "../components/genai/GenAIFamilyCoverage";
-import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
+import { FraudLandscape } from "../components/landscape/FraudLandscape";
 import { OutcomeBadge, ReplayStream } from "../components/lab/ReplayStream";
 import { ScoreBoard } from "../components/lab/ScoreBoard";
 import { useReplay } from "../components/lab/useReplay";
 import { NodeLoop, type LoopStageId } from "../components/loop/NodeLoop";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { Card } from "../components/ui/Card";
+import { RealDataBadge } from "../components/real/RealBadge";
+import { Card, CardHeader } from "../components/ui/Card";
 import { Details } from "../components/ui/Details";
 
 /**
- * Attack Lab: pick a family, replay what really happened to it.
+ * Generate (step 2): pick a family, replay what really happened to it.
  *
  * The replay is explicitly a RECORDED EXPERIMENT REPLAY and is labeled as
  * such everywhere it appears. Nothing here generates transactions or scores
  * them -- the app has no detector and no simulator. Live generation would
  * mean shipping XGBoost to the browser, which this project deliberately does
  * not do.
+ *
+ * This screen owns the "fidelity of attacks in simulation" criterion, so the
+ * scale benchmark and the fidelity breakdown live here rather than on
+ * Identify. The single latest GenAI chain was removed -- it is the same
+ * component, on the same "most recent run on disk, any family" data, that
+ * Overview already shows, and it read as family-specific here when it is not.
+ * The family coverage grid stays, because it *is* per family.
  */
 
 const EMPTY: ExperimentDTO[] = [];
@@ -74,8 +82,10 @@ function FamilyTab({
 export function AttackLabPage() {
   const experimentsFetch = useCallback((s: AbortSignal) => fetchExperiments(s), []);
   const genaiFetch = useCallback((s: AbortSignal) => fetchGenAI(s), []);
+  const landscapeFetch = useCallback((s: AbortSignal) => fetchLandscape(s), []);
   const experiments = useApiResource(experimentsFetch, [], (d) => d.experiments.length === 0);
   const genai = useApiResource(genaiFetch, []);
+  const landscape = useApiResource(landscapeFetch, []);
 
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
 
@@ -101,11 +111,12 @@ export function AttackLabPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Generate · attack lab"
+        eyebrow="Step 2 · Generate"
         title="Replay a real campaign, transaction by transaction, against the detector that scored it."
       >
         Every event below was produced by the deterministic simulator and scored by a persisted
-        model. Pick a family and step the confrontation.
+        model. Pick a family and step the confrontation, then see how faithful the generated traffic
+        is and how fast it scales.
       </PageHeader>
 
       <ApiStateSection
@@ -294,7 +305,6 @@ export function AttackLabPage() {
                   state={genai}
                   render={(data) => (
                     <div className="space-y-3">
-                      <LiveGenAIEvidence genai={data} />
                       {data.family_coverage && (
                         <GenAIFamilyCoverage coverage={data.family_coverage} />
                       )}
@@ -319,6 +329,48 @@ export function AttackLabPage() {
           )
         }
       />
+
+      {/* --- Fidelity: the criterion this screen exists to answer ---------- */}
+      <section className="border-t border-[var(--color-border)] pt-10">
+        <SectionHeader
+          eyebrow="Is the generated traffic realistic?"
+          title="How closely the simulated attacks match real payment behaviour, and how fast they scale."
+        >
+          The judging criterion for this step is fidelity. These two panels are the evidence: one
+          generation-only benchmark run — no scoring, no fitting, no retraining — and the fidelity
+          decomposition behind it.
+        </SectionHeader>
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader
+              title="Generation at scale"
+              subtitle="One generation-only benchmark run: no scoring, no fitting, no retraining."
+              action={<RealDataBadge />}
+            />
+            <ApiStateSection
+              state={landscape}
+              emptyTitle="No scale benchmark yet"
+              emptyBody="Run scripts/run_generation_scale_benchmark.py."
+              render={(data) => <FraudLandscape landscape={data} section="scale" />}
+            />
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Fidelity breakdown"
+              subtitle="Distributional, behavioral/temporal and structural components kept separate from constraint validity."
+              action={<RealDataBadge />}
+            />
+            <ApiStateSection
+              state={landscape}
+              emptyTitle="No fidelity breakdown yet"
+              emptyBody="Run scripts/run_generation_scale_benchmark.py."
+              render={(data) => <FraudLandscape landscape={data} section="fidelity" />}
+            />
+          </Card>
+        </div>
+      </section>
     </div>
   );
 }

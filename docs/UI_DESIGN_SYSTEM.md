@@ -61,15 +61,30 @@ or "this transaction is risky" without reading the label.
 
 ## Screens
 
-| Route | Purpose | Real data |
-| --- | --- | --- |
-| `/` | Overview -- real pipeline status, loop diagram, session stats, links into every screen. | Yes (+ mock demo) |
-| `/attack-studio` | Real attacks for the selected family, plus pick-a-family / generate-a-batch mock demo. | Yes (+ mock demo) |
-| `/live-detection` | Real recent detections, plus a standalone mock detection pass. | Yes (+ mock demo) |
-| `/co-evolution` | Real closed-loop lineage and hardest surviving attacks; **hero mock demo** below runs the loop round by round. | Yes (+ mock demo) |
-| `/attack-taxonomy` | Real attack blueprints and confrontation results, plus illustrative reference blueprints. | Yes (+ mock demo) |
-| `/evaluation` | Real per-model `EvaluationResult`s (v1/v2/v3), plus the latest mock Co-Evolution round's. | Yes (+ mock demo) |
-| `/final-benchmark` | v1 vs v2 vs v3 comparison, recall by family, LOAFO results, hardest surviving attacks. | Yes (no mock) |
+Navigation is the walkthrough. The four loop screens are numbered 1-4 in the
+order a judge should read them, and each one declares the judging criterion it
+is evidence for. The single source of truth is `web/src/nav/journey.ts` --
+sidebar, the Overview judge-path cards and the per-page "Next" footer all read
+from it, so the three can never disagree.
+
+**Real and simulated never share a screen.** Everything numbered reads from
+persisted artifacts. Every browser-side mock lives on `/sandbox`, which sits
+outside the numbered path, carries a warn-toned banner and a "Simulated" chip
+in the topbar, and is reached only from one deliberately quiet sidebar link.
+
+| Step | Route | Purpose | Judging criterion | Data |
+| --- | --- | --- | --- | --- |
+| — | `/` | Overview: the loop in one figure, headline results, the judge path, live GenAI evidence, where AEGIS fits. | Novelty · feasibility | Real only |
+| 1 | `/attack-taxonomy` | Identify: the GenAI fraud surface catalogued, and the three families claimed as deeply simulated. | Diversity of attacks identified | Real only |
+| 2 | `/attack-lab` | Generate: per-family confrontation replay, GenAI family coverage, generation at scale, fidelity breakdown. | Fidelity of attacks in simulation | Real only |
+| 3 | `/live-detection` | Defend: every transaction the detector scored, with risk score, action and ground truth. | Detection efficacy | Real only |
+| 4 | `/co-evolution` | Evolve: the escape story per family and the closed-loop timeline across defender generations. | Novelty of the closed loop | Real only |
+| — | `/final-benchmark` | Results: v1 → v3, the operating point, recall by family, LOAFO, and every surviving attack. | Detection efficacy · generalization | Real only |
+| — | `/evaluation` | Appendix, out of nav: the complete persisted metric set per model and split. Linked from Results. | — | Real only |
+| — | `/sandbox` | Every browser-side mock: generator, toy detector, toy rounds. Demo fallback if the API is unreachable. | — | **Simulated only** |
+
+`/attack-studio` is retained as a redirect to `/sandbox` so older links in
+docs and deploy previews do not 404 during judging.
 
 ## Component conventions
 

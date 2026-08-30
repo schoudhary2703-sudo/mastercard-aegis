@@ -1,26 +1,28 @@
 import { useCallback } from "react";
-import { fetchEvolution, fetchExperiments, fetchHardestEvasions } from "../api/client";
+import { Link } from "react-router-dom";
+import { fetchEvolution, fetchExperiments } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import { PageHeader } from "../components/ui/PageHeader";
 import type { ExperimentDTO } from "../api/types";
-import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { OutcomeBadge } from "../components/lab/ReplayStream";
-import { NodeLoop } from "../components/loop/NodeLoop";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { HardestEvasionsTable } from "../components/real/HardestEvasionsTable";
-import { MockDataBadge } from "../components/real/RealBadge";
 import { RealEvolutionTimeline } from "../components/real/RealEvolutionTimeline";
 import { Card } from "../components/ui/Card";
-import { Details } from "../components/ui/Details";
-import { useLoop } from "../state/LoopContext";
+import { Callout } from "../components/ui/Panel";
 
 /**
- * Evolution: the escape story, told with real numbers.
+ * Evolve (step 4): the escape story, told with real numbers.
  *
  * The lead is what got through and whether hardening closed it -- that is the
- * finding. The browser-side mock demo is still here (it is the fallback if
- * the API dies mid-demo) but is collapsed so it cannot be mistaken for, or
- * visually compete with, the real result.
+ * finding, and it is the whole page now.
+ *
+ * Two things were removed. The browser-side mock demo moved to /sandbox: a
+ * collapsed toy on an evidence page is still a toy on an evidence page. And
+ * the "Hardest surviving attacks" table moved to Results, where it belongs --
+ * it was rendering a *different* row set here (the recent-evasions endpoint)
+ * under the same heading as the benchmark table on Results, so a reader
+ * comparing the two screens found two tables with one name and no overlap.
+ * One table, one owner, one source.
  */
 
 function EscapeSummary({ experiments }: { experiments: ExperimentDTO[] }) {
@@ -120,20 +122,16 @@ function EscapeSummary({ experiments }: { experiments: ExperimentDTO[] }) {
 }
 
 export function CoEvolutionPage() {
-  const { family, setFamily, rounds, runNextRound, latest } = useLoop();
-
   const evolutionFetch = useCallback((s: AbortSignal) => fetchEvolution(s), []);
   const experimentsFetch = useCallback((s: AbortSignal) => fetchExperiments(s), []);
-  const hardestFetch = useCallback((s: AbortSignal) => fetchHardestEvasions(25, s), []);
 
   const evolution = useApiResource(evolutionFetch, []);
   const experiments = useApiResource(experimentsFetch, [], (d) => d.experiments.length === 0);
-  const hardest = useApiResource(hardestFetch, [], (d) => d.evasions.length === 0);
 
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Evolve · hardening rounds"
+        eyebrow="Step 4 · Evolve"
         title="What escaped the detector, and whether the next generation closed the gap."
       >
         Each round promotes the transactions that evaded scoring into training data, retrains, and
@@ -160,56 +158,19 @@ export function CoEvolutionPage() {
         />
       </Card>
 
-      <Card padded={false}>
-        <h2 className="px-5 pt-5 text-sm font-semibold text-[var(--color-ink)]">
-          Hardest surviving attacks
-        </h2>
-        <div className="overflow-x-auto px-5 pb-5 pt-3">
-          <ApiStateSection
-            state={hardest}
-            emptyTitle="No surviving evasions"
-            emptyBody="Fills in once a confrontation produces a credible evasion."
-            render={(data) => (
-              <HardestEvasionsTable
-                evasions={data.evasions}
-                totalAvailable={data.total_available}
-              />
-            )}
-          />
-        </div>
-      </Card>
-
-      <Details summary="Interactive browser demo (simulated, not real data)">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <MockDataBadge />
-            <button
-              type="button"
-              onClick={runNextRound}
-              disabled={rounds.length >= 6}
-              className="rounded-lg bg-[var(--color-accent-600)] px-3 py-1.5 text-xs font-semibold text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {rounds.length === 0
-                ? "Run round 0"
-                : rounds.length >= 6
-                  ? "Demo complete"
-                  : `Run round ${rounds.length}`}
-            </button>
-            {latest && (
-              <span className="text-[11px] tabular-nums text-[var(--color-ink-muted)]">
-                R{latest.roundIndex} · recall{" "}
-                {(latest.evaluation.overall.recall * 100).toFixed(0)}%
-              </span>
-            )}
-          </div>
-          <NodeLoop active={latest ? "retrain" : "identify"} compact />
-          <AttackFamilySelector value={family} onChange={setFamily} />
-          <p>
-            A deterministic client-side toy, kept as a fallback if the API becomes unreachable
-            mid-demo. It shares no code and no numbers with the real pipeline above.
-          </p>
-        </div>
-      </Details>
+      <Callout eyebrow="What escaped, in full">
+        <p>
+          Every fraudulent transaction that survived a confrontation — ranked by hardness, with its
+          risk score, fidelity and the model that approved it — is tabulated once, on{" "}
+          <Link
+            to="/final-benchmark"
+            className="font-semibold text-[var(--color-accent-500)] hover:underline"
+          >
+            Results
+          </Link>
+          , alongside the benchmark it came from.
+        </p>
+      </Callout>
     </div>
   );
 }

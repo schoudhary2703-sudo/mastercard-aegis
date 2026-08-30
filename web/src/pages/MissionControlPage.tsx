@@ -10,20 +10,29 @@ import {
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO } from "../api/types";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { GenAIFamilyCoverage } from "../components/genai/GenAIFamilyCoverage";
 import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { NodeLoop, NodeLoopLegend } from "../components/loop/NodeLoop";
 import { Callout, Panel } from "../components/ui/Panel";
 import { PageHeader, SectionHeader } from "../components/ui/PageHeader";
 import { Reveal } from "../components/ui/Reveal";
 import { StatBlock } from "../components/ui/StatBlock";
+import { LOOP_STEPS, RESULTS_STEP } from "../nav/journey";
 
 /**
- * Mission Control: the 60-second read.
+ * Overview: the 60-second read, and the map.
  *
  * The closed loop is the hero -- it is the whole idea in one figure. Below it,
- * four measured results, then the live evidence that the loop actually ran,
- * then the caveats. Nothing on this screen is a number without a source.
+ * four measured results, then the numbered walkthrough, then the live evidence
+ * that the loop actually ran, then the caveats.
+ *
+ * The judge-path strip is the load-bearing addition: the challenge scores five
+ * named criteria, and a reader should not have to infer which screen argues
+ * which one. Each card states its criterion and links to the screen that
+ * carries the evidence, in reading order.
+ *
+ * The GenAI family-coverage grid was removed from this screen -- it is the
+ * same component on the same data that step 2 shows, and per-family coverage
+ * belongs with the per-family replay, not on the summary.
  */
 
 const pct1 = (n: number) => `${n.toFixed(1)}%`;
@@ -52,6 +61,45 @@ function totals(experiments: ExperimentDTO[]) {
       };
     },
     { fraud: 0, caught: 0, escaped: 0 },
+  );
+}
+
+/**
+ * The walkthrough, as a strip of cards.
+ *
+ * Reads from `nav/journey.ts`, so it can never drift out of step with the
+ * sidebar or the per-page "Next" footer.
+ */
+function JudgePath() {
+  const cards = [...LOOP_STEPS, RESULTS_STEP];
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      {cards.map((s) => (
+        <Link
+          key={s.to}
+          to={s.to}
+          className="group flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-standard hover:border-[var(--color-accent-500)] hover:shadow-[var(--shadow-card)]"
+        >
+          <span className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums ${
+                s.step != null
+                  ? "bg-[var(--color-accent-600)] text-white"
+                  : "bg-[var(--color-defend-600)] text-white"
+              }`}
+            >
+              {s.step ?? "★"}
+            </span>
+            <span className="text-sm font-semibold text-[var(--color-ink)]">{s.label}</span>
+          </span>
+          <span className="mt-2 text-xs leading-snug text-[var(--color-ink-muted)]">{s.hint}</span>
+          <span className="mt-auto pt-3 text-[10.5px] uppercase tracking-[0.06em] text-[var(--color-ink-faint)]">
+            {s.rubric}
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -89,16 +137,16 @@ export function MissionControlPage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              to="/final-benchmark"
+              to="/attack-taxonomy"
               className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2.5 text-sm font-semibold text-white transition-standard hover:bg-[var(--color-accent-500)]"
             >
-              See the evidence →
+              Start the walkthrough → Step 1
             </Link>
             <Link
-              to="/attack-lab"
+              to="/final-benchmark"
               className="rounded-lg border border-[var(--color-border-strong)] px-4 py-2.5 text-sm font-medium text-[var(--color-ink)] transition-standard hover:bg-[var(--color-surface)]"
             >
-              Watch a campaign run
+              Skip to the results
             </Link>
           </div>
         </div>
@@ -170,6 +218,20 @@ export function MissionControlPage() {
               }}
             />
           </Panel>
+        </section>
+      </Reveal>
+
+      {/* ---- The walkthrough, spelled out --------------------------------- */}
+      <Reveal>
+        <section>
+          <SectionHeader
+            eyebrow="How to review this in five minutes"
+            title="Four steps around the loop, then the evidence — each one answering a named judging criterion."
+          >
+            Every screen in this path reads from persisted artifacts. Anything simulated lives in the
+            sandbox, outside the path, and is labelled as such.
+          </SectionHeader>
+          <JudgePath />
         </section>
       </Reveal>
 
@@ -254,12 +316,7 @@ export function MissionControlPage() {
               state={genai}
               emptyTitle="No GenAI runs yet"
               emptyBody="Run scripts/run_genai_analysis.py to produce a reasoning artifact."
-              render={(data) => (
-                <div className="space-y-4">
-                  <LiveGenAIEvidence genai={data} />
-                  {data.family_coverage && <GenAIFamilyCoverage coverage={data.family_coverage} />}
-                </div>
-              )}
+              render={(data) => <LiveGenAIEvidence genai={data} />}
             />
           </Panel>
         </section>
