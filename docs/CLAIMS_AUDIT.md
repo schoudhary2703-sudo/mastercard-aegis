@@ -3,8 +3,11 @@
 What this submission supports, what it suggests but does not prove, what it
 is explicitly limited by, and what it must never be described as. Every
 number below is read from
-[`data/reports/final_benchmark_summary.json`](../data/reports/final_benchmark_summary.json)
-(regenerate with `scripts/build_final_benchmark_summary.py`); none is
+[`submission/artifacts/data/reports/final_benchmark_summary.json`](../submission/artifacts/data/reports/final_benchmark_summary.json)
+-- tracked in this repository, so the link resolves in a clean clone and
+every figure is checkable without running anything. (The working-tree copy
+at `data/reports/final_benchmark_summary.json` is git-ignored;
+`scripts/build_final_benchmark_summary.py` regenerates it there.) None is
 invented. Use this document to check any sentence before it goes in a
 slide, a script, or a write-up.
 
@@ -40,7 +43,10 @@ rerunning the cited script.
   contributing zero rows, each scored on one fresh, real, previously-unseen
   scenario. Two of three families generalized strongly (bust-out 100%,
   adaptive-evasion 75%); one did not (mule-network 0%). Evidence:
-  `models/loafo_summary.json`, each fold's `loafo_fold_report.json`.
+  [`submission/artifacts/models/loafo_summary.json`](../submission/artifacts/models/loafo_summary.json)
+  and each fold's `loafo_fold_report.json` under
+  [`submission/artifacts/models/`](../submission/artifacts/models) -- all
+  tracked in this repository.
 * **Every LOAFO fold's held-out family contributed verifiably zero training
   rows**, every fresh scenario was verified to have zero id overlap with
   any prior artifact, and every model's file hash was verified unchanged
@@ -107,9 +113,11 @@ Explicit constraints on how far any result above can be read.
 * **Fidelity is descriptive, not a correctness guarantee.** `fidelity_score`
   measures how closely a generated scenario's statistical properties (warm-up
   amount distribution, transaction-type mix, transition sharpness) match
-  real PaySim traffic -- it is a realism signal for the Red Team's own
-  generator, not a certification that a scenario is representative of real
-  fraud, and not a measure of the *detector's* correctness.
+  the PaySim synthetic/reference corpus -- it is a realism signal for the
+  Red Team's own generator, measured against a simulator's output rather
+  than against captured real traffic. It is not a certification that a
+  scenario is representative of real fraud, and not a measure of the
+  *detector's* correctness.
 * **No production latency SLA claim.** Reported latency (mean/p50/p95/p99/max,
   e.g. Defender v3's 6.66ms mean) is measured over a fixed sample of scoring
   calls on one development machine during evaluation, not a load-tested,

@@ -203,9 +203,12 @@ the presentation machine), `web/` still functions: every page's mock demo
 section (clearly labeled "Simulated demo") keeps working, and every real
 section shows an explicit "Could not reach the AEGIS API" error rather than
 a fabricated number -- degrade to walking through
-`data/reports/final_benchmark_summary.json` directly, or a screenshot
+`submission/artifacts/data/reports/final_benchmark_summary.json` directly
+(tracked in the repo, so it is present on any clean clone), or a screenshot
 captured beforehand, rather than presenting a broken real section as if it
-were working.
+were working. Overview's hero, closed-loop diagram and "Where AEGIS fits"
+panel are static and keep rendering even with the API down, so the system
+can still be explained end to end while the backend is unreachable.
 
 ## What is explicitly not covered
 

@@ -83,17 +83,20 @@ verified working (item 8).
   cross-family results, LOAFO, hardest survivors, Final Benchmark,
   closing).
 - [ ] Every number quoted in the document matches
-  `data/reports/final_benchmark_summary.json` exactly -- cross-check
-  against `docs/CLAIMS_AUDIT.md`'s "Supported claims" section before
-  finalizing, and do not restate anything from "Claims we must NOT make."
+  `submission/artifacts/data/reports/final_benchmark_summary.json` exactly
+  -- cross-check against `docs/CLAIMS_AUDIT.md`'s "Supported claims"
+  section before finalizing, and do not restate anything from "Claims we
+  must NOT make."
 - [ ] Export/save as `.docx` per the submission's required format.
 
 ## 6. Screenshots -- **pending**
 
-- [ ] Capture, at minimum: Overview (real pipeline status card),
-  Co-Evolution (real closed-loop timeline including Round-0 and the
-  narrative panel), Final Benchmark (model comparison cards, recall-by-family
-  chart, LOAFO table, hardest-survivors table).
+- [ ] Capture, at minimum: Overview twice -- once showing the static hero
+  plus the closed-loop diagram, and once scrolled to the three evidence
+  cards (attack landscape, GenAI coverage, Defender v3 + LOAFO); Evolution
+  (real closed-loop timeline including Round-0 and the narrative panel);
+  Results (model comparison cards, recall-by-family chart, LOAFO table,
+  hardest-survivors table).
 - [ ] Capture with the API reachable (real data visible, not an error
   state) and at a resolution that keeps text legible.
 - [ ] Name files descriptively (e.g. `01-overview.png`,
@@ -106,11 +109,16 @@ Run this immediately before presenting, on the actual machine/URL you will
 present from:
 
 - [ ] `GET /api/health` returns `{"status": "ok"}`.
-- [ ] `/` (Overview) loads with a populated "Real pipeline status" card,
-  not an error or empty state.
+- [ ] `/` (Overview) renders its static hero, closed-loop diagram and
+  "Where AEGIS fits" panel **before** any API response arrives -- confirm
+  by loading it against a cold or stopped backend once.
+- [ ] `/` (Overview) then populates all three evidence cards -- attack
+  landscape (14 / 3 / 55,000), GenAI coverage (3/3), and Defender v3
+  (PR-AUC, recall @ 0.1% FPR, FPR, LOAFO 58.3% "partial generalization")
+  -- with no error or empty state.
 - [ ] `/co-evolution` shows all six real closed-loop stages as "Real", not
   "Not run".
-- [ ] `/final-benchmark` shows the model comparison table, the
+- [ ] `/final-benchmark` (Results) shows the model comparison table, the
   recall-by-family chart, the LOAFO table, and a non-empty hardest-survivors
   table.
 - [ ] Click through to one real attack blueprint on `/attack-taxonomy` and
@@ -140,7 +148,8 @@ Collect in one place before submitting:
 - [ ] Deployed demo URL (item 4).
 - [ ] Walkthrough `.docx` (item 5).
 - [ ] Screenshots (item 6), or the slide deck/folder containing them.
-- [ ] This repo's own `data/reports/final_benchmark_summary.json`, if the
-  submission format accepts a raw-data attachment alongside the narrative
-  documents -- it is the single source every number in this submission was
-  drawn from.
+- [ ] This repo's own
+  `submission/artifacts/data/reports/final_benchmark_summary.json` (tracked,
+  so judges can open it straight from the repository), if the submission
+  format accepts a raw-data attachment alongside the narrative documents --
+  it is the single source every number in this submission was drawn from.

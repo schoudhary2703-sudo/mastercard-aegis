@@ -46,11 +46,14 @@ Every arrow is a **contract** (a frozen pydantic type in
 see [`docs/CONTRACTS.md`](docs/CONTRACTS.md) and
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-This repository has run that loop for real, on real PaySim data, through
-three defender generations and a formal generalization benchmark -- not a
-simulation of what the loop would produce. Every number cited below is
-read from a persisted artifact on disk (`data/reports/final_benchmark_summary.json`),
-never invented.
+This repository has run that loop for real, on the full PaySim
+synthetic/reference corpus, through three defender generations and a formal
+generalization benchmark -- not a simulation of what the loop would produce.
+Every number cited below is read from a persisted artifact that is **tracked
+in this repository**
+([`submission/artifacts/data/reports/final_benchmark_summary.json`](submission/artifacts/data/reports/final_benchmark_summary.json)),
+never invented -- so every figure here is checkable from a clean clone, with
+no dataset download and no pipeline run.
 
 ## Three attack families, deliberately fixed
 
@@ -140,8 +143,12 @@ and closed most of v2's regression against baseline v1 on the *native*
 task -- while adding training signal from two families v2 had never seen.
 It does not fully recover baseline v1's recall. Full numbers, per-family
 breakdowns, and confusion matrices:
-[`data/reports/final_benchmark_summary.json`](data/reports/final_benchmark_summary.json)
-(regenerate with `scripts/build_final_benchmark_summary.py`).
+[`submission/artifacts/data/reports/final_benchmark_summary.json`](submission/artifacts/data/reports/final_benchmark_summary.json)
+-- tracked in this repo, so the link resolves in a clean clone.
+(`scripts/build_final_benchmark_summary.py` regenerates it into the
+git-ignored working-tree `data/reports/`; the copy under
+[`submission/artifacts/`](submission/artifacts) is the tracked evidence
+bundle.)
 
 ## LOAFO: does hardening generalize, or just memorize?
 
@@ -214,13 +221,26 @@ GET /api/detections/recent    GET /api/evolution
 GET /api/hardest-evasions     GET /api/benchmark
 ```
 
-`web/` (React + Vite) is a seven-screen UI. Every screen except the
-interactive Co-Evolution demo now reads real data through
+`web/` (React + Vite) is an eight-screen UI, four of them primary:
+**Overview** (`/`), **Attack Lab** (`/attack-lab`), **Evolution**
+(`/co-evolution`) and **Results** (`/final-benchmark`). Every screen except
+the interactive Co-Evolution demo reads real data through
 `web/src/api/client.ts`, labeled "Real pipeline data"; the client-side mock
 demo (unrelated code, `web/src/mock/`) is kept alongside it and always
 labeled "Simulated demo (not real data)" -- the two are never blended
-without a label. `/final-benchmark` is the judge-facing summary: v1 vs v2
-vs v3, recall by family, LOAFO results, hardest surviving attacks. See
+without a label.
+
+**Overview** is the judge-facing entry point. Its hero, closed-loop diagram
+and "Where AEGIS fits" panel are entirely static, so the whole system is
+explained before any API call resolves; the three evidence cards below them
+read `/api/landscape`, `/api/genai` and `/api/benchmark` independently, each
+with its own loading and error state. It deliberately shows no aggregate
+recall summed across scenarios -- those are separate scenarios scored by
+different models, and one number over them would be confusable with PaySim
+test recall and with LOAFO mean recall.
+
+**Results** is the full benchmark summary: v1 vs v2 vs v3, recall by family,
+LOAFO results, hardest surviving attacks. See
 [`docs/UI_DESIGN_SYSTEM.md`](docs/UI_DESIGN_SYSTEM.md).
 
 ## How to run locally
@@ -238,7 +258,7 @@ cd web && npm install && npm run dev
 
 See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) "Clean-clone quick start" for
 what is (and is not) in that bundle. To instead reproduce the full pipeline
-from real PaySim data:
+from the PaySim synthetic/reference corpus:
 
 ```bash
 # 1. Python environment
@@ -276,8 +296,10 @@ python -m pytest        # or: make test / make check (lint + typecheck + test)
 ## Deployment notes
 
 The live demo does **not** require the multi-GB PaySim CSV or a retraining
-step -- it needs only the already-trained `models/` artifacts and
-`data/reports/final_benchmark_summary.json`, served read-only by the API
+step -- it needs only the small JSON evidence bundle already tracked at
+[`submission/artifacts/`](submission/artifacts) (model `metadata.json` /
+`evaluation_*.json`, LOAFO fold reports, confrontation reports and
+`data/reports/final_benchmark_summary.json`), served read-only by the API
 behind a static frontend. Full plan, environment variables, and a
 no-backend fallback path: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 

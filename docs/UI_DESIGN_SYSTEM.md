@@ -61,15 +61,53 @@ or "this transaction is risky" without reading the label.
 
 ## Screens
 
+Navigation shows four primary screens -- **Overview** (`/`), **Attack Lab**
+(`/attack-lab`), **Evolution** (`/co-evolution`), **Results**
+(`/final-benchmark`) -- with the remaining four in a quieter "More" group.
+Routes are unchanged; only the nav labels are short.
+
 | Route | Purpose | Real data |
 | --- | --- | --- |
-| `/` | Overview -- real pipeline status, loop diagram, session stats, links into every screen. | Yes (+ mock demo) |
+| `/` | Overview -- static judge-facing hero, closed-loop diagram, "Where AEGIS fits", then three endpoint-scoped evidence cards. | Yes (+ static explanation) |
 | `/attack-studio` | Real attacks for the selected family, plus pick-a-family / generate-a-batch mock demo. | Yes (+ mock demo) |
 | `/live-detection` | Real recent detections, plus a standalone mock detection pass. | Yes (+ mock demo) |
 | `/co-evolution` | Real closed-loop lineage and hardest surviving attacks; **hero mock demo** below runs the loop round by round. | Yes (+ mock demo) |
 | `/attack-taxonomy` | Real attack blueprints and confrontation results, plus illustrative reference blueprints. | Yes (+ mock demo) |
 | `/evaluation` | Real per-model `EvaluationResult`s (v1/v2/v3), plus the latest mock Co-Evolution round's. | Yes (+ mock demo) |
-| `/final-benchmark` | v1 vs v2 vs v3 comparison, recall by family, LOAFO results, hardest surviving attacks. | Yes (no mock) |
+| `/final-benchmark` | Results -- v1 vs v2 vs v3 comparison, recall by family, LOAFO results, hardest surviving attacks. | Yes (no mock) |
+
+### Overview: cold-start-safe by construction
+
+Overview is the only screen with a hard rule about *when* it renders. Its
+hero, its `ClosedLoopFlow` diagram and its "Where AEGIS fits" panel contain
+no artifact-derived number, so a judge who opens a cold or unreachable
+backend still gets the complete explanation of the system rather than a page
+of skeletons. Below them, `/api/landscape`, `/api/genai` and `/api/benchmark`
+are fetched as three independent resources with three independent
+loading/error states -- a slow or failed landscape read must never hide the
+benchmark evidence.
+
+Two claim-safety rules are enforced by the page's structure, not by copy:
+
+* **No cross-scenario aggregate.** Overview never sums caught/escaped counts
+  across experiments into a headline recall. Guided generations, selected
+  experiment replays and LOAFO folds are separate scenarios scored by
+  different models; one number over them is confusable with PaySim test
+  recall and with LOAFO mean recall, so every figure names the exact
+  evaluation it came from.
+* **LOAFO is never labelled as defender recall.** Mean LOAFO recall is
+  rendered with a "partial generalization" badge and an explicit line saying
+  it is the recall of three fold models on three held-out scenarios, not
+  Defender v3's.
+
+`ClosedLoopFlow` carries two orthogonal distinctions visually: **team**
+(`--color-attack-*` for Red Team, `--color-defend-*` for Blue Team, per the
+attribution rule above) and **reasoning vs. deterministic** (a filled dot on
+the two stages where a language model reasons, hollow elsewhere). Its
+`compact` variant is the original single-row chip strip, still used inline by
+Attack Lab. LOAFO appears beside the loop as a dashed sidecar explicitly
+labelled "not a loop stage", because it generates no attacks and proposes no
+mutations.
 
 ## Component conventions
 

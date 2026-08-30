@@ -24,17 +24,37 @@ Open `/` (Overview).
 
 ## 1. Overview (30s)
 
-Point at the **Real pipeline status** card.
+The hero, the closed-loop diagram and "Where AEGIS fits" are **static** --
+they render before any API call resolves, so this section works even on a
+cold backend. Read the headline, then point at the mechanism strip.
 
-> "This isn't a mockup -- it's calling a live API right now. Three real
-> core defenders trained -- baseline v1, Defender v2, Defender v3 -- three
-> real confrontations run, two real adaptive rounds. The current model is
-> Defender v3."
+> "Stress-test fraud models against attacks they haven't learned yet.
+> GenAI reasons, deterministic code generates every transaction, XGBoost
+> detects, and whatever escapes becomes the next red team's signal."
 
-Point at **Hardest surviving evasions** underneath.
+Point at the **closed loop** below it -- eight stages, amber for Red Team,
+blue for Blue Team, a filled dot on the two stages where a language model
+reasons.
 
-> "And these are real transactions that evaded a real detector -- risk
-> score, fidelity, hardness, all persisted, all real."
+> "GenAI reasons at exactly two points and never writes a transaction row.
+> The simulator does, deterministically, from a seed. And note stage 7 --
+> the mutation proposal is bounded: out-of-range proposals are rejected,
+> not clamped."
+
+Point at the **LOAFO** callout underneath the loop.
+
+> "And this is separate -- not another loop stage. We hold one attack
+> family out of training entirely and ask whether hardening transfers to
+> an attack the model has never seen."
+
+Then the three evidence cards, each read from its own endpoint.
+
+> "14 attack vectors identified, 3 deeply simulated -- and we keep that
+> distinction everywhere. 55,000 synthetic transactions, seed-reproducible.
+> All three families have live GenAI evidence. Defender v3: PR-AUC 0.904,
+> 85.2% recall at a 0.1% false-positive budget, 0.0216% FPR. And LOAFO mean
+> recall 58.3%, labelled *partial* generalization -- which is the honest
+> answer, not the flattering one."
 
 ## 2. Attack Taxonomy (30-45s)
 
@@ -108,7 +128,8 @@ Scroll to the **Hardest surviving attacks** table on the same page.
 
 ## 8. Final Benchmark summary (30s)
 
-Point at the **Interpretation** panel at the top of `/final-benchmark`.
+Scroll to the bottom of `/final-benchmark` and expand the collapsed
+**"Interpretation and limitations"** section.
 
 > "This text isn't written by us -- it's assembled from the same numbers
 > you just saw: the F1 delta, the LOAFO verdict, the weakest family. And it

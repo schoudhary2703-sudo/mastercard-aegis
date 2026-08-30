@@ -15,10 +15,10 @@ import {
  * stay reachable without competing for attention.
  */
 export const PRIMARY_NAV = [
-  { to: "/", label: "Mission Control", icon: OverviewIcon, end: true },
+  { to: "/", label: "Overview", icon: OverviewIcon, end: true },
   { to: "/attack-lab", label: "Attack Lab", icon: StudioIcon },
   { to: "/co-evolution", label: "Evolution", icon: LoopIcon },
-  { to: "/final-benchmark", label: "Final Results", icon: BenchmarkIcon },
+  { to: "/final-benchmark", label: "Results", icon: BenchmarkIcon },
 ];
 
 export const SECONDARY_NAV = [
