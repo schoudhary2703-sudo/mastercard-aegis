@@ -1,7 +1,40 @@
 # AEGIS
 
 **Adversarial Evaluation & Generative Immune System for payments.**
-Mastercard Innovation Challenge 2026.
+Mastercard Innovation Challenge 2026 — AI Defense Lab for Payment Security.
+
+| | |
+| --- | --- |
+| **Live prototype** | **<https://mastercard-aegis.vercel.app>** |
+| **Solution walkthrough** | [`AEGIS_Code_Review.docx`](AEGIS_Code_Review.docx) · [`docs/DEMO_FLOW.md`](docs/DEMO_FLOW.md) |
+| **What every number comes from** | [`submission/artifacts/`](submission/artifacts) — tracked, real, regenerable |
+| **What we do *not* claim** | [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) |
+
+> The backend is on a free tier that sleeps after ~15 minutes idle. The first
+> request can take up to a minute to wake it; the UI says so while it waits and
+> recovers on its own. If a screen shows an error, hit **Retry**.
+
+## The 60-second read for a judge
+
+1. **[Mission Control](https://mastercard-aegis.vercel.app/#/)** — the closed
+   loop as one animated figure, and the four headline numbers.
+2. **[Final Results](https://mastercard-aegis.vercel.app/#/final-benchmark)** —
+   the verdict, then the four pieces of evidence behind it, then the limitations.
+3. Any number on screen carries the **artifact filename it was read from**.
+   Nothing is computed in the browser.
+
+**Headline result**, Defender v3 on an untouched PaySim test split:
+
+| | As shipped (F1-tuned) | At a 0.5% false-positive budget |
+| --- | --- | --- |
+| Recall | 77.9% | **93.3%** |
+| Review load | ~216 alerts / million | ~5,000 alerts / million |
+
+Precision **93.8%**, FPR **0.0216%**, and unseen-family (LOAFO) recall **58%** —
+partial generalization, with one family that did not transfer at all. Both
+readings above come from the *same* persisted evaluation; the operating point,
+not the model, is the difference. See
+[The operating point](#the-operating-point-the-threshold-matters-more-than-the-model).
 
 ## The problem
 
@@ -143,6 +176,70 @@ breakdowns, and confusion matrices:
 [`data/reports/final_benchmark_summary.json`](data/reports/final_benchmark_summary.json)
 (regenerate with `scripts/build_final_benchmark_summary.py`).
 
+## The operating point: the threshold matters more than the model
+
+Every figure in the table above comes from a threshold tuned to maximize F1.
+On a 0.42%-positive split that lands at ~0.989 and buys precision the business
+never asked for, at a steep cost in caught fraud. Payment systems do the
+opposite: review capacity fixes a false-positive budget first, and the
+threshold is whatever extracts the most recall inside it.
+
+Read at a 0.5% FPR budget -- from the *same* persisted evaluations, via
+`recall_at_fixed_fpr`, with no retraining:
+
+| FPR budget | Review load | Baseline v1 | Defender v2 | Defender v3 |
+| --- | --- | --- | --- | --- |
+| 0.1% | 1,000 / million | 85.1% | 84.8% | **85.2%** |
+| 0.5% | 5,000 / million | **93.9%** | 93.4% | 93.3% |
+| 1.0% | 10,000 / million | **96.8%** | 95.9% | 96.0% |
+
+Two things follow, and we state both. Defender v3 catches **77.9% or 93.3%**
+of fraud depending only on where the threshold sits — a 23x difference in
+review load, which is a staffing decision rather than a modelling one. And
+**hardening did not buy raw recall**: baseline v1 leads at the 0.5% and 1%
+budgets. What cross-family hardening bought is precision, the lowest
+false-positive rate of the three, and the lead at the tightest 0.1% budget.
+
+`scripts/train_baseline_detector.py --threshold-rule fpr_budget` is now the
+pipeline default; `--threshold-rule f1` reproduces the frozen v1/v2 fits for
+like-for-like comparison.
+
+## The loop can decline its own output
+
+A closed loop that cannot reject a bad round is not closed. Both hardening
+scripts now run an **acceptance gate** (`src/aegis/defend/acceptance.py`)
+before a retrained candidate is treated as a promotion. It compares the
+candidate against the incumbent on the same untouched test split and gates
+three metrics:
+
+* **PR-AUC** and **ROC-AUC** — threshold-free, so a candidate cannot pass by
+  re-tuning its threshold into a flattering position.
+* **Recall at the operating FPR budget** — the business outcome.
+
+Precision, F1 and confusion counts are deliberately *not* gated: they move
+with the threshold, which legitimately differs between generations, so gating
+them would reward threshold choice over model quality.
+
+Each run writes `acceptance.json` beside the model and **exits non-zero on
+rejection**, having written every artifact first, so a regression cannot ship
+silently while the rejection stays inspectable (`--allow-regression` overrides
+the exit code without rewriting the verdict).
+
+Run against this repository's own shipped artifacts, the gate reports:
+
+| Comparison | Verdict | Why |
+| --- | --- | --- |
+| v2 vs v1 | **REJECT** | PR-AUC −0.0081, recall@0.5% −0.0057 |
+| v3 vs v2 | ACCEPT | all three gated metrics within tolerance |
+| v3 vs v1 | **REJECT** | PR-AUC −0.0053, recall@0.5% −0.0067 |
+
+v3 clears the generation it replaces but is still below the untouched
+baseline — which is why the cross-family gate compares against **both**, not
+just the predecessor. Gating only on the predecessor lets a chain of
+individually-tolerable rounds drift below its own starting point one step at a
+time, and that is exactly what happened here. Pinned by
+`tests/test_defend_acceptance.py`.
+
 ## LOAFO: does hardening generalize, or just memorize?
 
 Cross-family hardening trains *with* all three families. To test whether
@@ -214,14 +311,25 @@ GET /api/detections/recent    GET /api/evolution
 GET /api/hardest-evasions     GET /api/benchmark
 ```
 
-`web/` (React + Vite) is a seven-screen UI. Every screen except the
-interactive Co-Evolution demo now reads real data through
-`web/src/api/client.ts`, labeled "Real pipeline data"; the client-side mock
-demo (unrelated code, `web/src/mock/`) is kept alongside it and always
-labeled "Simulated demo (not real data)" -- the two are never blended
-without a label. `/final-benchmark` is the judge-facing summary: v1 vs v2
-vs v3, recall by family, LOAFO results, hardest surviving attacks. See
+`web/` (React + Vite) is an eight-screen dark console. Its navigation mirrors
+the challenge's own pillars — **Identify · Generate · Defend · Evolve**, then
+**Evidence** — so a judge scoring against the rubric can find the screen for
+each criterion directly.
+
+Every screen except the interactive Co-Evolution demo reads real data through
+`web/src/api/client.ts`, labeled "Real pipeline data" with the source artifact
+named next to the number; the client-side mock demo (unrelated code,
+`web/src/mock/`) is kept alongside it and always labeled "Simulated demo (not
+real data)" -- the two are never blended without a label.
+
+`/final-benchmark` is the judge-facing summary: the LOAFO verdict stated as a
+sentence, then the v1→v2→v3 progression, the operating-point curve, per-family
+recall, LOAFO results, and the hardest surviving attacks. See
 [`docs/UI_DESIGN_SYSTEM.md`](docs/UI_DESIGN_SYSTEM.md).
+
+The UI degrades honestly rather than silently: a missing artifact renders an
+explicit empty state, a slow backend says it is waking, and an unreachable one
+shows an error with a Retry button — never a fabricated number.
 
 ## How to run locally
 
@@ -270,7 +378,9 @@ Opens at `http://localhost:5173`; the dev server proxies `/api/*` to
 [`web/README.md`](web/README.md).
 
 ```bash
-python -m pytest        # or: make test / make check (lint + typecheck + test)
+python -m pytest        # 623 passed, 14 skipped
+make check              # ruff + strict mypy + pytest
+cd web && npm run build # tsc -b + vite build
 ```
 
 ## Deployment notes
@@ -286,6 +396,15 @@ no-backend fallback path: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 * Not a claim of universal fraud detection. See
   [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) for the full audit of what
   is and is not supported.
+* **Hardening did not improve raw recall.** Baseline v1 leads Defender v3 at
+  the 0.5% and 1% false-positive budgets; v3 leads only at the tightest 0.1%
+  budget. The acceptance gate now rejects both v2 and v3 against v1, which is
+  the honest reading of the numbers this repository shipped.
+* The acceptance gate, FPR-budget thresholding, early stopping and
+  hard-positive weighting are **wired and tested, but the committed artifacts
+  predate them** — those numbers were produced by the previous code path.
+  Regenerating them requires the PaySim CSV and a full pipeline re-run
+  (`data/` and `models/` are git-ignored and absent from any clone).
 * LOAFO's fresh evaluations are one real scenario per family (3-12 fraud
   events) -- directional evidence, not a statistically powered estimate.
   Mule-network structuring generalized weakly (0% LOAFO recall) even where
