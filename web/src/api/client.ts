@@ -66,6 +66,13 @@ async function getJsonOnce<T>(path: string, signal: AbortSignal): Promise<T> {
 
 // Per-attempt hard cap, then give up on that attempt and retry.
 const ATTEMPT_TIMEOUT_MS = 20_000;
+// A transport-level failure (status 0: DNS failure, connection refused, CORS
+// rejection) that comes back this fast is not a backend waking up -- a
+// cold-starting container accepts the connection and holds it, or answers 5xx.
+// Fast repeated status-0 means the origin is wrong or unreachable, and no
+// amount of waiting fixes it.
+const FAST_FAIL_MS = 2_000;
+const MAX_FAST_FAILURES = 2;
 // Backoff before each retry. Length = number of retries after the first try.
 // Worst case ≈ 5 attempts × 20s + (1+3+8+15)s ≈ 127s, which comfortably
 // rides out a cold Render free-tier container (~30-60s) — the call resolves
@@ -106,8 +113,10 @@ function linkSignals(outer: AbortSignal | undefined, inner: AbortSignal): AbortS
  */
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   let lastError: unknown;
+  let fastFailures = 0;
   for (let attempt = 0; attempt <= RETRY_BACKOFF_MS.length; attempt += 1) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const startedAt = Date.now();
     try {
       return await getJsonOnce<T>(path, linkSignals(signal, AbortSignal.timeout(ATTEMPT_TIMEOUT_MS)));
     } catch (error) {
@@ -120,6 +129,15 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
         throw error;
       }
       lastError = error;
+
+      // Walking the full ladder takes ~2 minutes. That is the right patience
+      // for a container that is booting, and far too long to leave someone
+      // staring at a spinner when the API simply is not there.
+      if (error instanceof ApiError && error.status === 0 && Date.now() - startedAt < FAST_FAIL_MS) {
+        fastFailures += 1;
+        if (fastFailures >= MAX_FAST_FAILURES) throw error;
+      }
+
       if (attempt === RETRY_BACKOFF_MS.length) break;
       await sleep(RETRY_BACKOFF_MS[attempt], signal);
     }

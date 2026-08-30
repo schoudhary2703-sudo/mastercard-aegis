@@ -296,7 +296,30 @@ def promoted_sample_weights(
 
     n_promoted_positive = int(promoted_positive.sum())
     n_base_positive = int((labels[:boundary] == 1).sum())
-    if n_promoted_positive == 0 or n_base_positive == 0 or positive_mass_share == 0.0:
+
+    # A promotion always contains at least one fraud row -- `promote_hard_positives`
+    # rejects a scenario without one. So an empty tail means the last
+    # `promoted_row_count` rows are not the promoted rows: either the
+    # materializer stopped appending them last, or `promoted_row_count`
+    # disagrees with what was actually appended (the two are bound only by a
+    # comment in `scripts/train_baseline_detector.py`).
+    #
+    # Returning all-ones here would silently restore the unweighted behaviour
+    # this function exists to replace -- the exact failure that let two
+    # hardening rounds ship as no-ops. Fail loudly instead.
+    if n_promoted_positive == 0:
+        msg = (
+            f"expected fraud rows in the last {promoted_row_count} training rows "
+            "(promoted rows must be appended last), found none. Either the "
+            "feature materializer changed its append order, or promoted_row_count "
+            "does not match the rows actually appended."
+        )
+        raise HardPositiveValidationError(msg)
+
+    # Both remaining cases are legitimately unweightable rather than wrong: with
+    # no base positives there is no mass to take a share of, and a zero share is
+    # the caller explicitly opting out.
+    if n_base_positive == 0 or positive_mass_share == 0.0:
         return weights
 
     solved = (positive_mass_share * n_base_positive) / (
