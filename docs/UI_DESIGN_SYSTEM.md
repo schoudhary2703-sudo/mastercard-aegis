@@ -69,12 +69,50 @@ Routes are unchanged; only the nav labels are short.
 | Route | Purpose | Real data |
 | --- | --- | --- |
 | `/` | Overview -- static judge-facing hero, closed-loop diagram, "Where AEGIS fits", then three endpoint-scoped evidence cards. | Yes (+ static explanation) |
+| `/attack-lab` | Attack Lab -- one Red-Team / Blue-Team confrontation per family: selector, static attack narrative, GenAI evidence, then the recorded replay. | Yes (no mock) |
 | `/attack-studio` | Real attacks for the selected family, plus pick-a-family / generate-a-batch mock demo. | Yes (+ mock demo) |
 | `/live-detection` | Real recent detections, plus a standalone mock detection pass. | Yes (+ mock demo) |
 | `/co-evolution` | Real closed-loop lineage and hardest surviving attacks; **hero mock demo** below runs the loop round by round. | Yes (+ mock demo) |
 | `/attack-taxonomy` | Real attack blueprints and confrontation results, plus illustrative reference blueprints. | Yes (+ mock demo) |
 | `/evaluation` | Real per-model `EvaluationResult`s (v1/v2/v3), plus the latest mock Co-Evolution round's. | Yes (+ mock demo) |
 | `/final-benchmark` | Results -- v1 vs v2 vs v3 comparison, recall by family, LOAFO results, hardest surviving attacks. | Yes (no mock) |
+
+### Attack Lab: one confrontation, in story order
+
+Attack Lab is ordered for a judge reading it cold, not for the data's
+convenience: **A** family selector and family context, **B** a static
+Red-Team / Blue-Team narrative of how the attack reaches the defender, **C**
+GenAI evidence (all three families' coverage first, then the selected
+family's own bounded-mutation record), **D** the recorded confrontation
+(scenario identity, then the replay), **E** deeper technical evidence behind
+`Details`. Raw blueprint parameters, the analyst transcripts and the latest
+live chain all live in **E** so they cannot outrank the story.
+
+Scenario identity is the screen's central safety rule. Guided-generation,
+replay, and LOAFO evidence are separate *evidence types*. Their persisted
+scenario ids may be different or shared depending on the family, so the UI
+must display scenario identity explicitly rather than assuming either
+relationship. Bust-out's replay is a standalone confrontation artifact whose
+scenario differs from both its guided generation and its LOAFO scenario --
+they read 1/3, 2/3 and 3/3 respectively -- while the mule and adaptive
+replays are read straight out of their LOAFO fold reports and therefore
+share that scenario. Every figure is consequently rendered next to its own
+`scenario_id`, its evidence type and the model that scored it, and the
+guided block notes that guided results are separate persisted scenarios
+rather than same-scenario model progression.
+
+Because Attack Lab reads only `/api/experiments` and `/api/genai`, and the
+LOAFO comparison's own scenario id lives in `/api/benchmark`, the screen
+deliberately does **not** assert whether a given replay is or is not the
+LOAFO scenario. Do not re-introduce that claim in either direction without
+both ids in hand. The "progression" card heading does follow the data: core
+generations render as "Defender progression", a held-out fold renders as
+"Held-out fold vs Defender v3", and both state the shared scenario id.
+
+Mutation evidence distinguishes **proposed / applied / rejected**, with each
+rejection's reason printed verbatim from the artifact -- reasons differ per
+record and must never be paraphrased into a stronger claim about bounds. A
+family with no rejected mutation renders no rejection block.
 
 ### Overview: cold-start-safe by construction
 
@@ -91,10 +129,11 @@ Two claim-safety rules are enforced by the page's structure, not by copy:
 
 * **No cross-scenario aggregate.** Overview never sums caught/escaped counts
   across experiments into a headline recall. Guided generations, selected
-  experiment replays and LOAFO folds are separate scenarios scored by
-  different models; one number over them is confusable with PaySim test
-  recall and with LOAFO mean recall, so every figure names the exact
-  evaluation it came from.
+  experiment replays and LOAFO folds are separate evidence types whose
+  persisted scenario ids may be different or shared depending on the family,
+  and they are not all scored by the same model; one number over them is
+  confusable with PaySim test recall and with LOAFO mean recall, so every
+  figure names the exact evaluation it came from.
 * **LOAFO is never labelled as defender recall.** Mean LOAFO recall is
   rendered with a "partial generalization" badge and an explicit line saying
   it is the recall of three fold models on three held-out scenarios, not

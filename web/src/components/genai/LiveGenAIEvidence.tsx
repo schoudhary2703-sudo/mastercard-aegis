@@ -80,7 +80,7 @@ export function LiveGenAIEvidence({ genai }: { genai: GenAIResponseDTO }) {
     return (
       <div className="rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface-sunken)] px-3 py-2.5">
         <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-ink-faint)]">
-          Live GenAI
+          Latest live GenAI chain
         </p>
         <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
           No live model call on disk yet — <code>scripts/run_genai_analysis.py</code>
@@ -93,9 +93,15 @@ export function LiveGenAIEvidence({ genai }: { genai: GenAIResponseDTO }) {
     <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="flex flex-wrap items-center gap-1.5 bg-[var(--color-surface-sunken)] px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-attack-600)]">
-          Live GenAI
+          Latest live GenAI chain
         </span>
         <Chip tone="live">live: true</Chip>
+        {/* The family this chain actually belongs to, read straight off the
+            DTO. Shown because this strip is the globally latest chain, not the
+            currently selected family's -- leaving it unlabelled invites the
+            reader to assume it matches whatever family is selected elsewhere
+            on the page. Never inferred when the field is absent. */}
+        {guided?.attack_family && <Chip>{guided.attack_family}</Chip>}
         {stamp && <Chip>{stamp.provider}</Chip>}
         {stamp && <Chip>{stamp.model}</Chip>}
         {stamp && <Chip>{stamp.prompt_version}</Chip>}
