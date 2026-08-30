@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import { fetchEvaluation } from "../api/client";
+import { fetchBenchmark, fetchEvaluation } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import { Badge } from "../components/ui/Badge";
 import { Card, CardHeader } from "../components/ui/Card";
@@ -8,7 +8,9 @@ import { EmptyState } from "../components/ui/States";
 import { StatTile } from "../components/ui/StatTile";
 import { ConfusionMatrix } from "../components/evaluation/ConfusionMatrix";
 import { ApiStateSection } from "../components/real/ApiStateSection";
+import { ModelComparisonCards } from "../components/real/ModelComparisonCards";
 import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { PageHeader } from "../components/ui/PageHeader";
 import { RealEvaluationPanel } from "../components/real/RealEvaluationPanel";
 import { useLoop } from "../state/LoopContext";
 import { ATTACK_FAMILIES, ATTACK_FAMILY_LABEL } from "../types/aegis";
@@ -21,26 +23,59 @@ export function EvaluationPage() {
     [],
     (data) => data.evaluations.length === 0,
   );
+  const benchmarkFetch = useCallback((signal: AbortSignal) => fetchBenchmark(signal), []);
+  const benchmarkState = useApiResource(benchmarkFetch, [], (data) => !data.model_comparison);
 
   const realSection = (
-    <Card>
-      <CardHeader
-        title="Real evaluation results"
-        subtitle="Protocol-scoped metrics read from persisted model artifacts -- baseline v1 and Defender v2, test and validation splits."
-        action={<RealDataBadge />}
-      />
-      <ApiStateSection
-        state={evaluationState}
-        emptyTitle="No real evaluations yet"
-        emptyBody="Run scripts/train_baseline_detector.py to produce evaluation_test.json / evaluation_validation.json."
-        render={(evaluation) => <RealEvaluationPanel evaluation={evaluation} />}
-      />
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader
+          title="Cross-model comparison"
+          subtitle="Baseline v1 vs Defender v2 vs Defender v3 on the identical, untouched PaySim test split."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={benchmarkState}
+          emptyTitle="No cross-model comparison yet"
+          emptyBody="Run scripts/build_final_benchmark_summary.py to produce model_comparison."
+          render={(summary) =>
+            summary.model_comparison ? (
+              <ModelComparisonCards comparison={summary.model_comparison} />
+            ) : null
+          }
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Per-model metric detail"
+          subtitle="Every persisted EvaluationResult (baseline v1, Defender v2, Defender v3), on the test and validation splits. Pick one for its full metric set."
+          action={<RealDataBadge />}
+        />
+        <ApiStateSection
+          state={evaluationState}
+          emptyTitle="No real evaluations yet"
+          emptyBody="Run scripts/train_baseline_detector.py to produce evaluation_test.json / evaluation_validation.json."
+          render={(evaluation) => <RealEvaluationPanel evaluation={evaluation} />}
+        />
+      </Card>
+    </div>
+  );
+
+  const header = (
+    <PageHeader
+      eyebrow="Model Evaluation"
+      title="Every metric here is read from a persisted artifact — nothing is computed in the browser."
+    >
+      Protocol-scoped results for baseline v1, Defender v2 and Defender v3 on the untouched test and
+      validation splits.
+    </PageHeader>
   );
 
   if (!latest) {
     return (
       <div className="space-y-6">
+        {header}
         {realSection}
         <EmptyState
           title="No mock round run yet"
@@ -62,6 +97,7 @@ export function EvaluationPage() {
 
   return (
     <div className="space-y-6">
+      {header}
       {realSection}
 
       <Card>
