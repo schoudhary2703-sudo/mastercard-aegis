@@ -114,9 +114,8 @@ export function AttackLabPage() {
         eyebrow="Step 2 · Generate"
         title="Replay a real campaign, transaction by transaction, against the detector that scored it."
       >
-        Every event below was produced by the deterministic simulator and scored by a persisted
-        model. Pick a family and step the confrontation, then see how faithful the generated traffic
-        is and how fast it scales.
+        Every event was produced by the deterministic simulator and scored by a persisted model.
+        Pick a family and step the confrontation.
       </PageHeader>
 
       <ApiStateSection
@@ -335,11 +334,7 @@ export function AttackLabPage() {
         <SectionHeader
           eyebrow="Is the generated traffic realistic?"
           title="How closely the simulated attacks match real payment behaviour, and how fast they scale."
-        >
-          The judging criterion for this step is fidelity. These two panels are the evidence: one
-          generation-only benchmark run — no scoring, no fitting, no retraining — and the fidelity
-          decomposition behind it.
-        </SectionHeader>
+        />
 
         <div className="space-y-4">
           <Card>

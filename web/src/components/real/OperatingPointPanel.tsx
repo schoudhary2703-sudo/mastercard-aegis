@@ -1,4 +1,5 @@
 import type { ModelComparisonDTO, ModelComparisonEntryDTO } from "../../api/types";
+import { Details } from "../ui/Details";
 import { SourceLink } from "../ui/StatBlock";
 
 /**
@@ -146,22 +147,30 @@ export function OperatingPointPanel({ comparison }: { comparison: ModelCompariso
         </table>
       </div>
 
+      {/* One takeaway in the open; the rest of the reading behind a
+          disclosure. The table above already carries the numbers -- restating
+          them in a paragraph made a judge read the same finding twice. */}
       <p className="t-body-sm text-[var(--color-ink-muted)]">
-        Green marks the best model at each budget. Read honestly, this says two things. The
-        operating point matters more than the model — the same Defender v3 catches{" "}
-        {pct(shippedRecall)} or {pct(budgetRecall)} of fraud depending only on where the threshold
-        sits. And hardening did not buy raw recall: baseline v1 leads at the 0.5% and 1% budgets.
-        What cross-family hardening bought is precision ({pct(comparison.baseline_v1?.precision)} →{" "}
-        {pct(v3.precision)}), the lowest false-positive rate of the three, and the lead at the
-        tightest 0.1% budget.
+        Green marks the best model at each budget. Hardening did not buy raw recall — baseline v1
+        leads at the looser budgets; what it bought is precision and the lowest false-positive rate
+        of the three.
       </p>
 
-      <p className="t-body-sm text-[var(--color-ink-faint)]">
-        Moving from the shipped point to a 0.5% budget is a{" "}
-        {shippedFpr ? `${Math.round(0.005 / shippedFpr)}×` : "large"} increase in review load. That
-        is a staffing decision, not a modelling one — which is the point of publishing the curve
-        rather than a single number.
-      </p>
+      <Details summary="What this means for a deployment">
+        <p>
+          The operating point matters more than the model: the same Defender v3 catches{" "}
+          {pct(shippedRecall)} or {pct(budgetRecall)} of fraud depending only on where the threshold
+          sits. Cross-family hardening moved precision from{" "}
+          {pct(comparison.baseline_v1?.precision)} to {pct(v3.precision)} and took the lead at the
+          tightest 0.1% budget.
+        </p>
+        <p className="mt-2">
+          Moving from the shipped point to a 0.5% budget is a{" "}
+          {shippedFpr ? `${Math.round(0.005 / shippedFpr)}×` : "large"} increase in review load —
+          a staffing decision, not a modelling one, which is why the curve is published rather than
+          a single number.
+        </p>
+      </Details>
 
       <SourceLink source={comparison.source_artifact} />
     </div>

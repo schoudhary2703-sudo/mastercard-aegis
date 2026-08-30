@@ -12,6 +12,7 @@ import type { ExperimentDTO } from "../api/types";
 import { ApiStateSection } from "../components/real/ApiStateSection";
 import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { NodeLoop, NodeLoopLegend } from "../components/loop/NodeLoop";
+import { Details } from "../components/ui/Details";
 import { Callout, Panel } from "../components/ui/Panel";
 import { PageHeader, SectionHeader } from "../components/ui/PageHeader";
 import { Reveal } from "../components/ui/Reveal";
@@ -39,7 +40,6 @@ const pct1 = (n: number) => `${n.toFixed(1)}%`;
 const pct3 = (n: number) => `${n.toFixed(3)}%`;
 const pct0 = (n: number) => `${n.toFixed(0)}%`;
 
-const V3_SOURCE = "models/xgboost-hardened-crossfamily-20260301/regression_vs_v1_v2.json";
 
 /**
  * Aggregates the CURRENT defender's result per family.
@@ -154,6 +154,11 @@ export function MissionControlPage() {
         <div className="lg:col-span-6 xl:col-span-6">
           <Panel variant="hero">
             <NodeLoop />
+            <div className="mt-4">
+              <Details summary="Reading the diagram">
+                <NodeLoopLegend />
+              </Details>
+            </div>
           </Panel>
         </div>
       </section>
@@ -181,7 +186,6 @@ export function MissionControlPage() {
                       format={pct1}
                       size="xl"
                       meaning="Of everything it flagged, this share was really fraud."
-                      source={V3_SOURCE}
                     />
                     <StatBlock
                       label="Recall"
@@ -189,7 +193,6 @@ export function MissionControlPage() {
                       format={pct1}
                       size="xl"
                       meaning="Of all real fraud, this share was caught."
-                      source={V3_SOURCE}
                     />
                     <StatBlock
                       label="False positive rate"
@@ -200,7 +203,6 @@ export function MissionControlPage() {
                       size="xl"
                       tone="good"
                       meaning="≈220 false alerts per million legitimate payments."
-                      source={V3_SOURCE}
                     />
                     <StatBlock
                       label="Unseen-family recall"
@@ -211,7 +213,6 @@ export function MissionControlPage() {
                       size="xl"
                       tone="accent"
                       meaning="Mean across three leave-one-family-out folds — partial, not universal."
-                      source={loafo?.source_artifact}
                     />
                   </div>
                 );
@@ -224,30 +225,26 @@ export function MissionControlPage() {
       {/* ---- The walkthrough, spelled out --------------------------------- */}
       <Reveal>
         <section>
+          {/* No subtitle: the cards below state the criteria themselves, so a
+              line explaining that they do was the same fact twice. */}
           <SectionHeader
             eyebrow="How to review this in five minutes"
-            title="Four steps around the loop, then the evidence — each one answering a named judging criterion."
-          >
-            Every screen in this path reads from persisted artifacts. Anything simulated lives in the
-            sandbox, outside the path, and is labelled as such.
-          </SectionHeader>
+            title="Four steps around the loop, then the evidence."
+          />
           <JudgePath />
         </section>
       </Reveal>
 
-      {/* ---- Loop legend + scale ------------------------------------------ */}
+      {/* ---- Pipeline scale ------------------------------------------------
+          The loop legend used to sit beside this as a seven-line colour key.
+          The diagram above is already labelled in place, so the key was
+          restating it; it now lives behind a disclosure under the figure. */}
       <Reveal>
         <section className="grid gap-5 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <Panel className="h-full">
-              <p className="t-eyebrow mb-4 text-[var(--color-ink-faint)]">Reading the loop</p>
-              <NodeLoopLegend />
-            </Panel>
-          </div>
-          <div className="lg:col-span-5">
-            <Panel className="h-full">
+          <div className="lg:col-span-12">
+            <Panel>
               <p className="t-eyebrow mb-5 text-[var(--color-ink-faint)]">Pipeline scale</p>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
                 <StatBlock
                   label="Attacks identified"
                   display={taxonomy?.total_attacks_identified ?? "—"}
@@ -307,10 +304,7 @@ export function MissionControlPage() {
                 Full reasoning →
               </Link>
             }
-          >
-            Each run stores the analyst's read of the detector, the bounded mutation it proposed, and
-            the deterministic outcome that followed.
-          </SectionHeader>
+          />
           <Panel>
             <ApiStateSection
               state={genai}
@@ -322,16 +316,28 @@ export function MissionControlPage() {
         </section>
       </Reveal>
 
+      {/* The bound that actually changes how a number is read stays in the
+          open; the rest of the methodology sits one click away. Ninety words
+          of standing caveat got skimmed, which is the worst outcome for a
+          caveat -- it has to be read to do its job. */}
       <Reveal>
         <Callout eyebrow="How to read this">
-          Fresh-scenario counts are <strong className="font-semibold text-[var(--color-ink)]">Defender v3</strong>{" "}
-          on one previously-unseen scenario per family — real persisted transactions, but only 3–12
-          fraud events each, so they are directional, not a statistically powered sample. They are
-          deliberately not mixed with the LOAFO fold models, which had a family withheld from
-          training and score far worse by design; those appear in Final Results, labelled. Precision,
-          recall and FPR are Defender v3 on the untouched PaySim test split. Generalization to a
-          completely unseen family is partial, not universal. This is a bounded research loop over
-          synthetic PaySim data — no real customer or card data anywhere.
+          <p>
+            Fresh-scenario counts are{" "}
+            <strong className="font-semibold text-[var(--color-ink)]">Defender v3</strong> on one
+            unseen scenario per family — real, but only 3–12 fraud events each, so they are
+            directional rather than statistically powered.
+          </p>
+          <Details className="mt-2.5" summary="Scope and bounds in full">
+            <p>
+              These counts are deliberately not mixed with the LOAFO fold models, which had a family
+              withheld from training and score far worse by design; those appear on Results,
+              labelled. Precision, recall and FPR are Defender v3 on the untouched PaySim test
+              split. Generalization to a completely unseen family is partial, not universal. This is
+              a bounded research loop over synthetic PaySim data — no real customer or card data
+              anywhere.
+            </p>
+          </Details>
         </Callout>
       </Reveal>
     </div>

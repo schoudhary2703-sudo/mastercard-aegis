@@ -34,8 +34,8 @@ export function LiveDetectionPage() {
         eyebrow="Step 3 · Defend"
         title="Every transaction the detector scored, with the signal that drove the decision."
       >
-        Per-transaction detector outputs joined with transaction context, read straight from
-        persisted confrontation artifacts. Nothing on this screen is scored in the browser.
+        Read straight from persisted confrontation artifacts. Nothing here is scored in the
+        browser.
       </PageHeader>
 
       <Card>
@@ -56,8 +56,7 @@ export function LiveDetectionPage() {
 
       <Callout eyebrow="How the defender is scored">
         <p>
-          These are decisions on individual attack transactions. The aggregate metrics the model is
-          judged on — precision, recall, F1, false-positive rate on the untouched PaySim test split —
+          These are per-transaction decisions. The aggregate metrics — precision, recall, F1, FPR —
           are on{" "}
           <Link
             to="/final-benchmark"
@@ -65,18 +64,7 @@ export function LiveDetectionPage() {
           >
             Results
           </Link>
-          , and the full per-model metric set is on{" "}
-          <Link
-            to="/evaluation"
-            className="font-semibold text-[var(--color-accent-500)] hover:underline"
-          >
-            per-model detail
-          </Link>
-          . A browser-side toy detector, kept only as a demo fallback, lives in the{" "}
-          <Link to="/sandbox" className="font-semibold text-[var(--color-accent-500)] hover:underline">
-            sandbox
-          </Link>{" "}
-          and shares nothing with the real model.
+          .
         </p>
       </Callout>
     </div>

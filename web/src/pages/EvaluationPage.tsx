@@ -36,8 +36,7 @@ export function EvaluationPage() {
         eyebrow="Appendix · per-model detail"
         title="The complete persisted metric set, model by model and split by split."
       >
-        Every EvaluationResult on disk — baseline v1, Defender v2 and Defender v3, on the untouched
-        test and validation splits. Read from artifacts; nothing computed in the browser.
+        Every EvaluationResult on disk, on the untouched test and validation splits.
       </PageHeader>
 
       <Callout eyebrow="Looking for the headline?">

@@ -32,8 +32,7 @@ export function AttackTaxonomyPage() {
         title="The GenAI-enabled payment fraud surface, mapped — and the three families we simulate end to end."
       >
         Breadth is catalogued with evidence; depth is claimed only where a generator, a detector
-        result and a blueprint all exist. Every card carries its own status badge, so the catalog can
-        never read as "AEGIS simulates all of these".
+        result and a blueprint all exist.
       </PageHeader>
 
       <Card>

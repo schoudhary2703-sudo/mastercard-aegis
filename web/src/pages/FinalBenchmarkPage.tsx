@@ -149,9 +149,8 @@ export function FinalBenchmarkPage() {
           </Link>
         }
       >
-        Baseline v1 → Defender v2 → Defender v3 on an untouched PaySim test split, plus a
-        leave-one-attack-family-out benchmark where the held-out family contributes zero training
-        rows. Every figure is read live from a persisted artifact.
+        Three defender generations on an untouched PaySim test split, plus a
+        leave-one-attack-family-out benchmark. Every figure read live from a persisted artifact.
       </PageHeader>
 
       <ApiStateSection
@@ -169,9 +168,7 @@ export function FinalBenchmarkPage() {
                     eyebrow="Evidence 1 · three generations"
                     title="Cross-family hardening bought precision and a lower false-positive rate, and gave back a little recall."
                     actions={<SourceLink source={summary.model_comparison.source_artifact} />}
-                  >
-                    All three models scored on the identical, untouched test split.
-                  </SectionHeader>
+                  />
                   <Panel>
                     <DefenderProgressionTrend comparison={summary.model_comparison} />
                   </Panel>
@@ -203,9 +200,8 @@ export function FinalBenchmarkPage() {
                     eyebrow="Evidence 2 · the operating point"
                     title="The same detector catches 78% or 93% of fraud, depending only on where the threshold sits."
                   >
-                    Both readings come from the same persisted evaluation. Nothing here is a re-run
-                    or a projection — it is the shipped model, read at the operating point a
-                    payments team would actually choose.
+                    Both readings come from the same persisted evaluation — not a re-run or a
+                    projection.
                   </SectionHeader>
                   <Panel>
                     <OperatingPointPanel comparison={summary.model_comparison} />
@@ -254,8 +250,7 @@ export function FinalBenchmarkPage() {
                   eyebrow="What survived"
                   title="Every attack that got through was realistic and scored as clearly safe."
                 >
-                  Hardness ranks a surviving transaction by how confidently the detector approved it,
-                  weighted by how closely it matches real PaySim traffic.
+                  Hardness ranks a survivor by how confidently it was approved, weighted by realism.
                 </SectionHeader>
                 {summary.hardest_surviving_attacks.length > 1 && (
                   <Panel className="mb-3">

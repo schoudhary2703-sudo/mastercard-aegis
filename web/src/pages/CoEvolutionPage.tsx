@@ -160,15 +160,14 @@ export function CoEvolutionPage() {
 
       <Callout eyebrow="What escaped, in full">
         <p>
-          Every fraudulent transaction that survived a confrontation — ranked by hardness, with its
-          risk score, fidelity and the model that approved it — is tabulated once, on{" "}
+          Every surviving transaction, ranked by hardness, is tabulated on{" "}
           <Link
             to="/final-benchmark"
             className="font-semibold text-[var(--color-accent-500)] hover:underline"
           >
             Results
           </Link>
-          , alongside the benchmark it came from.
+          .
         </p>
       </Callout>
     </div>
