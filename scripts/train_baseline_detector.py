@@ -55,6 +55,10 @@ import numpy as np
 import pandas as pd
 
 from aegis.defend import ActionPolicy, XGBoostDetector
+from aegis.defend.hard_positives import (
+    DEFAULT_PROMOTED_POSITIVE_MASS_SHARE,
+    promoted_sample_weights,
+)
 from aegis.defend.metrics import (
     DEFAULT_FPR_BUDGETS,
     build_evaluation_result,
@@ -64,6 +68,7 @@ from aegis.defend.metrics import (
 )
 from aegis.defend.xgboost_detector import DEFAULT_HYPERPARAMETERS, DEFAULT_NUM_BOOST_ROUND
 from aegis.features import TemporalBaselineFeatureExtractor, load_transactions_jsonl
+from aegis.features.io import count_labelled_jsonl_lines
 from aegis.features.streaming import (
     DEFAULT_CHUNK_SIZE,
     FEATURES_FILENAME,
@@ -123,6 +128,13 @@ class BaselinePipelineConfig:
     threshold_fpr_budget: float = DEFAULT_THRESHOLD_FPR_BUDGET
     """False-positive budget the operating point must respect under
     `threshold_rule="fpr_budget"`. Ignored under `"f1"`."""
+    hard_positive_mass_share: float = DEFAULT_PROMOTED_POSITIVE_MASS_SHARE
+    """Share of total positive gradient mass the promoted hard positives carry.
+
+    Only meaningful with `hard_positive_jsonl` set. 0.0 reproduces the
+    previous unweighted behavior, under which a 22-row promotion into a
+    training split holding thousands of positives had no measurable effect -
+    see `aegis.defend.hard_positives.promoted_sample_weights`."""
     early_stopping: bool = True
     """Stop boosting once validation `aucpr` stops improving, instead of always
     running the full `num_boost_round`. Uses validation labels to choose *when
@@ -329,11 +341,14 @@ def _finish_and_save(
 def _run_in_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipelineResult:
     processed_dir = Path(config.processed_dir)
     train = _labelled_only(load_transactions_jsonl(processed_dir / TRAIN_FILENAME))
+    promoted_row_count = 0
     if config.hard_positive_jsonl is not None:
         # Order doesn't affect the in-memory extractor, which re-sorts by
         # timestamp internally (`TemporalBaselineFeatureExtractor._compute_rows`) -
         # unlike the streaming path, which requires a pre-sorted concatenation.
-        train = train + _labelled_only(load_transactions_jsonl(config.hard_positive_jsonl))
+        promoted = _labelled_only(load_transactions_jsonl(config.hard_positive_jsonl))
+        promoted_row_count = len(promoted)
+        train = train + promoted
     validation = _labelled_only(load_transactions_jsonl(processed_dir / VALIDATION_FILENAME))
     test = _labelled_only(load_transactions_jsonl(processed_dir / TEST_FILENAME))
 
@@ -352,7 +367,16 @@ def _run_in_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipelineR
         hyperparameters=config.resolved_hyperparameters(),
         model_version=model_version,
     )
-    detector.fit(X_train, y_train, meta=_fit_meta(config, X_validation, y_validation))
+    detector.fit(
+        X_train,
+        y_train,
+        meta=_fit_meta(
+            config,
+            X_validation,
+            y_validation,
+            _hard_positive_weights(config, y_train, promoted_row_count),
+        ),
+    )
     resolved_spw = detector.scale_pos_weight or 1.0
 
     # -- threshold tuning: validation only, never test -----------------------
@@ -443,7 +467,10 @@ def _select_threshold(
 
 
 def _fit_meta(
-    config: BaselinePipelineConfig, X_validation: pd.DataFrame, y_validation: np.ndarray
+    config: BaselinePipelineConfig,
+    X_validation: pd.DataFrame,
+    y_validation: np.ndarray,
+    sample_weight: np.ndarray | None = None,
 ) -> dict[str, object] | None:
     """Side-channel passed to `XGBoostDetector.fit`, per `BaseDetector.fit`'s contract.
 
@@ -452,13 +479,36 @@ def _fit_meta(
     fixed guess and the `eval_metric` declared in `DEFAULT_HYPERPARAMETERS`
     is never computed at all.
 
+    Also carries `sample_weight` when hard positives were promoted, so those
+    rows reach a share of positive gradient mass rather than being lost in a
+    multi-million-row split.
+
     This is the same validation split the threshold is tuned on, used the same
     way - to fix a hyper-parameter of the fitted model. Test remains untouched
     until the single final evaluation (`docs/EVALUATION_RULES.md`).
     """
-    if not config.early_stopping:
+    meta: dict[str, object] = {}
+    if config.early_stopping:
+        meta["eval_set"] = (X_validation, y_validation)
+    if sample_weight is not None:
+        meta["sample_weight"] = sample_weight
+    return meta or None
+
+
+def _hard_positive_weights(
+    config: BaselinePipelineConfig, y_train: np.ndarray, promoted_row_count: int
+) -> np.ndarray | None:
+    """Training weights that give promoted hard positives real gradient mass.
+
+    Returns `None` - meaning unweighted, XGBoost's default - when nothing was
+    promoted or weighting is switched off, so a plain baseline run is
+    bit-identical to the pre-weighting pipeline.
+    """
+    if promoted_row_count <= 0 or config.hard_positive_mass_share <= 0.0:
         return None
-    return {"eval_set": (X_validation, y_validation)}
+    return promoted_sample_weights(
+        y_train, promoted_row_count, positive_mass_share=config.hard_positive_mass_share
+    )
 
 
 def _threshold_note(config: BaselinePipelineConfig) -> str:
@@ -500,6 +550,16 @@ def _run_low_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipeline
     feature_root = config.resolved_feature_artifact_dir()
     model_version = config.model_version
     hyperparameters = config.resolved_hyperparameters()
+    # Promoted rows are appended after the base split by
+    # `materialize_split_features_with_extra`, so they occupy the last
+    # `promoted_row_count` positions of the materialized array - the ordering
+    # `promoted_sample_weights` requires. Counted the same way the streaming
+    # materializer counts, so UNKNOWN-label rows are excluded from both.
+    promoted_row_count = (
+        count_labelled_jsonl_lines(config.hard_positive_jsonl)
+        if config.hard_positive_jsonl is not None
+        else 0
+    )
 
     # A/B/C -------------------------------------------------------------
     train_artifact = _materialize_or_reuse(
@@ -527,18 +587,24 @@ def _run_low_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipeline
         hyperparameters=hyperparameters,
         model_version=model_version,
     )
+    sample_weight = _hard_positive_weights(config, y_train, promoted_row_count)
     if config.early_stopping:
+        # Memory-mapped, so this is a lazy view of the on-disk array rather
+        # than a second resident copy of the validation split.
         X_eval = pd.DataFrame(
             validation_artifact.load_features(mmap=True),
             columns=validation_artifact.feature_names,
             copy=False,
         )
-        detector.fit(
-            X_train, y_train, meta=_fit_meta(config, X_eval, validation_artifact.load_labels())
-        )
-        del X_eval
+        fit_meta = _fit_meta(config, X_eval, validation_artifact.load_labels(), sample_weight)
+        detector.fit(X_train, y_train, meta=fit_meta)
+        del X_eval, fit_meta
     else:
-        detector.fit(X_train, y_train)
+        detector.fit(
+            X_train,
+            y_train,
+            meta={"sample_weight": sample_weight} if sample_weight is not None else None,
+        )
     resolved_spw = detector.scale_pos_weight or 1.0
 
     del X_train, y_train
