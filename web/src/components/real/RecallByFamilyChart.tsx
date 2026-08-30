@@ -36,7 +36,9 @@ export function RecallByFamilyChart({ families }: { families: FreshFamilyPerform
 
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={data} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+      {/* `left: 0`, not a negative margin: with `left: -8` the y-axis band was
+          effectively 32px, which clips the widest tick ("100%") to "00%". */}
+      <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
         <XAxis
           dataKey="family"
@@ -50,7 +52,7 @@ export function RecallByFamilyChart({ families }: { families: FreshFamilyPerform
           tickLine={false}
           domain={[0, 100]}
           unit="%"
-          width={40}
+          width={46}
         />
         <Tooltip
           contentStyle={{ borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12 }}

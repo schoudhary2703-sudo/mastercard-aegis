@@ -60,10 +60,9 @@ unless something changed since; re-check anything you touched.
   a local-only pass that never made it to the remote does not count.
 
 Items 4-6 below are external packaging steps -- a hosted URL, a `.docx`
-writeup, and screenshot files -- not code in this repository. Item 4 is done
-and deployed; items 5 and 6 are still **pending** because they have not been
-produced yet, not because anything in the codebase is broken. The API and UI
-they depend on are verified working (item 8).
+writeup, and screenshot files -- not code in this repository. All three are
+now produced; what remains in each is a final re-check immediately before
+submitting. The API and UI they depend on are verified working (item 8).
 
 ## 4. Deployed demo URL -- **done, re-verify before submitting**
 
@@ -85,35 +84,40 @@ they depend on are verified working (item 8).
   render immediately regardless, but warm the API by loading the site once
   before judges do.
 
-## 5. Walkthrough .docx -- **pending**
+## 5. Walkthrough .docx -- **done**
 
-- [ ] Write the walkthrough document following `docs/DEMO_FLOW.md`'s
-  section order (opening, Overview, Attack Taxonomy, Round-0, hardening,
-  cross-family results, LOAFO, hardest survivors, what the benchmark found,
-  closing). `docs/JUDGE_DEMO_60S.md` is the condensed version if the format
-  wants a short summary alongside it.
-- [ ] Every number quoted in the document matches
-  `submission/artifacts/data/reports/final_benchmark_summary.json` exactly
-  -- cross-check against `docs/CLAIMS_AUDIT.md`'s "Supported claims"
-  section before finalizing, and do not restate anything from "Claims we
-  must NOT make."
-- [ ] Export/save as `.docx` per the submission's required format.
+- [x] Written: [`submission/AEGIS_Judge_Walkthrough.docx`](../submission/AEGIS_Judge_Walkthrough.docx)
+  -- 6 pages, US Letter, Calibri, with headers/footers and page numbers.
+  Structure: title + headline evidence / how AEGIS works + Overview /
+  Red Team + Attack Lab / closed loop in practice + Evolution / Results +
+  generalization / real-world fit + limitations. All four final screenshots
+  are embedded at full resolution. `docs/JUDGE_DEMO_60S.md` is the condensed
+  version if the format wants a short summary alongside it.
+- [x] Every number quoted in the document was cross-checked against
+  `submission/artifacts/data/reports/final_benchmark_summary.json`,
+  `attack_taxonomy.json`, `generation_scale_benchmark.json`,
+  `genai_family_summary.json` and `models/loafo_summary.json`, and against
+  `docs/CLAIMS_AUDIT.md`'s "Supported claims" / "Claims we must NOT make".
+- [x] Exported as `.docx`, then rendered to PDF and every page visually
+  inspected: no clipping, no overlapping objects, no broken tables, no
+  orphan headings, no unexpected blank pages, hyperlinks render correctly.
+- [ ] Confirm `.docx` is the format the submission form actually requires,
+  and re-export if it wants PDF instead.
 
-## 6. Screenshots -- **pending**
+## 6. Screenshots -- **done**
 
-- [ ] Capture, at minimum: Overview twice -- once showing the static hero
-  plus the closed-loop diagram, and once scrolled to the three evidence
-  cards (attack landscape, GenAI coverage, Defender v3 + LOAFO); Attack Lab
-  (family selector, GenAI bounded-mutation panel showing applied vs rejected,
-  recorded-confrontation scenario identity block); Evolution (closed-loop
-  timeline including Round-0 and the "what actually happened" panel); Results
-  (the "Partial generalization" verdict, LOAFO table, the fresh-scenario
-  family chart, hardest-survivor cards).
-- [ ] Capture with the API reachable (real data visible, not an error
-  state) and at a resolution that keeps text legible.
-- [ ] Name files descriptively (e.g. `01-overview.png`,
-  `02-coevolution-round0.png`, `03-final-benchmark.png`) so they self-order
-  in a folder or slide deck.
+- [x] Four final screenshots captured from the **production** frontend at
+  1440px wide, saved under [`submission/screenshots/`](../submission/screenshots):
+  `01_overview.png`, `02_attack_lab.png`, `03_evolution.png`,
+  `04_results.png`. They self-order in a folder and are embedded in the
+  walkthrough `.docx`.
+- [x] Captured with the API warm and reachable -- every screenshot shows
+  real data, with no loader, error state, empty state, hover overlay or open
+  mobile drawer.
+- [x] Reviewed individually: no clipped headings, no horizontal overflow,
+  no misleading metric context. Mule-network structuring's 0% held-out
+  result is visible in `04_results.png` and was deliberately not cropped out.
+- [ ] Re-capture if the UI changes again before submission.
 
 ## 7. Demo smoke test
 
