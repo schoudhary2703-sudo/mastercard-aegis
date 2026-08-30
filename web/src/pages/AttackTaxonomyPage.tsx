@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { fetchAttacks, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
+import { PageHeader } from "../components/ui/PageHeader";
 import { BlueprintPanel } from "../components/attack/BlueprintPanel";
 import { FraudLandscape } from "../components/landscape/FraudLandscape";
 import { Card, CardHeader } from "../components/ui/Card";
@@ -17,7 +18,15 @@ export function AttackTaxonomyPage() {
   const landscape = useApiResource(landscapeFetch, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Identify · attack atlas"
+        title="The GenAI-enabled payment fraud surface, mapped — and the three families we simulate end to end."
+      >
+        Breadth is catalogued with evidence; depth is claimed only where a generator, a detector
+        result, and a blueprint all exist.
+      </PageHeader>
+
       <Card>
         <CardHeader
           title="Fraud landscape"

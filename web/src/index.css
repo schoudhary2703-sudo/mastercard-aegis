@@ -1,61 +1,64 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+  /* Falls back to the system stack if the font request fails (offline demo room). */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, monospace;
 
-  /* Neutrals -- the page is built from these, not from color. */
-  --color-canvas: #f4f6f9;
-  --color-surface: #ffffff;
-  --color-surface-sunken: #f8f9fb;
-  --color-border: #e2e6ec;
-  --color-border-strong: #ccd2dc;
-  --color-ink: #101827;
-  --color-ink-muted: #4b5568;
-  --color-ink-faint: #8b95a7;
+  /* ---- Surfaces ---------------------------------------------------------- */
+  --color-canvas: #0a1120;
+  --color-surface: #111b2e;
+  --color-surface-raised: #16233a;
+  --color-surface-sunken: #0c1424;
+  --color-border: #1f2b42;
+  --color-border-strong: #31425f;
 
-  /* Structural navy -- shell chrome only, never body content. */
-  --color-navy-950: #0b1220;
-  --color-navy-900: #101a2e;
-  --color-navy-800: #16233c;
-  --color-navy-700: #22314f;
-  --color-navy-300: #93a3c2;
+  /* ---- Ink (all >= 4.5:1 on --color-surface) ----------------------------- */
+  --color-ink: #eef2f9;
+  --color-ink-muted: #9aacc6;
+  --color-ink-faint: #7488a2;
 
-  /* Single restrained accent for interactive / defense affordances. */
-  --color-accent-600: #1d5fd6;
-  --color-accent-500: #2f6fe8;
-  --color-accent-100: #e5edfd;
+  /* ---- Interactive accent ------------------------------------------------ */
+  --color-accent-600: #4d8dff;
+  --color-accent-500: #6ba3ff;
+  --color-accent-100: #12233f;
 
-  /* Attack vs. defend team language -- used ONLY for team attribution, never for risk. */
-  --color-attack-600: #b5540b;
-  --color-attack-500: #d1690f;
-  --color-attack-100: #fbe9d7;
-  --color-defend-600: #1d5fd6;
-  --color-defend-500: #2f6fe8;
-  --color-defend-100: #e5edfd;
+  /* ---- Team attribution (never risk) ------------------------------------- */
+  --color-attack-600: #ff8a4c;
+  --color-attack-500: #ffa06b;
+  --color-attack-100: #291a12;
+  --color-defend-600: #35d3c6;
+  --color-defend-500: #5cdfd4;
+  --color-defend-100: #0e2a28;
 
-  /* Risk traffic-light -- used ONLY for transaction / detector risk state. */
-  --color-risk-low-600: #157a4a;
-  --color-risk-low-100: #e1f3ea;
-  --color-risk-medium-600: #b5790b;
-  --color-risk-medium-100: #fbf0d7;
-  --color-risk-high-600: #c22a2a;
-  --color-risk-high-100: #fbe2e2;
+  /* ---- Risk / outcome (never attribution) -------------------------------- */
+  --color-risk-low-600: #35d399;
+  --color-risk-low-100: #0d2a20;
+  --color-risk-medium-600: #f5b74a;
+  --color-risk-medium-100: #2a2210;
+  --color-risk-high-600: #f87171;
+  --color-risk-high-100: #2c1719;
 
-  --shadow-card: 0 1px 2px rgba(16, 24, 39, 0.04), 0 1px 1px rgba(16, 24, 39, 0.03);
-  --shadow-elevated: 0 4px 16px rgba(16, 24, 39, 0.08), 0 1px 2px rgba(16, 24, 39, 0.04);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-elevated:
+    0 0 0 1px rgba(77, 141, 255, 0.16), 0 24px 60px -24px rgba(0, 0, 0, 0.75);
 }
 
 html {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
-  background: var(--color-canvas);
+  background:
+    radial-gradient(1100px 520px at 82% -10%, rgba(77, 141, 255, 0.07), transparent 62%),
+    var(--color-canvas);
+  background-attachment: fixed;
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 * {
@@ -65,11 +68,148 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-accent-500);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* Restrained motion only -- state transitions, never decorative loops. */
+/* ---- Type scale --------------------------------------------------------- */
+.t-display {
+  font-size: 40px;
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.021em;
+  text-wrap: balance;
+}
+.t-h1 {
+  font-size: 26px;
+  line-height: 1.22;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  text-wrap: balance;
+}
+.t-h2 {
+  font-size: 18px;
+  line-height: 1.32;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+}
+.t-body {
+  font-size: 14.5px;
+  line-height: 1.62;
+  text-wrap: pretty;
+}
+.t-body-sm {
+  font-size: 13px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+.t-label {
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.t-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+.t-stat {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+.t-stat-xl {
+  font-family: var(--font-mono);
+  font-size: 42px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.t-mono-sm {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .t-display {
+    font-size: 29px;
+  }
+  .t-h1 {
+    font-size: 21px;
+  }
+  .t-stat-xl {
+    font-size: 32px;
+  }
+  .t-stat {
+    font-size: 25px;
+  }
+}
+
+/* ---- Motion — behaviour only, never decoration -------------------------- */
 .transition-standard {
   transition: all 160ms ease;
+}
+
+.reveal {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal--in {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    transform: translateY(14px);
+  }
+  .reveal--in {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 340ms cubic-bezier(0.2, 0.6, 0.2, 1),
+      transform 340ms cubic-bezier(0.2, 0.6, 0.2, 1);
+  }
+}
+
+/* The one piece of ambient motion: the signal travelling the closed loop. */
+@keyframes aegis-signal {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes aegis-signal-tint {
+  0% {
+    fill: var(--color-risk-high-600);
+  }
+  50% {
+    fill: var(--color-risk-low-600);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .aegis-signal-dot {
+    offset-rotate: 0deg;
+    animation:
+      aegis-signal 7s linear infinite,
+      aegis-signal-tint 7s step-end infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aegis-signal-dot {
+    display: none;
+  }
 }
 
 ::-webkit-scrollbar {

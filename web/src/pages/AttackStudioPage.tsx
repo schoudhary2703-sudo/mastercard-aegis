@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { fetchAttacks } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
+import { PageHeader } from "../components/ui/PageHeader";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { BlueprintPanel } from "../components/attack/BlueprintPanel";
 import { Badge } from "../components/ui/Badge";
@@ -49,7 +50,15 @@ export function AttackStudioPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Studio · simulated demo"
+        title="A self-contained toy of the loop, for when the API is unreachable."
+      >
+        Deterministic, client-side, and clearly labelled. It shares no code and no numbers with the
+        real pipeline.
+      </PageHeader>
+
       <Card>
         <CardHeader title="1. Select an attack family" subtitle="Each family maps to one canonical blueprint." />
         <AttackFamilySelector

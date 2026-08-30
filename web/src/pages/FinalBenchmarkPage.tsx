@@ -3,19 +3,22 @@ import { fetchBenchmark } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { FinalBenchmarkSummaryDTO, ModelComparisonEntryDTO } from "../api/types";
 import { ApiStateSection } from "../components/real/ApiStateSection";
+import { DefenderProgressionTrend } from "../components/real/DefenderProgressionTrend";
+import { HardestEvasionsScatter } from "../components/real/HardestEvasionsScatter";
 import { HardestEvasionsTable } from "../components/real/HardestEvasionsTable";
 import { LoafoResultsTable } from "../components/real/LoafoResultsTable";
 import { RecallByFamilyChart } from "../components/real/RecallByFamilyChart";
-import { Card } from "../components/ui/Card";
-import { Details } from "../components/ui/Details";
+import { PageHeader, SectionHeader } from "../components/ui/PageHeader";
+import { Callout, Panel } from "../components/ui/Panel";
+import { Reveal } from "../components/ui/Reveal";
+import { MetricDelta, SourceLink, StatBlock } from "../components/ui/StatBlock";
 
 /**
- * Final Results, condensed to the four things a judge needs: the v1→v2→v3
- * progression, per-family recall, LOAFO, and the hardest survivor.
+ * Final Results: the proof.
  *
- * The interpretation prose and limitations list that used to sit inline are
- * now behind <Details>. Nothing is removed -- it is one click away, and the
- * limitations still come from the API rather than the component.
+ * The page answers one question in order -- does hardening generalize, or did
+ * the model just memorize what it was shown? Verdict first, then the three
+ * pieces of evidence, then the limitations that bound all of it.
  */
 
 const VERDICT_TONE: Record<string, string> = {
@@ -31,42 +34,48 @@ function pct(value: number | null | undefined, digits = 1): string {
 function ProgressionCard({
   label,
   entry,
+  baseline,
   current,
 }: {
   label: string;
   entry: ModelComparisonEntryDTO | null;
+  baseline?: ModelComparisonEntryDTO | null;
   current?: boolean;
 }) {
   if (!entry) return null;
+  const f1Delta =
+    baseline?.f1 != null && entry.f1 != null ? (entry.f1 - baseline.f1) * 100 : null;
+
   return (
     <div
-      className={`rounded-xl border p-3 sm:p-4 ${
+      className={`rounded-xl border p-4 transition-standard ${
         current
-          ? "border-[var(--color-accent-500)] bg-[var(--color-accent-100)]/40"
+          ? "border-[var(--color-accent-600)] bg-[var(--color-accent-100)]"
           : "border-[var(--color-border)] bg-[var(--color-surface)]"
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-[var(--color-ink)]">{label}</p>
+        <p className="t-label text-[var(--color-ink)]">{label}</p>
         {current && (
-          <span className="rounded-full bg-[var(--color-accent-600)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <span className="rounded-full bg-[var(--color-accent-600)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
             Current
           </span>
         )}
       </div>
-      <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--color-ink)]">
-        {pct(entry.f1)}
-      </p>
-      <p className="text-[10px] uppercase tracking-wide text-[var(--color-ink-faint)]">F1</p>
-      <dl className="mt-2 grid grid-cols-3 gap-1.5 text-center">
+      <p className="t-stat mt-2.5 text-[var(--color-ink)]">{pct(entry.f1)}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <span className="t-eyebrow text-[var(--color-ink-faint)]">F1</span>
+        {f1Delta != null && f1Delta !== 0 && <MetricDelta value={f1Delta} suffix="pts" />}
+      </div>
+      <dl className="mt-3.5 grid grid-cols-3 gap-1.5 text-center">
         {[
           { l: "Prec", v: pct(entry.precision, 0) },
           { l: "Recall", v: pct(entry.recall, 0) },
           { l: "FPR", v: pct(entry.false_positive_rate, 3) },
         ].map((m) => (
-          <div key={m.l} className="rounded bg-[var(--color-surface-sunken)] px-1 py-1">
-            <dt className="text-[10px] uppercase text-[var(--color-ink-faint)]">{m.l}</dt>
-            <dd className="text-xs font-semibold tabular-nums text-[var(--color-ink)]">{m.v}</dd>
+          <div key={m.l} className="rounded-lg bg-[var(--color-surface-sunken)] px-1 py-1.5">
+            <dt className="t-eyebrow text-[var(--color-ink-faint)]">{m.l}</dt>
+            <dd className="t-mono-sm mt-1 font-medium text-[var(--color-ink)]">{m.v}</dd>
           </div>
         ))}
       </dl>
@@ -74,41 +83,45 @@ function ProgressionCard({
   );
 }
 
-function Headline({ summary }: { summary: FinalBenchmarkSummaryDTO }) {
+/** The verdict, stated as a sentence rather than a metric tile. */
+function Verdict({ summary }: { summary: FinalBenchmarkSummaryDTO }) {
   const loafo = summary.loafo;
   const weakest = summary.claim_flags?.weakest_unseen_family;
   if (!loafo) return null;
+
+  const strong = loafo.per_family.filter((f) => f.verdict === "strong").length;
+  const total = loafo.per_family.length;
+
   return (
-    <div className="grid gap-2.5 sm:grid-cols-3">
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">
-          Mean LOAFO recall
-        </p>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--color-ink)]">
-          {pct(loafo.mean_loafo_recall, 0)}
-        </p>
+    <Panel variant="hero">
+      <div className="grid gap-7 lg:grid-cols-12 lg:items-center">
+        <div className="lg:col-span-7">
+          <p className="t-eyebrow text-[var(--color-ink-faint)]">The answer</p>
+          <p className="t-h1 mt-3 text-[var(--color-ink)]">
+            <span className={`capitalize ${VERDICT_TONE[loafo.overall_verdict] ?? ""}`}>
+              {loafo.overall_verdict}
+            </span>
+            {" — hardening transferred to "}
+            {strong} of {total} unseen families, and not at all to{" "}
+            {typeof weakest === "string" ? weakest.replace(/_/g, " ") : "one of them"}.
+          </p>
+          <p className="t-body mt-3 text-[var(--color-ink-muted)]">
+            Each fold retrains the detector with one attack family contributing zero rows, then
+            scores it on a fresh scenario from that family. It is the hardest test in this
+            submission, and we report the fold it failed.
+          </p>
+        </div>
+        <div className="flex gap-8 lg:col-span-5 lg:justify-end">
+          <StatBlock
+            label="Mean LOAFO recall"
+            value={loafo.mean_loafo_recall * 100}
+            format={(n) => `${n.toFixed(0)}%`}
+            size="xl"
+            source={loafo.source_artifact}
+          />
+        </div>
       </div>
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">
-          Generalization
-        </p>
-        <p
-          className={`mt-1 text-2xl font-bold capitalize ${
-            VERDICT_TONE[loafo.overall_verdict] ?? "text-[var(--color-ink)]"
-          }`}
-        >
-          {loafo.overall_verdict}
-        </p>
-      </div>
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">
-          Weakest unseen family
-        </p>
-        <p className="mt-1 text-xs font-semibold text-[var(--color-risk-high-600)]">
-          {typeof weakest === "string" ? weakest.replace(/_/g, " ") : "—"}
-        </p>
-      </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -121,91 +134,140 @@ export function FinalBenchmarkPage() {
   );
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-bold text-[var(--color-ink)] sm:text-2xl">Final Results</h1>
-        <p className="text-xs text-[var(--color-ink-muted)]">
-          Every figure read live from persisted benchmark artifacts.
-        </p>
-      </header>
+    <div className="space-y-14">
+      <PageHeader
+        eyebrow="Final benchmark"
+        title="Did hardening actually generalize — or did the model just memorize what it was shown?"
+      >
+        Baseline v1 → Defender v2 → Defender v3 on an untouched PaySim test split, plus a
+        leave-one-attack-family-out benchmark where the held-out family contributes zero training
+        rows. Every figure is read live from a persisted artifact.
+      </PageHeader>
 
       <ApiStateSection
         state={state}
         emptyTitle="No benchmark data yet"
         emptyBody="Run scripts/build_final_benchmark_summary.py to populate this page."
         render={(summary) => (
-          <div className="space-y-5">
-            <Headline summary={summary} />
+          <div className="space-y-14">
+            <Verdict summary={summary} />
 
             {summary.model_comparison && (
-              <section>
-                <h2 className="mb-2 text-sm font-semibold text-[var(--color-ink)]">
-                  Defender progression
-                </h2>
-                <div className="grid gap-2.5 sm:grid-cols-3">
-                  <ProgressionCard
-                    label="Baseline v1"
-                    entry={summary.model_comparison.baseline_v1}
-                  />
-                  <ProgressionCard
-                    label="Defender v2"
-                    entry={summary.model_comparison.defender_v2}
-                  />
-                  <ProgressionCard
-                    label="Defender v3"
-                    entry={summary.model_comparison.defender_v3}
-                    current
-                  />
-                </div>
-              </section>
+              <Reveal>
+                <section>
+                  <SectionHeader
+                    eyebrow="Evidence 1 · three generations"
+                    title="Cross-family hardening bought precision and a lower false-positive rate, and gave back a little recall."
+                    actions={<SourceLink source={summary.model_comparison.source_artifact} />}
+                  >
+                    All three models scored on the identical, untouched test split.
+                  </SectionHeader>
+                  <Panel>
+                    <DefenderProgressionTrend comparison={summary.model_comparison} />
+                  </Panel>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <ProgressionCard
+                      label="Baseline v1"
+                      entry={summary.model_comparison.baseline_v1}
+                    />
+                    <ProgressionCard
+                      label="Defender v2"
+                      entry={summary.model_comparison.defender_v2}
+                      baseline={summary.model_comparison.baseline_v1}
+                    />
+                    <ProgressionCard
+                      label="Defender v3"
+                      entry={summary.model_comparison.defender_v3}
+                      baseline={summary.model_comparison.baseline_v1}
+                      current
+                    />
+                  </div>
+                </section>
+              </Reveal>
             )}
 
             {summary.fresh_family_performance.length > 0 && (
-              <section>
-                <h2 className="mb-2 text-sm font-semibold text-[var(--color-ink)]">
-                  Recall by attack family
-                </h2>
-                <Card>
-                  <RecallByFamilyChart families={summary.fresh_family_performance} />
-                </Card>
-              </section>
+              <Reveal>
+                <section>
+                  <SectionHeader
+                    eyebrow="Evidence 2 · per family"
+                    title="Where the detector never saw a family, it can miss that family entirely."
+                    actions={
+                      <SourceLink source={summary.fresh_family_performance[0]?.source_artifact} />
+                    }
+                  />
+                  <Panel>
+                    <RecallByFamilyChart families={summary.fresh_family_performance} />
+                  </Panel>
+                </section>
+              </Reveal>
             )}
 
             {summary.loafo && (
-              <section>
-                <h2 className="mb-2 text-sm font-semibold text-[var(--color-ink)]">
-                  LOAFO — held-out family
-                </h2>
-                <Card padded={false} className="overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <LoafoResultsTable loafo={summary.loafo} />
-                  </div>
-                </Card>
-              </section>
+              <Reveal>
+                <section>
+                  <SectionHeader
+                    eyebrow="Evidence 3 · leave one family out"
+                    title="Two families transferred. Mule-network structuring did not."
+                    actions={<SourceLink source={summary.loafo.source_artifact} />}
+                  />
+                  <Panel padded={false} className="overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <LoafoResultsTable loafo={summary.loafo} />
+                    </div>
+                  </Panel>
+                </section>
+              </Reveal>
             )}
 
-            <section>
-              <h2 className="mb-2 text-sm font-semibold text-[var(--color-ink)]">
-                Hardest surviving attacks
-              </h2>
-              <Card padded={false} className="overflow-hidden">
-                <div className="overflow-x-auto">
-                  <HardestEvasionsTable
-                    evasions={summary.hardest_surviving_attacks}
-                    totalAvailable={summary.hardest_surviving_attacks.length}
-                  />
-                </div>
-              </Card>
-            </section>
+            <Reveal>
+              <section>
+                <SectionHeader
+                  eyebrow="What survived"
+                  title="Every attack that got through was realistic and scored as clearly safe."
+                >
+                  Hardness ranks a surviving transaction by how confidently the detector approved it,
+                  weighted by how closely it matches real PaySim traffic.
+                </SectionHeader>
+                {summary.hardest_surviving_attacks.length > 1 && (
+                  <Panel className="mb-3">
+                    <HardestEvasionsScatter evasions={summary.hardest_surviving_attacks} />
+                  </Panel>
+                )}
+                <details className="group">
+                  <summary className="t-body-sm cursor-pointer list-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-[var(--color-ink-muted)] transition-standard hover:border-[var(--color-border-strong)] hover:text-[var(--color-ink)]">
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="inline-block text-[10px] transition-standard group-open:rotate-90"
+                      >
+                        ▶
+                      </span>
+                      Show all {summary.hardest_surviving_attacks.length} surviving transactions
+                    </span>
+                  </summary>
+                  <Panel padded={false} className="mt-3 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <HardestEvasionsTable
+                        evasions={summary.hardest_surviving_attacks}
+                        totalAvailable={summary.hardest_surviving_attacks.length}
+                      />
+                    </div>
+                  </Panel>
+                </details>
+              </section>
+            </Reveal>
 
-            <Details summary="Interpretation and limitations">
-              <ul className="list-disc space-y-1 pl-4">
-                {summary.limitations.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-                {summary.loafo?.verdict_rubric && <li>{summary.loafo.verdict_rubric}</li>}
-              </ul>
-            </Details>
+            <Reveal>
+              <Callout eyebrow="Limitations · read before citing" tone="warn">
+                <ul className="list-disc space-y-1.5 pl-4">
+                  {summary.limitations.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                  {summary.loafo?.verdict_rubric && <li>{summary.loafo.verdict_rubric}</li>}
+                </ul>
+              </Callout>
+            </Reveal>
           </div>
         )}
       />

@@ -65,8 +65,8 @@ export function RealEvaluationPanel({ evaluation }: { evaluation: EvaluationResp
       {evaluation.regression && (
         <Card>
           <CardHeader
-            title="Baseline v1 vs. Defender v2"
-            subtitle={`Computed on the ${evaluation.regression.split ?? "test"} split only -- never on the hard positives used to retrain Defender v2.`}
+            title="Baseline v1 → Defender v2 · initial hardening round"
+            subtitle={`Per-metric regression for the first hardening step, computed on the ${evaluation.regression.split ?? "test"} split only -- never on the hard positives used to retrain Defender v2. Defender v3 (cross-family) and the full v1/v2/v3 table are on Final Results.`}
           />
           <div className="overflow-auto">
             <table className="w-full border-collapse text-sm">
