@@ -40,6 +40,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from aegis.defend.acceptance import (
+    DEFAULT_OPERATING_FPR_BUDGET,
+    DEFAULT_TOLERANCE,
+    AcceptanceCriteria,
+    AcceptanceDecision,
+    evaluate_acceptance,
+)
 from aegis.defend.hard_positives import (
     HardPositiveArtifact,
     HardPositivePromotion,
@@ -109,6 +116,11 @@ class HardenDefenderConfig:
     row. `None` uses the wall clock (default for a real run); tests pass a
     fixed value so the written hard-positive artifact is byte-for-byte
     reproducible, per AGENTS.md SS6 ("never seed from wall-clock time")."""
+    acceptance_criteria: AcceptanceCriteria | None = None
+    """What the retrained candidate must satisfy to be considered a promotion
+    rather than a regression. `None` uses `AcceptanceCriteria()` defaults.
+    The gate always runs and is always recorded; whether a rejection is fatal
+    to the process is the CLI's decision, not this config's."""
 
 
 @dataclass(frozen=True)
@@ -120,6 +132,13 @@ class HardenDefenderResult:
     regression_report: dict[str, object]
     regression_report_path: Path
     handoff_path: Path
+    acceptance: AcceptanceDecision
+    acceptance_path: Path
+
+    @property
+    def accepted(self) -> bool:
+        """Whether the gate cleared this candidate to replace the incumbent."""
+        return self.acceptance.accepted
 
 
 def run_harden_defender(config: HardenDefenderConfig) -> HardenDefenderResult:
@@ -211,6 +230,21 @@ def run_harden_defender(config: HardenDefenderConfig) -> HardenDefenderResult:
         json.dumps(regression_report, indent=2, sort_keys=True), encoding="utf-8"
     )
 
+    # The regression report above is descriptive; this is the decision. Both
+    # read the same two evaluations of the same untouched test split, so the
+    # gate can never be satisfied by a threshold re-tune (see
+    # `aegis.defend.acceptance` for what is gated and why).
+    acceptance = evaluate_acceptance(
+        incumbent=baseline_evaluation,
+        candidate=training_result.test_evaluation,
+        criteria=config.acceptance_criteria,
+    )
+    acceptance_path = training_result.artifact_dir / "acceptance.json"
+    acceptance_path.write_text(
+        json.dumps(acceptance.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
+    )
+    print(acceptance.summary)
+
     # -- Phase D: handoff for a fresh generation-2 Red round -------------------
     handoff_path = training_result.artifact_dir / "generation2_handoff.json"
     handoff_path.write_text(
@@ -235,6 +269,8 @@ def run_harden_defender(config: HardenDefenderConfig) -> HardenDefenderResult:
         regression_report=regression_report,
         regression_report_path=regression_report_path,
         handoff_path=handoff_path,
+        acceptance=acceptance,
+        acceptance_path=acceptance_path,
     )
 
 
@@ -430,6 +466,33 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help="always re-materialize validation/test features instead of copying the baseline's",
     )
+    parser.add_argument(
+        "--acceptance-tolerance",
+        type=float,
+        default=DEFAULT_TOLERANCE,
+        help=(
+            "absolute regression allowed per gated metric before the candidate is "
+            f"rejected (default {DEFAULT_TOLERANCE})"
+        ),
+    )
+    parser.add_argument(
+        "--operating-fpr-budget",
+        type=float,
+        default=DEFAULT_OPERATING_FPR_BUDGET,
+        help=(
+            "false-positive budget whose recall the gate compares "
+            f"(default {DEFAULT_OPERATING_FPR_BUDGET})"
+        ),
+    )
+    parser.add_argument(
+        "--allow-regression",
+        action="store_true",
+        help=(
+            "exit 0 even when the acceptance gate rejects the candidate. The rejection "
+            "is still recorded in acceptance.json -- this only stops it failing the "
+            "process, it never rewrites the verdict."
+        ),
+    )
     return parser
 
 
@@ -450,6 +513,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         chunk_size=args.chunk_size,
         nthread=args.nthread,
         reuse_baseline_validation_test_features=args.reuse_baseline_features,
+        acceptance_criteria=AcceptanceCriteria(
+            tolerance=args.acceptance_tolerance,
+            operating_fpr_budget=args.operating_fpr_budget,
+        ),
     )
     result = run_harden_defender(config)
 
@@ -475,6 +542,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(f"Baseline v1 vs Defender v2: {result.regression_report_path}")
     print(f"Generation-2 handoff: {result.handoff_path}")
+    print(f"Acceptance gate: {result.acceptance_path}")
+    print(f"  {result.acceptance.summary}")
+
+    # Every artifact above is on disk either way, so a rejection stays fully
+    # inspectable. A non-zero exit is what stops a regression shipping silently
+    # -- which is exactly how v2 and v3 reached the submission bundle.
+    if not result.accepted and not args.allow_regression:
+        print()
+        print(
+            "Rejected by the acceptance gate. Artifacts were written for inspection; "
+            "re-run with --allow-regression to ship anyway."
+        )
+        return 1
     return 0
 
 

@@ -102,7 +102,41 @@ recall inside it.
 
 ## 3. What is NOT done — start here
 
-### 3a. Wire the acceptance gate  ⏱ ~45 min  🔴 highest value
+### 3a. Wire the acceptance gate  ✅ DONE
+
+Wired in both `scripts/harden_defender.py` and
+`scripts/harden_defender_crossfamily.py`, with 12 tests in
+`tests/test_defend_acceptance.py`. Suite is **601 passed, 14 skipped**, ruff clean.
+
+What shipped, and one deviation from the plan below:
+
+* Each run writes `acceptance.json` beside the model and prints the verdict.
+* `HardenDefenderResult` / `CrossFamilyHardenResult` expose `.accepted`.
+* The CLI **exits non-zero on rejection**, having written every artifact first,
+  so a regression cannot ship silently but the rejection stays inspectable.
+  `--allow-regression` overrides the exit code without rewriting the verdict —
+  it is also what reproduces the historical v1→v2→v3 artifacts.
+* `--acceptance-tolerance` and `--operating-fpr-budget` are exposed.
+
+**Deviation — the cross-family gate compares against BOTH v1 and v2.** Gating
+only against the generation being replaced is exactly how v3 shipped: run
+against the real artifacts, `v3 vs v2` **accepts** (+0.0027 PR-AUC) while
+`v3 vs v1` **rejects** (−0.0053 PR-AUC, −0.0067 recall@0.5%). Each round only
+ever had to beat the round before it, so the loop drifted below its own
+baseline one tolerable step at a time. `.accepted` now requires both.
+
+Verified against the shipped artifacts — this is the evidence for the claim:
+
+| Comparison | Verdict | Why |
+|---|---|---|
+| v2 vs v1 | **REJECT** | PR-AUC −0.0081, recall@0.5% −0.0057 |
+| v3 vs v2 | ACCEPT | all three gated metrics within tolerance |
+| v3 vs v1 | **REJECT** | PR-AUC −0.0053, recall@0.5% −0.0067 |
+
+`test_gate_rejects_the_two_regressions_that_actually_shipped` pins this.
+
+<details>
+<summary>Original plan, kept for reference</summary>
 
 `acceptance.py` is written and exported but **nothing calls it, and it has no
 tests.** This is the single most valuable remaining task: it is what lets you
@@ -134,6 +168,8 @@ Then:
   metric fails rather than passes — that is intentional, assert it).
 
 Same wiring belongs in `scripts/harden_defender_crossfamily.py`.
+
+</details>
 
 ### 3b. Re-run the pipeline and regenerate the numbers  ⏱ ~2–4 h  🔴 blocking
 
@@ -265,8 +301,13 @@ files during this work.)
 
 ## 6. Suggested order for the remaining time
 
-1. **3a** wire the acceptance gate (~45 min) — largest credibility gain per hour
-2. **3b** re-run the pipeline (~2–4 h) — *blocking*; nothing above is real until this runs
+1. ~~**3a** wire the acceptance gate~~ ✅ done
+2. **3b** re-run the pipeline (~2–4 h) — *blocking*; nothing above is real until this runs.
+   ⚠️ Requires the PaySim CSV, which is **not in the repo** (`data/` is
+   gitignored and empty on a fresh clone). Source: the Kaggle dataset
+   "Synthetic Financial Datasets For Fraud Detection", file
+   `PS_20174392719_1491204439457_log.csv`, ~470 MB / 6.36M rows. Without it,
+   3b cannot start — budget download time before committing to this path.
 3. **3c** graph features (~4 h) — only if 3b finishes with room to spare
 4. **3d–3f** — write-up material if the code time runs out; they are honest,
    specific "future work" that shows you know where the model's limits are
