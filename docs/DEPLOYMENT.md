@@ -178,6 +178,55 @@ npm run build
 # upload web/dist/ to your static host
 ```
 
+## Live demo topology (Render + Vercel)
+
+This submission's hosted demo uses this split exactly:
+
+| Half | Host | Config in repo | Origin |
+| --- | --- | --- | --- |
+| API (`uvicorn aegis.api.app:app`) | Render web service, free plan | [`render.yaml`](../render.yaml) | `https://mastercard-aegis.onrender.com` |
+| Frontend (`web/dist/`, static) | Vercel | Vercel project settings | `https://mastercard-aegis.vercel.app` |
+
+* **API — [`render.yaml`](../render.yaml)** sets `buildCommand`, `startCommand`,
+  `healthCheckPath: /api/health`, and the two env vars
+  (`AEGIS_ARTIFACTS_ROOT=submission/artifacts`,
+  `AEGIS_API_CORS_ORIGINS=https://mastercard-aegis.vercel.app`). Connect the
+  repo in Render (or `render blueprint launch`) and it deploys from that file.
+* **Frontend — Vercel** builds `web/` with `VITE_API_BASE_URL` set to the
+  Render origin (a Vercel build-time environment variable, not a file), so the
+  static bundle calls the API cross-origin. `HashRouter` means no rewrite
+  rules are needed.
+
+### The cold-start problem, and the fix
+
+Render's **free plan spins the container down after ~15 minutes of
+inactivity**; the next request pays a ~30-60s cold start. Without mitigation a
+judge opening the link cold sees skeleton placeholders with no explanation
+until the backend boots.
+
+Three layers address it, in order of importance:
+
+1. **[`.github/workflows/keepalive.yml`](../.github/workflows/keepalive.yml)** —
+   a scheduled workflow curls `/api/health`, `/api/overview`, and
+   `/api/benchmark` every ~10 minutes, warming both the process and the
+   in-memory artifact index. GitHub cron is best-effort (can lag several
+   minutes) and auto-disables after 60 days of repo inactivity.
+2. **Client retry** — `web/src/api/client.ts` retries transient failures and
+   per-attempt timeouts with capped backoff (~2 min ceiling), so a screen
+   recovers on its own once the backend answers instead of hanging.
+3. **Explanatory UI** — after 4s of loading, `useApiResource` flips a `slow`
+   flag and `ApiStateSection` shows *"Starting the analysis backend…"* with a
+   spinner; errors get a Retry button. `App` also fires one `/api/health` ping
+   at mount to start the wake early.
+
+**For the judging window specifically**, also do one of: run an external
+uptime pinger (uptimerobot.com, cron-job.org) against `/api/health` on a
+tighter interval than GitHub cron guarantees; upgrade the Render service to a
+paid always-on instance for those days; or warm it by hand
+(`curl https://mastercard-aegis.onrender.com/api/health`, or run the keepalive
+workflow via **Actions → Keep API warm → Run workflow**) a few minutes before
+presenting.
+
 ## Fallback: local-only demo
 
 If no hosting is available before the judging window, run both processes

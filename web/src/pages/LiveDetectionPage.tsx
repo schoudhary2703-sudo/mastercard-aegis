@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { fetchRecentDetections } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
+import { PageHeader } from "../components/ui/PageHeader";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { ActionBadge, Badge } from "../components/ui/Badge";
 import { Card, CardHeader } from "../components/ui/Card";
@@ -92,7 +93,15 @@ export function LiveDetectionPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Defend · live scoring"
+        title="Every transaction the detector scored, with the signal that drove the decision."
+      >
+        Per-transaction detector outputs joined with transaction context, read straight from
+        persisted confrontation artifacts.
+      </PageHeader>
+
       <Card>
         <CardHeader
           title="Real recent detections"

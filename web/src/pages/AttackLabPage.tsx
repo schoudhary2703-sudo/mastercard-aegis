@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { fetchExperiments, fetchGenAI } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
+import { PageHeader } from "../components/ui/PageHeader";
 import type { ExperimentDTO } from "../api/types";
 import { GenAIAnalystPanel } from "../components/genai/GenAIAnalystPanel";
 import { AttackRecommendations } from "../components/genai/AttackRecommendations";
@@ -9,7 +10,7 @@ import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { OutcomeBadge, ReplayStream } from "../components/lab/ReplayStream";
 import { ScoreBoard } from "../components/lab/ScoreBoard";
 import { useReplay } from "../components/lab/useReplay";
-import { ClosedLoopFlow, type LoopStageId } from "../components/loop/ClosedLoopFlow";
+import { NodeLoop, type LoopStageId } from "../components/loop/NodeLoop";
 import { ApiStateSection } from "../components/real/ApiStateSection";
 import { Card } from "../components/ui/Card";
 import { Details } from "../components/ui/Details";
@@ -92,19 +93,20 @@ export function AttackLabPage() {
   const replay = useReplay(selected);
 
   const activeStage: LoopStageId | undefined = replay.running
-    ? "defender"
+    ? "defend"
     : replay.finished
-      ? "outcome"
+      ? "evaluate"
       : undefined;
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-bold text-[var(--color-ink)] sm:text-2xl">Attack Lab</h1>
-        <p className="text-xs text-[var(--color-ink-muted)]">
-          Pick an attack family and replay the real experiment against the defender.
-        </p>
-      </header>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Generate · attack lab"
+        title="Replay a real campaign, transaction by transaction, against the detector that scored it."
+      >
+        Every event below was produced by the deterministic simulator and scored by a persisted
+        model. Pick a family and step the confrontation.
+      </PageHeader>
 
       <ApiStateSection
         state={experiments}
@@ -184,7 +186,7 @@ export function AttackLabPage() {
 
               <div className="-mx-1 overflow-x-auto px-1 pb-1">
                 <div className="min-w-[560px]">
-                  <ClosedLoopFlow active={activeStage} compact />
+                  <NodeLoop active={activeStage} compact />
                 </div>
               </div>
 

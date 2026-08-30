@@ -9,6 +9,8 @@ const base: SVGProps<SVGSVGElement> = {
   strokeWidth: 1.7,
   strokeLinecap: "round",
   strokeLinejoin: "round",
+  "aria-hidden": true,
+  focusable: false,
 };
 
 export const OverviewIcon = () => (

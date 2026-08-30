@@ -1,10 +1,11 @@
 import { useCallback } from "react";
 import { fetchEvolution, fetchExperiments, fetchHardestEvasions } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
+import { PageHeader } from "../components/ui/PageHeader";
 import type { ExperimentDTO } from "../api/types";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { OutcomeBadge } from "../components/lab/ReplayStream";
-import { LoopDiagram } from "../components/loop/LoopDiagram";
+import { NodeLoop } from "../components/loop/NodeLoop";
 import { ApiStateSection } from "../components/real/ApiStateSection";
 import { HardestEvasionsTable } from "../components/real/HardestEvasionsTable";
 import { MockDataBadge } from "../components/real/RealBadge";
@@ -130,13 +131,14 @@ export function CoEvolutionPage() {
   const hardest = useApiResource(hardestFetch, [], (d) => d.evasions.length === 0);
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-bold text-[var(--color-ink)] sm:text-2xl">Evolution</h1>
-        <p className="text-xs text-[var(--color-ink-muted)]">
-          What escaped, and whether hardening closed it.
-        </p>
-      </header>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Evolve · hardening rounds"
+        title="What escaped the detector, and whether the next generation closed the gap."
+      >
+        Each round promotes the transactions that evaded scoring into training data, retrains, and
+        re-runs the confrontation on a fresh scenario.
+      </PageHeader>
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-[var(--color-ink)]">Escape story</h2>
@@ -200,7 +202,7 @@ export function CoEvolutionPage() {
               </span>
             )}
           </div>
-          <LoopDiagram active={latest ? "retrain" : "identify"} compact />
+          <NodeLoop active={latest ? "retrain" : "identify"} compact />
           <AttackFamilySelector value={family} onChange={setFamily} />
           <p>
             A deterministic client-side toy, kept as a fallback if the API becomes unreachable

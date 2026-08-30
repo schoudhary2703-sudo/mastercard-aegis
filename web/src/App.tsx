@@ -1,4 +1,5 @@
 import { Route, HashRouter, Routes } from "react-router-dom";
+import { useWarmup } from "./api/useWarmup";
 import { AppShell } from "./components/layout/AppShell";
 import { AttackStudioPage } from "./pages/AttackStudioPage";
 import { AttackTaxonomyPage } from "./pages/AttackTaxonomyPage";
@@ -11,6 +12,7 @@ import { MissionControlPage } from "./pages/MissionControlPage";
 import { LoopProvider } from "./state/LoopContext";
 
 export default function App() {
+  useWarmup();
   return (
     <LoopProvider>
       <HashRouter>
