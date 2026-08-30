@@ -59,6 +59,7 @@ from aegis.defend.metrics import (
     DEFAULT_FPR_BUDGETS,
     build_evaluation_result,
     measure_scoring_latency,
+    threshold_at_fpr_budget,
     tune_threshold_for_f1,
 )
 from aegis.defend.xgboost_detector import DEFAULT_HYPERPARAMETERS, DEFAULT_NUM_BOOST_ROUND
@@ -82,6 +83,17 @@ TEST_FILENAME = "test.jsonl"
 LOW_MEMORY_DEFAULT_NTHREAD = 2
 """Conservative default thread count for --low-memory on an ~8GB machine."""
 
+THRESHOLD_RULE_F1 = "f1"
+THRESHOLD_RULE_FPR_BUDGET = "fpr_budget"
+THRESHOLD_RULES = (THRESHOLD_RULE_FPR_BUDGET, THRESHOLD_RULE_F1)
+DEFAULT_THRESHOLD_FPR_BUDGET = 0.005
+"""Default false-positive budget for the operating point, one of the agreed
+`DEFAULT_FPR_BUDGETS` the project already reports `recall_at_fixed_fpr` at.
+
+0.005 means roughly one review per 200 legitimate payments - a review load a
+real issuer can staff, and the middle of the three budgets
+`docs/EVALUATION_RULES.md` already requires reporting."""
+
 
 @dataclass(frozen=True)
 class BaselinePipelineConfig:
@@ -103,6 +115,19 @@ class BaselinePipelineConfig:
     already re-stamped `split=train` and chronologically sorted, appended to
     train only - validation and test are untouched either way. `None`
     reproduces the plain baseline pipeline exactly."""
+    threshold_rule: str = THRESHOLD_RULE_FPR_BUDGET
+    """How the operating point is chosen on validation - see
+    `_select_threshold`. `"fpr_budget"` (default) maximizes recall inside
+    `threshold_fpr_budget`; `"f1"` reproduces the original F1-maximizing
+    behavior for regression comparisons against the frozen v1/v2 artifacts."""
+    threshold_fpr_budget: float = DEFAULT_THRESHOLD_FPR_BUDGET
+    """False-positive budget the operating point must respect under
+    `threshold_rule="fpr_budget"`. Ignored under `"f1"`."""
+    early_stopping: bool = True
+    """Stop boosting once validation `aucpr` stops improving, instead of always
+    running the full `num_boost_round`. Uses validation labels to choose *when
+    to stop*, the same split and the same way the threshold is tuned - test is
+    never involved. Set `False` to reproduce the fixed-300-round v1/v2 fits."""
 
     @property
     def dataset_id(self) -> str:
@@ -225,9 +250,7 @@ def _materialize_or_reuse(
         )
         raise FileExistsError(msg)
     if extra_jsonl_path is not None:
-        print(
-            f"  materializing {label} features (+ hard positives) -> {output_dir}"
-        )
+        print(f"  materializing {label} features (+ hard positives) -> {output_dir}")
         return materialize_split_features_with_extra(
             jsonl_path, [extra_jsonl_path], output_dir, chunk_size=chunk_size
         )
@@ -262,6 +285,28 @@ def _finish_and_save(
 ) -> BaselinePipelineResult:
     artifact_dir = config.artifact_dir
     detector.save(str(artifact_dir))
+    # The operating-point rule is not part of the detector's own metadata -
+    # it is a pipeline decision, not a model parameter - but reproducing a
+    # reported figure requires knowing which rule produced the threshold, so
+    # record it beside the model rather than only in the evaluation notes.
+    (artifact_dir / "threshold_selection.json").write_text(
+        json.dumps(
+            {
+                "threshold_rule": config.threshold_rule,
+                "threshold_fpr_budget": (
+                    config.threshold_fpr_budget
+                    if config.threshold_rule == THRESHOLD_RULE_FPR_BUDGET
+                    else None
+                ),
+                "selected_threshold": threshold,
+                "tuned_on": "validation",
+                "description": _threshold_note(config),
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
     (artifact_dir / "evaluation_validation.json").write_text(
         validation_evaluation.to_json(indent=2), encoding="utf-8"
     )
@@ -307,12 +352,12 @@ def _run_in_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipelineR
         hyperparameters=config.resolved_hyperparameters(),
         model_version=model_version,
     )
-    detector.fit(X_train, y_train)
+    detector.fit(X_train, y_train, meta=_fit_meta(config, X_validation, y_validation))
     resolved_spw = detector.scale_pos_weight or 1.0
 
     # -- threshold tuning: validation only, never test -----------------------
     validation_scores = detector.score(X_validation)
-    threshold = tune_threshold_for_f1(y_validation, validation_scores)
+    threshold = _select_threshold(config, y_validation, validation_scores)
     detector.action_policy = _policy_for_threshold(threshold)
 
     validation_outputs = detector.predict(
@@ -334,7 +379,7 @@ def _run_in_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipelineR
         latency=validation_latency,
         fpr_budgets=config.fpr_budgets,
         seed=config.seed,
-        notes="Threshold tuned on this split (maximize F1).",
+        notes=f"Threshold tuned on this split ({_threshold_note(config)}).",
     )
 
     # -- test: touched once, after the threshold is fixed --------------------
@@ -369,6 +414,60 @@ def _run_in_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipelineR
     )
 
 
+def _select_threshold(
+    config: BaselinePipelineConfig, y_validation: np.ndarray, validation_scores: np.ndarray
+) -> float:
+    """Choose the operating point on validation, per `config.threshold_rule`.
+
+    Default (`"fpr_budget"`): the lowest threshold whose false-positive rate
+    stays inside `config.threshold_fpr_budget`. This is how a payment system
+    actually sets a cutoff - review capacity fixes the false-positive budget,
+    and the threshold takes as much recall as fits inside it.
+
+    `"f1"` reproduces the original behavior. It is retained because the frozen
+    baseline-v1 and defender-v2 artifacts were produced under it, so a
+    like-for-like regression comparison against them needs the same rule; it
+    is not recommended for new models. On the real PaySim test split F1
+    tuning settles at recall 0.779 / FPR 0.0002, well inside every budget the
+    project reports against - it spends recall on precision nobody asked for.
+
+    Whichever rule runs, the threshold is still computed on validation only
+    and applied unchanged to test (`docs/EVALUATION_RULES.md`).
+    """
+    if config.threshold_rule == THRESHOLD_RULE_F1:
+        return tune_threshold_for_f1(y_validation, validation_scores)
+    if config.threshold_rule == THRESHOLD_RULE_FPR_BUDGET:
+        return threshold_at_fpr_budget(y_validation, validation_scores, config.threshold_fpr_budget)
+    msg = f"unknown threshold_rule {config.threshold_rule!r}; expected one of {THRESHOLD_RULES}"
+    raise ValueError(msg)
+
+
+def _fit_meta(
+    config: BaselinePipelineConfig, X_validation: pd.DataFrame, y_validation: np.ndarray
+) -> dict[str, object] | None:
+    """Side-channel passed to `XGBoostDetector.fit`, per `BaseDetector.fit`'s contract.
+
+    Carries the validation split as an `eval_set` so boosting stops when
+    validation `aucpr` stops improving. Without it `num_boost_round` is a
+    fixed guess and the `eval_metric` declared in `DEFAULT_HYPERPARAMETERS`
+    is never computed at all.
+
+    This is the same validation split the threshold is tuned on, used the same
+    way - to fix a hyper-parameter of the fitted model. Test remains untouched
+    until the single final evaluation (`docs/EVALUATION_RULES.md`).
+    """
+    if not config.early_stopping:
+        return None
+    return {"eval_set": (X_validation, y_validation)}
+
+
+def _threshold_note(config: BaselinePipelineConfig) -> str:
+    """Human-readable description of the operating-point rule, for evaluation notes."""
+    if config.threshold_rule == THRESHOLD_RULE_F1:
+        return "maximize F1"
+    return f"maximize recall within FPR <= {config.threshold_fpr_budget}"
+
+
 def _policy_for_threshold(threshold: float) -> ActionPolicy:
     return ActionPolicy(
         step_up_at=threshold,
@@ -381,13 +480,21 @@ def _policy_for_threshold(threshold: float) -> ActionPolicy:
 def _run_low_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipelineResult:
     """Sequential, one-split-at-a-time version of `_run_in_memory_pipeline`.
 
-    A. materialize train features -> B. train -> C. release train
-    D. materialize validation features -> E. tune threshold -> F. release validation
-    G. materialize test features -> H. evaluate once -> I. release test
+    A. materialize train + validation features -> B. train -> C. release train
+    D. tune threshold on validation -> E. release validation
+    F. materialize test features -> G. evaluate once -> H. release test
 
     Train, validation, and test raw feature arrays are never resident at the
     same time; only the trained `XGBoostDetector` (a small `Booster`)
     survives from one stage to the next.
+
+    Validation is *materialized* before training (it was materialized after,
+    before early stopping existed) so it can serve as the `eval_set`.
+    Materialization itself is a bounded-memory streaming write to disk, and
+    the array is then memory-mapped, so the only new resident cost is the
+    validation `DMatrix` XGBoost builds for evaluation - about 80MB for a
+    955k-row, 21-feature float32 split, against the multi-GB peaks this mode
+    exists to avoid. Set `early_stopping=False` to skip building it entirely.
     """
     processed_dir = Path(config.processed_dir)
     feature_root = config.resolved_feature_artifact_dir()
@@ -402,6 +509,12 @@ def _run_low_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipeline
         label="train",
         extra_jsonl_path=config.hard_positive_jsonl,
     )
+    validation_artifact = _materialize_or_reuse(
+        processed_dir / VALIDATION_FILENAME,
+        feature_root / "validation",
+        chunk_size=config.chunk_size,
+        label="validation",
+    )
     X_train = pd.DataFrame(
         train_artifact.load_features(mmap=True), columns=train_artifact.feature_names, copy=False
     )
@@ -414,19 +527,24 @@ def _run_low_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipeline
         hyperparameters=hyperparameters,
         model_version=model_version,
     )
-    detector.fit(X_train, y_train)
+    if config.early_stopping:
+        X_eval = pd.DataFrame(
+            validation_artifact.load_features(mmap=True),
+            columns=validation_artifact.feature_names,
+            copy=False,
+        )
+        detector.fit(
+            X_train, y_train, meta=_fit_meta(config, X_eval, validation_artifact.load_labels())
+        )
+        del X_eval
+    else:
+        detector.fit(X_train, y_train)
     resolved_spw = detector.scale_pos_weight or 1.0
 
     del X_train, y_train
     gc.collect()
 
-    # D/E/F ---------------------------------------------------------------
-    validation_artifact = _materialize_or_reuse(
-        processed_dir / VALIDATION_FILENAME,
-        feature_root / "validation",
-        chunk_size=config.chunk_size,
-        label="validation",
-    )
+    # D/E -----------------------------------------------------------------
     X_validation = pd.DataFrame(
         validation_artifact.load_features(mmap=True),
         columns=validation_artifact.feature_names,
@@ -437,7 +555,7 @@ def _run_low_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipeline
     validation_size = validation_artifact.row_count
 
     validation_scores = detector.score(X_validation)
-    threshold = tune_threshold_for_f1(y_validation, validation_scores)
+    threshold = _select_threshold(config, y_validation, validation_scores)
     detector.action_policy = _policy_for_threshold(threshold)
 
     validation_outputs = detector.predict(X_validation, validation_ids, explain=False)
@@ -457,13 +575,13 @@ def _run_low_memory_pipeline(config: BaselinePipelineConfig) -> BaselinePipeline
         latency=validation_latency,
         fpr_budgets=config.fpr_budgets,
         seed=config.seed,
-        notes="Threshold tuned on this split (maximize F1). low_memory=True.",
+        notes=f"Threshold tuned on this split ({_threshold_note(config)}). low_memory=True.",
     )
 
     del X_validation, y_validation, validation_ids
     gc.collect()
 
-    # G/H/I ---------------------------------------------------------------
+    # F/G/H ---------------------------------------------------------------
     test_artifact = _materialize_or_reuse(
         processed_dir / TEST_FILENAME,
         feature_root / "test",
@@ -574,6 +692,36 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--threshold-rule",
+        choices=THRESHOLD_RULES,
+        default=THRESHOLD_RULE_FPR_BUDGET,
+        help=(
+            "how the validation-tuned operating point is chosen. 'fpr_budget' "
+            "(default) maximizes recall inside --threshold-fpr-budget, which is how "
+            "a live payment system sets a cutoff. 'f1' maximizes F1 and exists to "
+            "reproduce the frozen baseline-v1/defender-v2 artifacts for "
+            "like-for-like regression comparison."
+        ),
+    )
+    parser.add_argument(
+        "--threshold-fpr-budget",
+        type=float,
+        default=DEFAULT_THRESHOLD_FPR_BUDGET,
+        help=(
+            "false-positive budget the operating point must respect under "
+            f"--threshold-rule fpr_budget (default: {DEFAULT_THRESHOLD_FPR_BUDGET})"
+        ),
+    )
+    parser.add_argument(
+        "--no-early-stopping",
+        action="store_true",
+        help=(
+            "train for the full --num-boost-round instead of stopping when validation "
+            "aucpr stops improving. Reproduces the fixed-300-round baseline-v1/"
+            "defender-v2 fits."
+        ),
+    )
+    parser.add_argument(
         "--hard-positives-jsonl",
         type=Path,
         default=None,
@@ -604,6 +752,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         feature_artifact_dir=args.feature_artifact_dir,
         model_version_prefix=args.model_version_prefix,
         hard_positive_jsonl=args.hard_positives_jsonl,
+        threshold_rule=args.threshold_rule,
+        threshold_fpr_budget=args.threshold_fpr_budget,
+        early_stopping=not args.no_early_stopping,
     )
     result = run_baseline_pipeline(config)
 
@@ -613,7 +764,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(
         f"  scale_pos_weight={result.scale_pos_weight:.3f} "
-        f"tuned_threshold={result.tuned_threshold:.4f}"
+        f"tuned_threshold={result.tuned_threshold:.4f} "
+        f"({_threshold_note(config)})"
     )
     print(f"  artifact: {result.artifact_dir}")
     print("Validation metrics:")
