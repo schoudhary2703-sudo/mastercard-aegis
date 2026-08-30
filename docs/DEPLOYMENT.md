@@ -8,6 +8,23 @@ environment variables, `web/vite.config.ts`'s proxy, `npm run build`,
 `uvicorn`) -- no Docker file, no provider-specific config, and no cloud
 account are assumed, because none exist in this repo today.
 
+## Current deployment
+
+This repository is deployed and reachable as of this writing:
+
+| Surface | URL |
+| --- | --- |
+| Frontend (Vercel) | <https://mastercard-aegis.vercel.app> |
+| API (Render) | <https://mastercard-aegis.onrender.com> |
+| Repository | <https://github.com/tensorforgee/mastercard-aegis> |
+
+The API runs on a free tier and **cold-starts in roughly 25 seconds** after
+idling. The Overview hero, closed-loop diagram and "Where AEGIS fits" panel
+are static and render immediately regardless, so the system can be explained
+while the evidence cards are still loading -- but warm the API by loading the
+site once before a demo. Re-verify both URLs after any push before submitting
+(`docs/SUBMISSION_CHECKLIST.md` item 4).
+
 ## Why this is safe
 
 `src/aegis/api/` and `web/` are **read-only consumers** of persisted

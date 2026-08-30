@@ -1,8 +1,15 @@
 # Demo flow
 
-A 4-6 minute judge walkthrough. Every number spoken here is real, read live
-from the running API -- nothing in this script is a mock number or an
-invented figure. Start both servers first (`docs/DEPLOYMENT.md` "Local
+A 4-6 minute judge walkthrough. For the 60-second version, see
+[`JUDGE_DEMO_60S.md`](JUDGE_DEMO_60S.md).
+
+Click path (the four primary nav entries, in order):
+**Overview** (`/`) -> **Attack Lab** (`/attack-lab`) -> **Evolution**
+(`/co-evolution`) -> **Results** (`/final-benchmark`). Sections 2-4 below
+detour through the "More" group; skip them if time is short.
+
+Every number spoken here is real, read live from the running API -- nothing
+in this script is a mock number or an invented figure. Start both servers first (`docs/DEPLOYMENT.md` "Local
 demo" or `README.md` "How to run locally"); confirm `GET /api/health`
 returns `{"status": "ok"}` before judges arrive.
 
@@ -72,8 +79,8 @@ Click into the "Real attacks observed" panel, select
 
 ## 3. Round-0: the blind spot (30s)
 
-Navigate to `/co-evolution`. Point at the **Round-0 attack** card in the
-real closed-loop timeline.
+Navigate to **Evolution** (`/co-evolution`). Point at the **Round-0 attack**
+card in the real closed-loop timeline.
 
 > "Baseline v1's very first confrontation: 0 of 3 fraudulent bust-out
 > transactions caught. That's the blind spot we're closing."
@@ -90,18 +97,22 @@ cards, then read the narrative panel underneath.
 
 ## 5. Cross-family results (45s)
 
-Navigate to `/final-benchmark`. Point at the **Model comparison** cards.
+Navigate to **Results** (`/final-benchmark`) and scroll to **"Native PaySim
+test split: v1 vs v2 vs v3"**.
 
 > "Defender v3 trains on hard positives from all three families at once,
 > plus two new features -- distinct-counterparty counts -- added specifically
 > because the mule-network data showed the original 19 features literally
 > can't tell a fan-out payment from six repeat payments to the same account."
 
-Point at the comparison table.
+Point at the trade-off line above the cards -- it names which generation
+leads each metric, computed from the artifact rather than written by hand.
 
 > "F1 recovers to 85.1%, precision improves to 93.8%, and false-positive
-> rate drops to 0.0216% -- v3's best FPR of the three. It still doesn't
-> fully recover v1's recall. We're not hiding that."
+> rate drops to 0.0216% -- v3's best FPR of the three. But baseline v1 still
+> leads PR-AUC, recall and F1. Hardening changed the operating trade-off; it
+> didn't uniformly improve every native-test metric, and the page says so
+> before you have to ask."
 
 ## 6. LOAFO: generalization, not memorization (45-60s)
 

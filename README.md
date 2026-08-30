@@ -1,7 +1,95 @@
 # AEGIS
 
+## Stress-test fraud models against attacks they haven't learned yet.
+
 **Adversarial Evaluation & Generative Immune System for payments.**
 Mastercard Innovation Challenge 2026.
+
+**[Live demo](https://mastercard-aegis.vercel.app)** ·
+[API](https://mastercard-aegis.onrender.com/api/health) ·
+[Repository](https://github.com/tensorforgee/mastercard-aegis) ·
+[60-second walkthrough](docs/JUDGE_DEMO_60S.md)
+
+GenAI reasons about emerging attacks and detector blind spots; deterministic
+simulators generate every transaction row; a frozen XGBoost defender scores
+them; fraud that escapes becomes adversarial evidence — and **LOAFO** then
+tests whether hardening actually transfers to an attack family the model has
+never seen.
+
+### Headline evidence
+
+Every figure below is read from a persisted artifact **tracked in this
+repository**, so it is checkable from a clean clone with no dataset download
+and no pipeline run.
+
+| | | Source |
+| --- | --- | --- |
+| Attack vectors identified | **14** (3 deeply simulated, 11 research-identified only) | [`attack_taxonomy.json`](submission/artifacts/data/reports/attack_taxonomy.json) |
+| Synthetic transactions generated | **55,000** across 3,000 scenarios, seed-reproducible | [`generation_scale_benchmark.json`](submission/artifacts/data/reports/generation_scale_benchmark.json) |
+| Families with live GenAI evidence | **3 / 3** (Attack Analyst + Blind-Spot Analyst + guided generation) | [`genai_family_summary.json`](submission/artifacts/data/reports/genai_family_summary.json) |
+| Defender v3 PR-AUC | **0.904** on the untouched PaySim test split | [`final_benchmark_summary.json`](submission/artifacts/data/reports/final_benchmark_summary.json) |
+| Defender v3 recall @ 0.1% FPR | **85.2%** | same |
+| Defender v3 false positive rate | **0.0216%** (alert rate 0.35%) | same |
+| Generalization to an unseen family | **58.3% mean LOAFO recall — PARTIAL GENERALIZATION** | [`loafo_summary.json`](submission/artifacts/models/loafo_summary.json) |
+
+> **58.3% is not a fraud-detection rate.** It is the recall of three separate
+> fold models, each trained with one attack family contributing *zero* rows,
+> each scored on one fresh scenario of that held-out family (3–12 fraud events
+> each — directional, not statistically powered). Two of three families
+> transferred; mule-network structuring did not.
+
+### The closed loop
+
+```mermaid
+flowchart LR
+    A["1 GenAI Attack Analyst"] --> B["2 Structured Blueprint"]
+    B --> C["3 Deterministic Simulator"]
+    C --> D["4 XGBoost Defender"]
+    D --> E["5 Caught / Escaped"]
+    E --> F["6 GenAI Blind-Spot Analyst"]
+    F --> G["7 Bounded Mutation Proposal"]
+    G --> H["8 Deterministic Next Generation"]
+    H --> D
+```
+
+GenAI reasons at exactly **two** points — stages 1 and 6 — and never writes a
+transaction row. Stage 7 is the Blind-Spot Analyst's proposal after a
+deterministic bounds check: out-of-range proposals are *rejected, never
+clamped*, and the refusals are persisted. The simulator, not the model,
+generates the next seeded scenario, which the same frozen defender then
+scores (8 → 4).
+
+**LOAFO sits outside this loop.** It is a generalization *test*, not a
+generation stage: hold one attack family out of hardening entirely, then
+score a fresh scenario of that family. It creates no attacks and proposes no
+mutations.
+
+## Why this is different
+
+* **Breadth is researched; depth is measured, and we never conflate them.**
+  14 attack vectors catalogued across 8 categories with cited sources —
+  exactly 3 have a generator, a blueprint and a real detector result.
+* **Attack generation is deterministic and reproducible.** Every corpus
+  regenerates from its seed; the scale benchmark persists a SHA-256
+  fingerprint proving byte-identical repeat runs, 0% constraint violations,
+  and zero scenario-id collisions with prior artifacts.
+* **GenAI is live and auditable.** Every reasoning artifact carries provider,
+  model, prompt version, latency and a real request id. With no API key the
+  layer fails loudly — there is no fallback that invents reasoning text.
+* **The mutation contract is enforced, not described.** GenAI supplies a
+  direction and magnitude; deterministic code recomputes the value and
+  refuses anything outside the blueprint's declared bounds. Refusals are
+  persisted and shown in the UI.
+* **The defender is frozen during confrontation.** Model file hashes are
+  verified unchanged before and after scoring, so a "result" can never be a
+  quiet retrain.
+* **LOAFO is, as far as we know, novel in this setting** — a leave-one-attack-
+  family-out protocol that asks whether hardening *transfers* or merely
+  *memorizes*, with each fold's held-out family contributing verifiably zero
+  training rows (asserted in tests, not just prose).
+* **We publish the results that went against us.** Mule-network structuring
+  caught 0 of 12 on its held-out fold. That number is on the landing page, in
+  the summary JSON, and in this README.
 
 ## The problem
 
@@ -13,23 +101,17 @@ never tests the thing that actually matters: **does the detector improve
 when it sees new attacks, and does that improvement generalize, or is it
 just memorizing what it was shown?**
 
-## The AEGIS solution
+## How AEGIS works
 
-AEGIS is a closed-loop red-team / blue-team system: a Red Team invents and
-mutates synthetic fraud, a Blue Team detects it, and the loop feeds
-successful evasions back into training as signal for the next round.
+A closed-loop red-team / blue-team system: a Red Team invents and mutates
+synthetic fraud, a Blue Team detects it, and escapes feed the next round.
+Where a persisted experiment promoted those escapes as hard positives, they
+informed a later hardening round; LOAFO evidence is evaluation-only and never
+feeds training. Full contract: [`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md).
 
 ```
 IDENTIFY -> GENERATE -> DEFEND -> EVALUATE -> EVOLVE -> RETRAIN
 ```
-
-**GenAI performs attack ideation, blueprint reasoning, and detector
-blind-spot analysis. Deterministic simulators generate reproducible synthetic
-transactions, and XGBoost performs detection.** A language model reasons at
-exactly two points in the loop and never emits a transaction row, fits a
-model, or produces a reported number — see
-[`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md) and "GenAI reasoning layer"
-below.
 
 | Stage | Module | Consumes | Produces |
 | --- | --- | --- | --- |
@@ -49,11 +131,6 @@ see [`docs/CONTRACTS.md`](docs/CONTRACTS.md) and
 This repository has run that loop for real, on the full PaySim
 synthetic/reference corpus, through three defender generations and a formal
 generalization benchmark -- not a simulation of what the loop would produce.
-Every number cited below is read from a persisted artifact that is **tracked
-in this repository**
-([`submission/artifacts/data/reports/final_benchmark_summary.json`](submission/artifacts/data/reports/final_benchmark_summary.json)),
-never invented -- so every figure here is checkable from a clean clone, with
-no dataset download and no pipeline run.
 
 ## Three attack families, deliberately fixed
 
@@ -138,10 +215,14 @@ On the untouched PaySim test split:
 | FPR | 0.0254% | 0.0242% | **0.0216%** |
 | Mean latency | 6.86ms | 12.28ms | 6.66ms |
 
-Cross-family hardening improved precision, F1, and FPR versus Defender v2,
-and closed most of v2's regression against baseline v1 on the *native*
-task -- while adding training signal from two families v2 had never seen.
-It does not fully recover baseline v1's recall. Full numbers, per-family
+**Hardening changed the operating trade-off; it did not uniformly improve
+every native-test metric.** On this split baseline v1 still leads PR-AUC
+(0.909 vs 0.904), recall and F1; Defender v3 leads precision, false positive
+rate and recall at a 0.1% FPR budget (85.24% vs 85.06%). Cross-family
+hardening improved precision, F1 and FPR versus Defender v2 and closed most
+of v2's regression against v1 on the *native* task -- while adding training
+signal from two families v2 had never seen. We state this plainly because it
+is the first thing a fraud-modelling reviewer will check. Full numbers, per-family
 breakdowns, and confusion matrices:
 [`submission/artifacts/data/reports/final_benchmark_summary.json`](submission/artifacts/data/reports/final_benchmark_summary.json)
 -- tracked in this repo, so the link resolves in a clean clone.
@@ -335,7 +416,9 @@ no-backend fallback path: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 | [`docs/ADAPTIVE_ATTACK_EVOLUTION.md`](docs/ADAPTIVE_ATTACK_EVOLUTION.md), [`docs/RED_BLUE_CONFRONTATION.md`](docs/RED_BLUE_CONFRONTATION.md) | Adaptive evolution and the confrontation harness. |
 | [`docs/UI_DESIGN_SYSTEM.md`](docs/UI_DESIGN_SYSTEM.md) | The UI's screens, real-vs-mock labeling, and visual language. |
 | [`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md) | Where GenAI reasons, and why the simulator stays deterministic. |
-| [`docs/DEMO_FLOW.md`](docs/DEMO_FLOW.md) | Running the judge demo. |
+| [`docs/JUDGE_DEMO_60S.md`](docs/JUDGE_DEMO_60S.md) | **The 60-second judge walkthrough.** Start here to present. |
+| [`docs/DEMO_FLOW.md`](docs/DEMO_FLOW.md) | The longer 4-6 minute demo script. |
+| [`docs/COMMERCIAL.md`](docs/COMMERCIAL.md) | Who would use AEGIS, what it needs, and what it explicitly is not. |
 | [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) | What this submission does and does not claim. |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploying the demo. |
 | [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md) | Final submission steps. |

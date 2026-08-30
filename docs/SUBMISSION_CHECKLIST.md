@@ -59,29 +59,39 @@ unless something changed since; re-check anything you touched.
   configured) or a fresh `git clone` actually builds and tests clean --
   a local-only pass that never made it to the remote does not count.
 
-Items 4-6 below are external packaging steps -- producing a hosted URL, a
-`.docx` writeup, and screenshot files -- not code in this repository. They
-are marked **pending** because they have not been produced yet, not because
-anything in the codebase is broken; the API and UI they depend on are
-verified working (item 8).
+Items 4-6 below are external packaging steps -- a hosted URL, a `.docx`
+writeup, and screenshot files -- not code in this repository. Item 4 is done
+and deployed; items 5 and 6 are still **pending** because they have not been
+produced yet, not because anything in the codebase is broken. The API and UI
+they depend on are verified working (item 8).
 
-## 4. Deployed demo URL -- **pending**
+## 4. Deployed demo URL -- **done, re-verify before submitting**
 
-- [ ] Deploy per `docs/DEPLOYMENT.md` (frontend + API, or the local-only
-  fallback if no hosting is available) and record the URL here or in your
-  submission form.
-- [ ] Confirm `GET <api-url>/api/health` returns `{"status": "ok"}` from
-  outside your own machine before sharing the URL.
-- [ ] Confirm the deployed frontend's `/final-benchmark` page loads real
-  data (not an error state) from a clean browser session (no dev-only
-  cookies/cache).
+- [x] Deployed per `docs/DEPLOYMENT.md`. URLs:
+  - Frontend: <https://mastercard-aegis.vercel.app>
+  - API: <https://mastercard-aegis.onrender.com>
+  - Repository: <https://github.com/tensorforgee/mastercard-aegis>
+- [x] `GET https://mastercard-aegis.onrender.com/api/health` returns
+  `{"status": "ok"}` from outside the dev machine.
+- [x] The deployed frontend serves the current judge-facing UI -- verified by
+  string-matching the served production bundle for markers from each UI pass
+  ("Stress-test fraud models", "Where AEGIS fits", "Leave One Attack Family
+  Out", "Recorded hardening snapshots", "LOAFO evaluation evidence").
+- [ ] **Re-run this check immediately before submitting**, from a clean
+  browser session, after any further push: Overview, Attack Lab, Evolution
+  and Results all load real data rather than an error state.
+- [ ] Note for the demo: the API is on a free tier and cold-starts in roughly
+  25 seconds. The Overview hero, closed-loop diagram and "Where AEGIS fits"
+  render immediately regardless, but warm the API by loading the site once
+  before judges do.
 
 ## 5. Walkthrough .docx -- **pending**
 
 - [ ] Write the walkthrough document following `docs/DEMO_FLOW.md`'s
   section order (opening, Overview, Attack Taxonomy, Round-0, hardening,
-  cross-family results, LOAFO, hardest survivors, Final Benchmark,
-  closing).
+  cross-family results, LOAFO, hardest survivors, what the benchmark found,
+  closing). `docs/JUDGE_DEMO_60S.md` is the condensed version if the format
+  wants a short summary alongside it.
 - [ ] Every number quoted in the document matches
   `submission/artifacts/data/reports/final_benchmark_summary.json` exactly
   -- cross-check against `docs/CLAIMS_AUDIT.md`'s "Supported claims"
@@ -93,10 +103,12 @@ verified working (item 8).
 
 - [ ] Capture, at minimum: Overview twice -- once showing the static hero
   plus the closed-loop diagram, and once scrolled to the three evidence
-  cards (attack landscape, GenAI coverage, Defender v3 + LOAFO); Evolution
-  (real closed-loop timeline including Round-0 and the narrative panel);
-  Results (model comparison cards, recall-by-family chart, LOAFO table,
-  hardest-survivors table).
+  cards (attack landscape, GenAI coverage, Defender v3 + LOAFO); Attack Lab
+  (family selector, GenAI bounded-mutation panel showing applied vs rejected,
+  recorded-confrontation scenario identity block); Evolution (closed-loop
+  timeline including Round-0 and the "what actually happened" panel); Results
+  (the "Partial generalization" verdict, LOAFO table, the fresh-scenario
+  family chart, hardest-survivor cards).
 - [ ] Capture with the API reachable (real data visible, not an error
   state) and at a resolution that keeps text legible.
 - [ ] Name files descriptively (e.g. `01-overview.png`,
@@ -118,9 +130,13 @@ present from:
   -- with no error or empty state.
 - [ ] `/co-evolution` shows all six real closed-loop stages as "Real", not
   "Not run".
-- [ ] `/final-benchmark` (Results) shows the model comparison table, the
-  recall-by-family chart, the LOAFO table, and a non-empty hardest-survivors
-  table.
+- [ ] `/attack-lab` (Attack Lab) shows all three family tabs, the GenAI
+  bounded-mutation panel (proposed / applied / rejected), and the recorded
+  confrontation's scenario-identity block; "Run replay" streams events.
+- [ ] `/final-benchmark` (Results) shows the "Partial generalization"
+  verdict, the LOAFO table, the fresh-scenario family chart **with bars
+  actually drawn** (all three family pairs), the model comparison, and
+  non-empty hardest-survivor cards.
 - [ ] Click through to one real attack blueprint on `/attack-taxonomy` and
   confirm its confrontation results render.
 - [ ] Open the browser console and confirm no errors on any of the above

@@ -52,6 +52,28 @@ rerunning the cited script.
   any prior artifact, and every model's file hash was verified unchanged
   before/after scoring -- these are asserted and tested
   (`tests/test_loafo_benchmark.py`), not just claimed in prose.
+* **Evidence types do not share a fixed scenario relationship, and the UI
+  labels each one rather than assuming.** Verified from the artifacts: the
+  three synthetic-identity bust-out confrontations use three *different*
+  scenario ids (`bustout-ed290e12-20260101/-20260825/-20260901`) -- same
+  blueprint, three separate scenario instances -- so the v1/v2/v3 per-family
+  bars are recorded hardening snapshots, **not** a same-scenario comparison.
+  By contrast each LOAFO fold report holds exactly one fresh scenario scored
+  by both the fold model and Defender v3, so *that* comparison is
+  like-for-like and is stated as such. The mule and adaptive replays are read
+  from those same fold reports. Guided-generation scenarios are separate again.
+  Evidence: `submission/artifacts/data/synthetic/confrontations/*/confrontation.json`,
+  `submission/artifacts/models/loafo-*/loafo_fold_report.json`.
+* **The v1/v2/v3 native-test comparison is same-*split*, which is a different
+  and weaker guarantee than same-scenario.** All three models were evaluated
+  on the identical untouched PaySim test split (`dataset_id`
+  `paysim-16910f90577b-086de09508a4` in all three `evaluation_test.json`
+  files), so those metrics are directly comparable to each other -- but that
+  says nothing about per-family confrontation scenarios.
+* **Defender v3 is frozen wherever it is scored.** Every confrontation and
+  LOAFO scoring pass verifies the model file's hash unchanged before and
+  after, so no reported result can be a quiet retrain. There is no Defender
+  v4 in this repository.
 * **The real API and UI serve exactly what is on disk, computed live, with
   every real section clearly labeled** ("Real pipeline data" vs.
   "Simulated demo (not real data)"), and degrade to an explicit error or
@@ -146,6 +168,14 @@ that this evidence does not support. Do not say or write these.
 * "Defender v3 generalizes to unseen attacks" (unqualified -- it generalizes
   *partially*, and specifically failed to generalize to mule-network
   structuring in this benchmark).
+* "Defender v1 -> v2 -> v3 caught progressively more of *the same* attack"
+  -- the three bust-out confrontations are three different persisted
+  scenarios. They document the system's evolution; they are not a
+  same-scenario causal chart and must never be drawn as one.
+* "Every escape shown in the UI trained the next hardening round" -- some
+  displayed escapes are LOAFO *evaluation* evidence, which never feeds
+  training. Promotion is only claimed where the persisted experiment
+  actually promoted the rows as hard positives.
 * "Cross-family hardening fixes the mule-network blind spot" -- it does
   not: the LOAFO fold trained without mule data still caught 0 of 12.
   Cross-family hardening improved the *native test split* and two of three
