@@ -23,6 +23,16 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-md bg-[var(--color-surface-sunken)] ${className}`} />;
 }
 
+export function Spinner({ className = "" }: { className?: string }) {
+  return (
+    <span
+      role="status"
+      aria-label="Loading"
+      className={`inline-block h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--color-border-strong)] border-t-transparent ${className}`}
+    />
+  );
+}
+
 export function SkeletonRows({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-2">
