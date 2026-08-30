@@ -7,6 +7,7 @@ import { DefenderProgressionTrend } from "../components/real/DefenderProgression
 import { HardestEvasionsScatter } from "../components/real/HardestEvasionsScatter";
 import { HardestEvasionsTable } from "../components/real/HardestEvasionsTable";
 import { LoafoResultsTable } from "../components/real/LoafoResultsTable";
+import { OperatingPointPanel } from "../components/real/OperatingPointPanel";
 import { RecallByFamilyChart } from "../components/real/RecallByFamilyChart";
 import { PageHeader, SectionHeader } from "../components/ui/PageHeader";
 import { Callout, Panel } from "../components/ui/Panel";
@@ -186,11 +187,29 @@ export function FinalBenchmarkPage() {
               </Reveal>
             )}
 
+            {summary.model_comparison && (
+              <Reveal>
+                <section>
+                  <SectionHeader
+                    eyebrow="Evidence 2 · the operating point"
+                    title="The same detector catches 78% or 93% of fraud, depending only on where the threshold sits."
+                  >
+                    Both readings come from the same persisted evaluation. Nothing here is a re-run
+                    or a projection — it is the shipped model, read at the operating point a
+                    payments team would actually choose.
+                  </SectionHeader>
+                  <Panel>
+                    <OperatingPointPanel comparison={summary.model_comparison} />
+                  </Panel>
+                </section>
+              </Reveal>
+            )}
+
             {summary.fresh_family_performance.length > 0 && (
               <Reveal>
                 <section>
                   <SectionHeader
-                    eyebrow="Evidence 2 · per family"
+                    eyebrow="Evidence 3 · per family"
                     title="Where the detector never saw a family, it can miss that family entirely."
                     actions={
                       <SourceLink source={summary.fresh_family_performance[0]?.source_artifact} />
@@ -207,7 +226,7 @@ export function FinalBenchmarkPage() {
               <Reveal>
                 <section>
                   <SectionHeader
-                    eyebrow="Evidence 3 · leave one family out"
+                    eyebrow="Evidence 4 · leave one family out"
                     title="Two families transferred. Mule-network structuring did not."
                     actions={<SourceLink source={summary.loafo.source_artifact} />}
                   />
