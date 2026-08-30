@@ -1,12 +1,12 @@
 import { useCallback } from "react";
-import { fetchEvolution, fetchExperiments, fetchHardestEvasions } from "../api/client";
+import { Link } from "react-router-dom";
+import { fetchEvolution, fetchExperiments } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO } from "../api/types";
 import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { OutcomeBadge } from "../components/lab/ReplayStream";
 import { LoopDiagram } from "../components/loop/LoopDiagram";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { HardestEvasionsTable } from "../components/real/HardestEvasionsTable";
 import { MockDataBadge } from "../components/real/RealBadge";
 import { RealEvolutionTimeline } from "../components/real/RealEvolutionTimeline";
 import { Card } from "../components/ui/Card";
@@ -14,13 +14,102 @@ import { Details } from "../components/ui/Details";
 import { useLoop } from "../state/LoopContext";
 
 /**
- * Evolution: the escape story, told with real numbers.
+ * Evolution answers one question: *what happened during the loop?*
  *
- * The lead is what got through and whether hardening closed it -- that is the
- * finding. The browser-side mock demo is still here (it is the fallback if
- * the API dies mid-demo) but is collapsed so it cannot be mistaken for, or
- * visually compete with, the real result.
+ * It is deliberately not a second Results page. Generalization evidence
+ * (LOAFO, the model-comparison table, the full hardest-survivor ranking) lives
+ * on Results and is linked to from here rather than repeated.
+ *
+ * Scenario-identity rule, which drives the wording throughout:
+ *
+ *  * A core-only family (bust-out) has one confrontation artifact *per
+ *    defender generation*, each with its own scenario id -- same blueprint,
+ *    three different scenario instances. Those are recorded snapshots, NOT a
+ *    same-scenario v1 -> v2 -> v3 comparison, and must never be drawn as a
+ *    causal chart.
+ *  * A LOAFO family (mule, adaptive) has one fold report holding exactly one
+ *    fresh scenario, scored by both the fold model and Defender v3. That one
+ *    *is* same-scenario, and `loafo_summary.json`'s methodology says so.
+ *
+ * The copy follows `progression[].role` rather than assuming either case.
  */
+
+/** Roles that mean "this row is a core defender generation", not a fold model. */
+const CORE_ROLES = new Set(["baseline_v1", "defender_v2", "defender_v3"]);
+
+function FamilyHistory({ experiment }: { experiment: ExperimentDTO }) {
+  const coreOnly = experiment.progression.every((p) => CORE_ROLES.has(p.role));
+
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-[var(--color-ink)]">{experiment.label}</p>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] tabular-nums">
+          <span className="text-[var(--color-risk-low-600)]">
+            {experiment.current_defender?.caught_count ?? experiment.caught_count} caught
+          </span>
+          <span className="text-[var(--color-ink-faint)]">·</span>
+          <span className="text-[var(--color-risk-high-600)]">
+            {experiment.current_defender?.escaped_count ?? experiment.escaped_count} escaped
+          </span>
+          <span className="text-[var(--color-ink-faint)]">by Defender v3</span>
+        </div>
+      </div>
+
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-faint)]">
+        {coreOnly ? "Recorded hardening snapshots" : "Held-out fold vs Defender v3"}
+      </p>
+
+      <div className="mt-1.5 space-y-1.5">
+        {experiment.progression.map((p) => (
+          <div key={p.label + p.model_version} className="flex items-center gap-2">
+            <span className="w-28 shrink-0 truncate text-[11px] text-[var(--color-ink-muted)] sm:w-44">
+              {p.label}
+            </span>
+            <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--color-border)]">
+              <div
+                className="h-full rounded-full bg-[var(--color-risk-low-600)]"
+                style={{ width: `${Math.max(1, p.recall * 100)}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[11px] font-semibold tabular-nums text-[var(--color-ink)]">
+              {p.caught_count}/{p.fraud_count}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-1.5 text-[10px] leading-snug text-[var(--color-ink-faint)]">
+        {coreOnly
+          ? "One confrontation was recorded per defender generation against the same blueprint, each with its own persisted scenario. These document the system's evolution — they are not automatically same-scenario model comparisons."
+          : "Both rows were scored on the same fresh held-out scenario."}
+      </p>
+
+      {experiment.hardest_survivor && (
+        <div className="mt-2.5 border-t border-[var(--color-border)] pt-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <OutcomeBadge caught={false} />
+            <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[var(--color-ink-muted)]">
+              {experiment.hardest_survivor.transaction_id}
+            </span>
+            <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[var(--color-ink)]">
+              {(experiment.hardest_survivor.detector_risk_score * 100).toFixed(1)}% risk
+            </span>
+          </div>
+          {/* Role is read from the artifact this row came from, never inferred
+              from caught/escaped status. A confrontation escape *may* have been
+              promoted; a LOAFO fold escape is evaluation evidence and never
+              feeds training. Neither is asserted as promoted here. */}
+          <p className="mt-1 text-[10px] leading-snug text-[var(--color-ink-faint)]">
+            {coreOnly
+              ? "Recorded escape — exposes a blind spot. May inform hardening when promoted as a hard positive."
+              : "LOAFO evaluation evidence — exposes a blind spot. Evaluation only; does not imply retraining."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EscapeSummary({ experiments }: { experiments: ExperimentDTO[] }) {
   // Current-defender counters, not the per-experiment headline: a LOAFO
@@ -61,57 +150,14 @@ function EscapeSummary({ experiments }: { experiments: ExperimentDTO[] }) {
         </div>
       </div>
 
+      <p className="text-[11px] leading-snug text-[var(--color-ink-faint)]">
+        Defender v3&rsquo;s counts across each family&rsquo;s fresh scenario &mdash; 3&ndash;12
+        fraud events each, so these are directional, not statistically powered.
+      </p>
+
       <div className="space-y-2.5">
         {experiments.map((e) => (
-          <div
-            key={e.attack_family}
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-[var(--color-ink)]">{e.label}</p>
-              <div className="flex items-center gap-2 text-[11px] tabular-nums">
-                <span className="text-[var(--color-risk-low-600)]">
-                  {e.current_defender?.caught_count ?? e.caught_count} caught
-                </span>
-                <span className="text-[var(--color-ink-faint)]">·</span>
-                <span className="text-[var(--color-risk-high-600)]">
-                  {e.current_defender?.escaped_count ?? e.escaped_count} escaped
-                </span>
-                <span className="text-[var(--color-ink-faint)]">by v3</span>
-              </div>
-            </div>
-
-            <div className="mt-2 space-y-1.5">
-              {e.progression.map((p) => (
-                <div key={p.label + p.model_version} className="flex items-center gap-2">
-                  <span className="w-32 shrink-0 truncate text-[11px] text-[var(--color-ink-muted)] sm:w-44">
-                    {p.label}
-                  </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-border)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--color-risk-low-600)]"
-                      style={{ width: `${Math.max(1, p.recall * 100)}%` }}
-                    />
-                  </div>
-                  <span className="w-16 shrink-0 text-right text-[11px] font-semibold tabular-nums text-[var(--color-ink)]">
-                    {(p.recall * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {e.hardest_survivor && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-2">
-                <OutcomeBadge caught={false} />
-                <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[var(--color-ink-muted)]">
-                  {e.hardest_survivor.transaction_id}
-                </span>
-                <span className="text-[11px] font-semibold tabular-nums text-[var(--color-ink)]">
-                  {(e.hardest_survivor.detector_risk_score * 100).toFixed(1)}% risk
-                </span>
-              </div>
-            )}
-          </div>
+          <FamilyHistory key={e.attack_family} experiment={e} />
         ))}
       </div>
     </div>
@@ -123,29 +169,56 @@ export function CoEvolutionPage() {
 
   const evolutionFetch = useCallback((s: AbortSignal) => fetchEvolution(s), []);
   const experimentsFetch = useCallback((s: AbortSignal) => fetchExperiments(s), []);
-  const hardestFetch = useCallback((s: AbortSignal) => fetchHardestEvasions(25, s), []);
 
   const evolution = useApiResource(evolutionFetch, []);
   const experiments = useApiResource(experimentsFetch, [], (d) => d.experiments.length === 0);
-  const hardest = useApiResource(hardestFetch, [], (d) => d.evasions.length === 0);
 
   return (
     <div className="space-y-4">
       <header>
         <h1 className="text-xl font-bold text-[var(--color-ink)] sm:text-2xl">Evolution</h1>
         <p className="text-xs text-[var(--color-ink-muted)]">
-          What escaped, and whether hardening closed it.
+          What happened during the red-team / blue-team loop.
         </p>
       </header>
 
       <Card>
-        <h2 className="mb-3 text-sm font-semibold text-[var(--color-ink)]">Escape story</h2>
-        <ApiStateSection
-          state={experiments}
-          emptyTitle="No experiments yet"
-          emptyBody="No persisted confrontation or LOAFO artifacts found."
-          render={(data) => <EscapeSummary experiments={data.experiments} />}
-        />
+        <p className="text-sm leading-relaxed text-[var(--color-ink)]">
+          AEGIS records how attacks expose detector blind spots and how those failures feed the
+          next hardening cycle.
+        </p>
+        <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] font-medium text-[var(--color-ink-muted)]">
+          {[
+            "attack generated",
+            "Defender misses fraud",
+            "escapes expose blind spots",
+            "promoted escapes harden the defender",
+            "next confrontation",
+            "GenAI proposes a bounded next generation",
+          ].map((step, i, all) => (
+            <span key={step} className="inline-flex items-center gap-1.5">
+              <span className={i % 2 === 0 ? "text-[var(--color-attack-600)]" : "text-[var(--color-defend-600)]"}>
+                {step}
+              </span>
+              {i < all.length - 1 && (
+                <span aria-hidden="true" className="text-[var(--color-ink-faint)]">
+                  &rarr;
+                </span>
+              )}
+            </span>
+          ))}
+        </p>
+        <p className="mt-2 text-[11px] leading-snug text-[var(--color-ink-faint)]">
+          This is a record of what the loop did, not a claim that each cycle improved the
+          detector. Whether the hardening actually generalized is answered on{" "}
+          <Link
+            to="/final-benchmark"
+            className="font-semibold text-[var(--color-accent-600)] hover:underline"
+          >
+            Results
+          </Link>
+          .
+        </p>
       </Card>
 
       <Card>
@@ -158,24 +231,36 @@ export function CoEvolutionPage() {
         />
       </Card>
 
-      <Card padded={false}>
-        <h2 className="px-5 pt-5 text-sm font-semibold text-[var(--color-ink)]">
-          Hardest surviving attacks
+      <Card>
+        <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+          What escaped, per attack family
         </h2>
-        <div className="overflow-x-auto px-5 pb-5 pt-3">
-          <ApiStateSection
-            state={hardest}
-            emptyTitle="No surviving evasions"
-            emptyBody="Fills in once a confrontation produces a credible evasion."
-            render={(data) => (
-              <HardestEvasionsTable
-                evasions={data.evasions}
-                totalAvailable={data.total_available}
-              />
-            )}
-          />
-        </div>
+        <p className="mb-3 mt-0.5 text-xs leading-snug text-[var(--color-ink-muted)]">
+          Recorded escapes reveal detector blind spots. Where the persisted experiment promoted
+          them as hard positives, they informed a later hardening round.{" "}
+          <strong className="text-[var(--color-ink)]">
+            LOAFO entries are evaluation evidence only and do not imply retraining.
+          </strong>
+        </p>
+        <ApiStateSection
+          state={experiments}
+          emptyTitle="No experiments yet"
+          emptyBody="No persisted confrontation or LOAFO artifacts found."
+          render={(data) => <EscapeSummary experiments={data.experiments} />}
+        />
       </Card>
+
+      <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-2.5 text-[11px] leading-snug text-[var(--color-ink-muted)]">
+        The full hardest-surviving-attack ranking, the v1/v2/v3 native-test comparison and the
+        LOAFO generalization benchmark all live on{" "}
+        <Link
+          to="/final-benchmark"
+          className="font-semibold text-[var(--color-accent-600)] hover:underline"
+        >
+          Results
+        </Link>{" "}
+        so they are stated once, in the place that interprets them.
+      </p>
 
       <Details summary="Interactive browser demo (simulated, not real data)">
         <div className="space-y-3">
@@ -200,7 +285,13 @@ export function CoEvolutionPage() {
               </span>
             )}
           </div>
-          <LoopDiagram active={latest ? "retrain" : "identify"} compact />
+          {/* LoopDiagram lays six fixed-width stages in a row; give it its own
+              scroll context so it cannot clip inside this panel at 375px. */}
+          <div className="overflow-x-auto pb-1">
+            <div className="min-w-[500px]">
+              <LoopDiagram active={latest ? "retrain" : "identify"} compact />
+            </div>
+          </div>
           <AttackFamilySelector value={family} onChange={setFamily} />
           <p>
             A deterministic client-side toy, kept as a fallback if the API becomes unreachable

@@ -23,10 +23,15 @@ function familyLabel(family: string): string {
  * unit conversion (fraction -> percent) for the axis.
  */
 export function RecallByFamilyChart({ families }: { families: FreshFamilyPerformanceDTO[] }) {
+  // Short, path-safe `dataKey`s with the human label supplied via `name`.
+  // Recharts resolves `dataKey` as an object path, so long keys full of spaces
+  // and parentheses are fragile; the displayed legend/tooltip text is
+  // unchanged. (This was not what broke the bars -- see `isAnimationActive`
+  // below.)
   const data = families.map((f) => ({
     family: familyLabel(f.attack_family),
-    "Defender v3 (trained on this family)": Math.round((f.defender_v3.recall ?? 0) * 1000) / 10,
-    "LOAFO (family held out)": Math.round((f.fold_model.recall ?? 0) * 1000) / 10,
+    defenderV3: Math.round((f.defender_v3.recall ?? 0) * 1000) / 10,
+    loafoFold: Math.round((f.fold_model.recall ?? 0) * 1000) / 10,
   }));
 
   return (
@@ -52,8 +57,26 @@ export function RecallByFamilyChart({ families }: { families: FreshFamilyPerform
           formatter={(value) => `${value}%`}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="Defender v3 (trained on this family)" fill="var(--color-defend-600)" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="LOAFO (family held out)" fill="var(--color-attack-600)" radius={[4, 4, 0, 0]} />
+        {/* `isAnimationActive={false}` is load-bearing, not cosmetic: with
+            recharts 3.10 + React 19 the entry animation never commits inside a
+            ResponsiveContainer here, so `recharts-bar-rectangles` mounted empty
+            and the chart rendered grid, axes and legend but no bars at all.
+            Verified against the pre-existing code -- this was already broken
+            before this page was restructured. */}
+        <Bar
+          dataKey="defenderV3"
+          isAnimationActive={false}
+          name="Defender v3 (trained on this family)"
+          fill="var(--color-defend-600)"
+          radius={[4, 4, 0, 0]}
+        />
+        <Bar
+          dataKey="loafoFold"
+          isAnimationActive={false}
+          name="LOAFO (family held out)"
+          fill="var(--color-attack-600)"
+          radius={[4, 4, 0, 0]}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

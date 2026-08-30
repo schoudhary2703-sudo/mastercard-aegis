@@ -105,8 +105,9 @@ Point at the comparison table.
 
 ## 6. LOAFO: generalization, not memorization (45-60s)
 
-Point at the **Defender v3 recall by attack family** chart, then the LOAFO
-table below it.
+Point at the **LOAFO** table at the top of `/final-benchmark`, then the
+**"Fresh LOAFO scenarios: family-held-out fold vs Defender v3"** chart
+below it -- both bars in each pair come from the same fresh scenario.
 
 > "Here's the question that actually matters: if we train on two families
 > and hide the third completely -- zero training rows -- does hardening
@@ -120,16 +121,19 @@ table below it.
 
 ## 7. Hardest surviving attacks (30s)
 
-Scroll to the **Hardest surviving attacks** table on the same page.
+Scroll to the **Hardest surviving attacks** cards on the same page -- the top
+three, each with its family, scenario id, risk score and detector action. The
+full ranking is one click away under "Full ranking".
 
 > "Every one of these is a real fraudulent transaction that evaded a real
-> detector in this benchmark, ranked by hardness -- transaction id, family,
-> risk score, fidelity, which model, whether it survived."
+> detector in this benchmark, ranked by hardness. Note what's missing: we
+> don't tell you *why* each one survived, because that isn't persisted and
+> we won't invent it."
 
-## 8. Final Benchmark summary (30s)
+## 8. What the benchmark found (30s)
 
-Scroll to the bottom of `/final-benchmark` and expand the collapsed
-**"Interpretation and limitations"** section.
+Scroll to **"What this benchmark found"** at the bottom of `/final-benchmark`.
+The interpretation is on the page; "Scope and limitations" expands below it.
 
 > "This text isn't written by us -- it's assembled from the same numbers
 > you just saw: the F1 delta, the LOAFO verdict, the weakest family. And it

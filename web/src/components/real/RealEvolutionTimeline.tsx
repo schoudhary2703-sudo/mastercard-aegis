@@ -30,29 +30,38 @@ function StageCard({ stage, index }: { stage: EvolutionStageDTO; index: number }
   const artifact = sourceArtifact(stage);
 
   return (
+    // `min-w-0` + `break-all` on the mono lines: model versions and report ids
+    // are long unbreakable tokens, and without these the card's min-content
+    // width exceeds its grid track and pushes the timeline into overflow at
+    // 375px.
     <div
-      className={`flex min-h-[10rem] flex-col rounded-lg border border-t-2 p-3 ${
+      className={`flex min-h-[10rem] min-w-0 flex-col rounded-lg border border-t-2 p-3 ${
         notRun
           ? "border-dashed border-t-[var(--color-border)] border-[var(--color-border)] opacity-60"
           : `${SIDE_ACCENT[side]} border-[var(--color-border)] bg-[var(--color-surface)]`
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2">
+      {/* `flex-wrap` so the status badge drops to its own line on a narrow
+          card rather than squeezing the title into a few pixels; `break-words`
+          so a long single word still cannot overflow. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+        <div className="flex min-w-0 items-start gap-2">
           <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-sunken)] text-[10px] font-semibold text-[var(--color-ink-muted)]">
             {index + 1}
           </span>
-          <p className="text-xs font-semibold leading-tight text-[var(--color-ink)]">{stage.label}</p>
+          <p className="min-w-0 break-words text-xs font-semibold leading-tight text-[var(--color-ink)]">
+            {stage.label}
+          </p>
         </div>
         <Badge variant={notRun ? "neutral" : side === "attack" ? "attack" : "defend"}>
           {notRun ? "Not run" : "Real"}
         </Badge>
       </div>
 
-      <div className="mt-2 flex-1 space-y-1 text-[11px] leading-snug text-[var(--color-ink-muted)]">
+      <div className="mt-2 min-w-0 flex-1 space-y-1 text-[11px] leading-snug text-[var(--color-ink-muted)]">
         {stage.model && (
           <>
-            <p className="font-mono">{stage.model.model_version}</p>
+            <p className="break-all font-mono">{stage.model.model_version}</p>
             {stage.model.evaluation_test && (
               <p>
                 Test recall {(stage.model.evaluation_test.overall.recall * 100).toFixed(1)}% ·
@@ -64,7 +73,7 @@ function StageCard({ stage, index }: { stage: EvolutionStageDTO; index: number }
 
         {stage.confrontation && (
           <>
-            <p className="font-mono">{stage.confrontation.report_id}</p>
+            <p className="break-all font-mono">{stage.confrontation.report_id}</p>
             <p>
               {stage.confrontation.caught_count}/{stage.confrontation.fraud_count} fraud caught (
               {(stage.confrontation.fraud_recall * 100).toFixed(0)}% recall)
@@ -74,7 +83,7 @@ function StageCard({ stage, index }: { stage: EvolutionStageDTO; index: number }
 
         {stage.adaptive_round && (
           <>
-            <p className="font-mono">{stage.adaptive_round.report_id}</p>
+            <p className="break-all font-mono">{stage.adaptive_round.report_id}</p>
             <p>{stage.adaptive_round.candidate_count} mutated candidate(s) evaluated</p>
             {stage.adaptive_round.after?.fitness != null && (
               <p>Best candidate fitness {stage.adaptive_round.after.fitness.toFixed(3)}</p>
@@ -96,7 +105,7 @@ function StageCard({ stage, index }: { stage: EvolutionStageDTO; index: number }
       </div>
 
       {artifact && (
-        <p className="mt-2 truncate border-t border-[var(--color-border)] pt-1.5 font-mono text-[10px] text-[var(--color-ink-faint)]">
+        <p className="mt-2 break-all border-t border-[var(--color-border)] pt-1.5 font-mono text-[10px] text-[var(--color-ink-faint)]">
           {artifact}
         </p>
       )}

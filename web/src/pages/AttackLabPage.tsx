@@ -363,11 +363,17 @@ export function AttackLabPage() {
       ? "outcome"
       : undefined;
 
-  // A LOAFO family's progression compares a handicapped fold model against the
-  // core defender on the SAME fresh scenario; a bust-out family's compares the
-  // three core generations on the same confrontation. Both are same-scenario,
-  // but only one of them is a "defender progression", so the heading follows
-  // the data rather than assuming.
+  // These two cases are NOT the same kind of comparison, and conflating them
+  // would manufacture a causal chart that the artifacts do not support:
+  //
+  //  * A LOAFO family (mule, adaptive) has one fold report holding exactly one
+  //    fresh scenario, and both the fold model and Defender v3 were scored on
+  //    it. Same-scenario, and `loafo_summary.json`'s methodology says so.
+  //  * A core-only family (bust-out) has one confrontation artifact *per
+  //    defender generation*, each with its own scenario id
+  //    (bustout-...-20260101 / -20260825 / -20260901). Same blueprint, three
+  //    different scenario instances -- a recorded history, not a same-scenario
+  //    progression.
   const progressionIsCoreOnly =
     selected?.progression.every((p) => CORE_ROLES.has(p.role)) ?? true;
 
@@ -584,12 +590,23 @@ export function AttackLabPage() {
                   <Card>
                     <h3 className="text-sm font-semibold text-[var(--color-ink)]">
                       {progressionIsCoreOnly
-                        ? "Defender progression"
+                        ? "Recorded hardening snapshots"
                         : "Held-out fold vs Defender v3"}
                     </h3>
                     <p className="mb-2 mt-0.5 text-[11px] leading-snug text-[var(--color-ink-faint)]">
-                      Every row below was scored on this same scenario (
-                      <span className="break-all font-mono">{selected.scenario_id}</span>).
+                      {progressionIsCoreOnly ? (
+                        <>
+                          One confrontation was recorded per defender generation against the same
+                          blueprint, each with its own persisted scenario. These document the
+                          system&rsquo;s evolution &mdash; they are not automatically
+                          same-scenario model comparisons.
+                        </>
+                      ) : (
+                        <>
+                          Both rows were scored on this same fresh scenario (
+                          <span className="break-all font-mono">{selected.scenario_id}</span>).
+                        </>
+                      )}
                     </p>
                     <div className="space-y-2">
                       {selected.progression.map((p) => (

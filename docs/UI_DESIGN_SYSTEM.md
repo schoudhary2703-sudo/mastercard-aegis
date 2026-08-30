@@ -72,10 +72,10 @@ Routes are unchanged; only the nav labels are short.
 | `/attack-lab` | Attack Lab -- one Red-Team / Blue-Team confrontation per family: selector, static attack narrative, GenAI evidence, then the recorded replay. | Yes (no mock) |
 | `/attack-studio` | Real attacks for the selected family, plus pick-a-family / generate-a-batch mock demo. | Yes (+ mock demo) |
 | `/live-detection` | Real recent detections, plus a standalone mock detection pass. | Yes (+ mock demo) |
-| `/co-evolution` | Real closed-loop lineage and hardest surviving attacks; **hero mock demo** below runs the loop round by round. | Yes (+ mock demo) |
+| `/co-evolution` | Evolution -- what happened during the loop: verdict, closed-loop timeline, what escaped per family. Mock demo collapsed at the bottom. | Yes (+ mock demo) |
 | `/attack-taxonomy` | Real attack blueprints and confrontation results, plus illustrative reference blueprints. | Yes (+ mock demo) |
 | `/evaluation` | Real per-model `EvaluationResult`s (v1/v2/v3), plus the latest mock Co-Evolution round's. | Yes (+ mock demo) |
-| `/final-benchmark` | Results -- v1 vs v2 vs v3 comparison, recall by family, LOAFO results, hardest surviving attacks. | Yes (no mock) |
+| `/final-benchmark` | Results -- did the hardening generalize: verdict, LOAFO, fresh-scenario family chart, native-test model comparison, hardest survivors, limitations. | Yes (no mock) |
 
 ### Attack Lab: one confrontation, in story order
 
@@ -105,14 +105,62 @@ Because Attack Lab reads only `/api/experiments` and `/api/genai`, and the
 LOAFO comparison's own scenario id lives in `/api/benchmark`, the screen
 deliberately does **not** assert whether a given replay is or is not the
 LOAFO scenario. Do not re-introduce that claim in either direction without
-both ids in hand. The "progression" card heading does follow the data: core
-generations render as "Defender progression", a held-out fold renders as
-"Held-out fold vs Defender v3", and both state the shared scenario id.
+both ids in hand. The progression card's heading does follow the data: a
+held-out fold renders as "Held-out fold vs Defender v3" and states the shared
+scenario id, because that comparison really is same-scenario; core defender
+generations render as "Recorded hardening snapshots" and say explicitly that
+each generation has its own persisted scenario, so they are not automatically
+same-scenario model comparisons.
 
 Mutation evidence distinguishes **proposed / applied / rejected**, with each
 rejection's reason printed verbatim from the artifact -- reasons differ per
 record and must never be paraphrased into a stronger claim about bounds. A
 family with no rejected mutation renders no rejection block.
+
+### Evolution vs Results: two questions, no overlap
+
+The two pages are split by question, and neither repeats the other.
+
+**Evolution** answers *what happened during the loop?* Order: a one-line
+verdict, the closed-loop timeline (with its "what actually happened"
+narrative), then what escaped per family. It states plainly that it is a
+record of what the loop did, **not** a claim that each cycle improved the
+detector. The LOAFO table, the native-test model comparison and the full
+hardest-survivor ranking are deliberately absent here -- Evolution links to
+Results for them so each figure is stated once, in the place that interprets
+it.
+
+**Results** answers *did the hardening generalize?* Order: verdict ->
+LOAFO -> fresh-scenario family chart -> native-test model comparison ->
+hardest survivors -> what the benchmark found. LOAFO leads because it is the
+actual contribution; the native PaySim table is supporting context, not the
+headline. Mean LOAFO recall is never labelled as Defender v3's recall or as a
+production fraud-detection rate.
+
+Two scenario-identity facts drive the wording and must not be blurred:
+
+* **LOAFO fold vs Defender v3 is same-scenario.** Each fold report holds
+  exactly one fresh scenario and both models were scored on it, so the
+  comparison is like-for-like and the UI says so.
+* **Per-generation confrontation snapshots are not.** A core-only family
+  (bust-out) has one confrontation artifact *per* defender generation, each
+  with its own scenario id -- same blueprint, three different scenario
+  instances. Those render as "Recorded hardening snapshots" with an explicit
+  note that they are not automatically same-scenario model comparisons, and
+  must never be drawn as a causal v1 -> v2 -> v3 chart. The native PaySim
+  model comparison is a third, separate case: same *split* (one `dataset_id`),
+  which is a real guarantee and is stated as such.
+
+Model-comparison honesty is computed, not asserted: the page derives which
+generation leads each native-test metric from the DTO and prints it, because
+the honest answer is mixed (baseline v1 still leads PR-AUC, recall and F1;
+Defender v3 leads precision, FPR and recall @ 0.1% FPR). Hardening changed the
+operating trade-off; it did not uniformly improve every metric, and the page
+says so before a judge has to ask.
+
+Hardest survivors lead with the top three as cards (family, scenario id, risk,
+detector action) with the full ranking behind `Details`. No explanation of
+*why* a transaction survived is persisted, so none is shown.
 
 ### Overview: cold-start-safe by construction
 
