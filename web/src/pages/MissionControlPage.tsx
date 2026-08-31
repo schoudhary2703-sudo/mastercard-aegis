@@ -3,30 +3,40 @@ import { Link } from "react-router-dom";
 import { fetchBenchmark, fetchGenAI, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { GenAIFamilyCoverage } from "../components/genai/GenAIFamilyCoverage";
-import { LiveGenAIEvidence } from "../components/genai/LiveGenAIEvidence";
 import { ClosedLoopFlow } from "../components/loop/ClosedLoopFlow";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { Details } from "../components/ui/Details";
 import { StatTile } from "../components/ui/StatTile";
+import { LOOP_STEPS, RESULTS_STEP } from "../nav/journey";
 
 /**
  * Overview: the 15-second read for a judge who knows nothing about AEGIS.
  *
- * Three deliberate properties:
+ * Four deliberate properties. The first three are load-bearing and unchanged:
  *
  * 1. **The hero, the loop, and "Where AEGIS fits" are static.** They contain
  *    no number read from an artifact, so a cold backend produces a page that
  *    still explains the whole system instead of a screen of skeletons.
  * 2. **Evidence is scoped per endpoint.** `/api/landscape`, `/api/genai` and
- *    `/api/benchmark` each get their own card and their own loading/error
- *    state, so a slow or failed landscape read cannot hide the benchmark.
+ *    `/api/benchmark` each get their own state, so a slow or failed landscape
+ *    read cannot hide the benchmark.
  * 3. **No cross-scenario aggregate.** This screen deliberately does not sum
  *    caught/escaped counts across experiments into a headline "recall": those
  *    are separate scenarios scored by different models, and one number over
  *    them is confusable with PaySim test recall and with LOAFO mean recall.
- *    Every figure below names the exact evaluation it came from.
+ *
+ * 4. **The result comes before the mechanism.** The measured outcome used to
+ *    sit fifth, below ~600 words explaining how the loop works, so a reader
+ *    scrolled two screens before learning whether any of it worked. Results
+ *    now lead; the mechanism follows for whoever wants it.
+ *
+ * The GenAI reasoning chain and the attack-landscape breakdown were removed
+ * from this screen rather than cut down. Both are the *subject* of a numbered
+ * step -- step 2 argues GenAI fidelity, step 1 argues attack diversity -- and
+ * rendering them here as well meant a judge read the same evidence twice and
+ * the summary competed with the page that interprets it. The headline figures
+ * stay; the panels are one click away, where they are the point.
  */
 
 function pct(value: number | null | undefined, digits = 1): string {
@@ -35,6 +45,48 @@ function pct(value: number | null | undefined, digits = 1): string {
 
 function num(value: number | null | undefined, digits = 3): string {
   return typeof value === "number" ? value.toFixed(digits) : "—";
+}
+
+function compactInt(value: number | null | undefined): string {
+  if (typeof value !== "number") return "—";
+  return value >= 1000 ? `${Math.round(value / 1000)}k` : value.toLocaleString("en-US");
+}
+
+/**
+ * Where to go, and what each screen is evidence for.
+ *
+ * Reads from `nav/journey.ts`, the same list that drives the sidebar and the
+ * step footer, so the three can never disagree about the walkthrough.
+ */
+function JudgePath() {
+  const cards = [...LOOP_STEPS, RESULTS_STEP];
+  return (
+    <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
+      {cards.map((s) => (
+        <Link
+          key={s.to}
+          to={s.to}
+          className="card-interactive flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-[var(--shadow-card)]"
+        >
+          <span className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums text-white ${
+                s.step != null
+                  ? "bg-[var(--color-accent-600)]"
+                  : "bg-[var(--color-defend-600)]"
+              }`}
+            >
+              {s.step ?? "★"}
+            </span>
+            <span className="t-h2 text-[var(--color-ink)]">{s.label}</span>
+          </span>
+          <span className="t-body-sm mt-2 text-[var(--color-ink-muted)]">{s.hint}</span>
+          <span className="t-eyebrow mt-auto pt-3 text-[var(--color-ink-faint)]">{s.rubric}</span>
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 export function MissionControlPage() {
@@ -47,202 +99,42 @@ export function MissionControlPage() {
   const landscape = useApiResource(landscapeFetch, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {/* ---------------- Static hero: renders with no API call ------------- */}
-      <header className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-card)] sm:p-7">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent-600)]">
+      <header className="rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-elevated)] sm:p-8">
+        <p className="t-eyebrow text-[var(--color-accent-600)]">
           AEGIS &middot; Adversarial Evaluation &amp; Generative Immune System
         </p>
-        <h1 className="mt-2 max-w-3xl text-2xl font-bold leading-tight text-[var(--color-ink)] sm:text-4xl">
+        <h1 className="t-display mt-3 max-w-3xl text-[var(--color-ink)]">
           Stress-test fraud models against attacks they haven&rsquo;t learned yet.
         </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--color-ink-muted)]">
-          AEGIS is a closed-loop AI red team for payment fraud. GenAI analyzes emerging attacks
-          and detector blind spots, deterministic simulators reproduce them at scale, and a fraud
-          defender is challenged against each new generation.
+        <p className="t-body mt-4 max-w-2xl text-[var(--color-ink-muted)]">
+          A closed-loop AI red team for payment fraud: GenAI finds detector blind spots,
+          deterministic simulators reproduce them at scale, and the defender is challenged against
+          every new generation.
         </p>
 
-        <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-2 text-[11px] font-medium text-[var(--color-ink-muted)] sm:text-xs">
-          <span className="text-[var(--color-attack-600)]">GenAI reasons</span>
-          <span aria-hidden="true" className="text-[var(--color-ink-faint)]">
-            &rarr;
-          </span>
-          <span className="text-[var(--color-attack-600)]">
-            deterministic code generates transactions
-          </span>
-          <span aria-hidden="true" className="text-[var(--color-ink-faint)]">
-            &rarr;
-          </span>
-          <span className="text-[var(--color-defend-600)]">XGBoost detects</span>
-          <span aria-hidden="true" className="text-[var(--color-ink-faint)]">
-            &rarr;
-          </span>
-          <span className="text-[var(--color-attack-600)]">
-            escaped fraud becomes the next red-team signal
-          </span>
-        </p>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Link
-            to="/attack-lab"
-            className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2 text-sm font-semibold text-white transition-standard hover:bg-[var(--color-accent-500)]"
-          >
-            Open Attack Lab &rarr;
-          </Link>
-          <Link
-            to="/final-benchmark"
-            className="rounded-lg border border-[var(--color-border-strong)] px-4 py-2 text-sm font-semibold text-[var(--color-ink)] transition-standard hover:bg-[var(--color-surface-sunken)]"
-          >
-            See the results
-          </Link>
-        </div>
-
-        <p className="mt-4 text-[11px] leading-snug text-[var(--color-ink-faint)]">
-          Research prototype over the PaySim synthetic/reference corpus. Not a production
-          fraud-detection service, and not connected to live payment scoring. Exactly three attack
-          families are deeply simulated; the rest of the landscape is identified research only.
-        </p>
-      </header>
-
-      {/* ---------------- Static loop explanation --------------------------- */}
-      <Card>
-        <div className="mb-3">
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-            The closed loop, end to end
-          </h2>
-          <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-            A language model reasons at exactly two points. It never writes a transaction row.
-          </p>
-        </div>
-        <ClosedLoopFlow />
-      </Card>
-
-      {/* ---------------- Evidence: attack landscape (/api/landscape) ------- */}
-      <Card>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-            Red Team &mdash; attack landscape
-          </h2>
+        <div className="mt-5 flex flex-wrap items-center gap-2.5">
           <Link
             to="/attack-taxonomy"
-            className="text-[11px] font-semibold text-[var(--color-accent-600)] hover:underline"
+            className="rounded-lg bg-[var(--color-accent-600)] px-4 py-2.5 text-sm font-semibold text-white transition-standard hover:bg-[var(--color-accent-500)]"
           >
-            Full taxonomy &rarr;
+            Start the walkthrough &rarr;
           </Link>
-        </div>
-        <ApiStateSection
-          state={landscape}
-          emptyTitle="No landscape artifacts yet"
-          emptyBody="Run scripts/export_attack_taxonomy.py and scripts/run_generation_scale_benchmark.py."
-          render={(data) => {
-            const tax = data.taxonomy;
-            const scale = data.generation_scale;
-            return (
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                <StatTile
-                  label="Attack vectors identified"
-                  value={tax?.total_attacks_identified ?? "—"}
-                  hint={
-                    tax
-                      ? `${tax.category_count} categories, ${tax.channel_count} channels, ${tax.rail_count} rails`
-                      : undefined
-                  }
-                />
-                <StatTile
-                  label="Deeply simulated"
-                  value={tax?.deeply_simulated ?? "—"}
-                  hint="Families with a generator, a blueprint and a real detector result"
-                />
-                <StatTile
-                  label="Synthetic transactions generated"
-                  value={
-                    typeof scale?.total_transactions === "number"
-                      ? scale.total_transactions.toLocaleString("en-US")
-                      : "—"
-                  }
-                  hint={
-                    scale
-                      ? `${scale.total_scenarios?.toLocaleString("en-US") ?? "—"} scenarios${
-                          scale.all_deterministic ? " · seed-reproducible" : ""
-                        }`
-                      : undefined
-                  }
-                />
-              </div>
-            );
-          }}
-        />
-      </Card>
-
-      {/* ---------------- Evidence: GenAI (/api/genai) ---------------------- */}
-      <Card>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-            Red Team &mdash; GenAI in the loop
-          </h2>
-          <Link
-            to="/attack-lab"
-            className="text-[11px] font-semibold text-[var(--color-accent-600)] hover:underline"
-          >
-            Full reasoning &rarr;
-          </Link>
-        </div>
-        <ApiStateSection
-          state={genai}
-          emptyTitle="No GenAI runs yet"
-          emptyBody="Run scripts/run_genai_analysis.py to produce a reasoning artifact."
-          render={(data) => {
-            const coverage = data.family_coverage;
-            return (
-              <div className="space-y-2.5">
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  <StatTile
-                    label="Families with full GenAI coverage"
-                    value={
-                      coverage
-                        ? `${coverage.fully_covered_family_count}/${coverage.families.length}`
-                        : "—"
-                    }
-                    tone={
-                      coverage && coverage.fully_covered_family_count === coverage.families.length
-                        ? "positive"
-                        : "neutral"
-                    }
-                    hint="Attack Analyst + Blind-Spot Analyst + guided generation"
-                  />
-                  <StatTile
-                    label="Live model calls"
-                    value={data.has_live_genai ? "Yes" : "—"}
-                    tone={data.has_live_genai ? "positive" : "neutral"}
-                    hint="Persisted with provider, model and request id"
-                  />
-                  <StatTile
-                    label="Transaction rows written by GenAI"
-                    value="0"
-                    hint="By design — the deterministic simulator writes every row"
-                  />
-                </div>
-                <LiveGenAIEvidence genai={data} />
-                {coverage && <GenAIFamilyCoverage coverage={coverage} />}
-              </div>
-            );
-          }}
-        />
-      </Card>
-
-      {/* ---------------- Evidence: defender + LOAFO (/api/benchmark) ------- */}
-      <Card>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-            Blue Team &mdash; Defender v3, and whether hardening generalizes
-          </h2>
           <Link
             to="/final-benchmark"
-            className="text-[11px] font-semibold text-[var(--color-accent-600)] hover:underline"
+            className="rounded-lg border border-[var(--color-border-strong)] px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)] transition-standard hover:bg-[var(--color-surface-sunken)]"
           >
-            Full results &rarr;
+            Skip to the results
           </Link>
         </div>
+      </header>
+
+      {/* ---------------- The result, before the mechanism ------------------ */}
+      <section>
+        <h2 className="t-eyebrow mb-3 text-[var(--color-ink-faint)]">
+          Where it stands &mdash; Defender v3, frozen
+        </h2>
         <ApiStateSection
           state={benchmark}
           emptyTitle="No benchmark summary yet"
@@ -252,146 +144,195 @@ export function MissionControlPage() {
             const loafo = data.loafo ?? null;
             const recallAtFpr = v3?.recall_at_fixed_fpr?.["0.001"] ?? null;
             return (
-              <div className="space-y-2.5">
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  <StatTile
-                    label="PR-AUC"
-                    value={num(v3?.pr_auc)}
-                    hint="Threshold-independent · untouched PaySim test split"
-                  />
-                  <StatTile
-                    label="Recall @ 0.1% FPR"
-                    value={pct(recallAtFpr)}
-                    hint="Fixed false-positive budget · PaySim test split"
-                  />
-                  <StatTile
-                    label="False positive rate"
-                    value={
-                      typeof v3?.false_positive_rate === "number"
-                        ? `${(v3.false_positive_rate * 100).toFixed(4)}%`
-                        : "—"
-                    }
-                    hint="At the validation-tuned operating threshold"
-                  />
-                </div>
-
-                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-ink-faint)]">
-                      Generalization to a completely unseen attack family (LOAFO)
-                    </span>
-                    <Badge variant="risk-medium">Partial generalization</Badge>
-                  </div>
-                  <p className="mt-1.5 text-2xl font-semibold tabular-nums text-[var(--color-ink)]">
-                    {pct(loafo?.mean_loafo_recall)}
-                    <span className="ml-2 align-middle text-xs font-normal text-[var(--color-ink-muted)]">
-                      mean LOAFO recall across three held-out families
-                    </span>
-                  </p>
-                  <p className="mt-1 text-[11px] leading-snug text-[var(--color-ink-faint)]">
-                    Each fold trains with one family contributing zero rows, then scores a fresh
-                    scenario of that family. Two of three families transferred; one did not. This
-                    is <strong>not</strong> Defender v3&rsquo;s recall &mdash; it is the recall of
-                    three separate fold models on three separate held-out scenarios.
-                  </p>
-                </div>
-
-                {v3 && (
-                  <p className="text-[11px] text-[var(--color-ink-faint)]">
-                    Model: <code className="font-mono">{v3.model_version}</code> &mdash; frozen.
-                    Nothing on this site retrains, refits or rescores it.
-                  </p>
-                )}
+              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                <StatTile
+                  label="PR-AUC"
+                  value={num(v3?.pr_auc)}
+                  hint="Untouched PaySim test split"
+                />
+                <StatTile
+                  label="Recall @ 0.1% FPR"
+                  value={pct(recallAtFpr)}
+                  hint="At a fixed false-positive budget"
+                />
+                <StatTile
+                  label="False positive rate"
+                  value={
+                    typeof v3?.false_positive_rate === "number"
+                      ? `${(v3.false_positive_rate * 100).toFixed(4)}%`
+                      : "—"
+                  }
+                  hint="At the tuned operating threshold"
+                />
+                <StatTile
+                  label="Unseen-family recall"
+                  value={pct(loafo?.mean_loafo_recall)}
+                  tone="neutral"
+                  hint="Mean across three LOAFO folds — partial, not universal"
+                />
               </div>
             );
           }}
         />
-      </Card>
+      </section>
+
+      {/* ---------------- Scale, at a glance -------------------------------- */}
+      <section>
+        <h2 className="t-eyebrow mb-3 text-[var(--color-ink-faint)]">What the red team produced</h2>
+        <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+          <ApiStateSection
+            state={landscape}
+            emptyTitle="No landscape artifacts yet"
+            emptyBody="Run scripts/export_attack_taxonomy.py."
+            render={(data) => (
+              <>
+                <StatTile
+                  label="Attack vectors identified"
+                  value={data.taxonomy?.total_attacks_identified ?? "—"}
+                  hint={
+                    data.taxonomy
+                      ? `${data.taxonomy.category_count} categories · ${data.taxonomy.channel_count} channels`
+                      : undefined
+                  }
+                />
+                <StatTile
+                  label="Deeply simulated"
+                  value={data.taxonomy?.deeply_simulated ?? "—"}
+                  hint="Generator + blueprint + real detector result"
+                />
+                <StatTile
+                  label="Transactions generated"
+                  value={compactInt(data.generation_scale?.total_transactions)}
+                  hint={
+                    data.generation_scale
+                      ? `${compactInt(data.generation_scale.total_scenarios)} scenarios · seed-reproducible`
+                      : undefined
+                  }
+                />
+              </>
+            )}
+          />
+          <ApiStateSection
+            state={genai}
+            emptyTitle="No GenAI runs yet"
+            emptyBody="Run scripts/run_genai_analysis.py."
+            render={(data) => (
+              <StatTile
+                label="Rows written by GenAI"
+                value="0"
+                tone={data.has_live_genai ? "positive" : "neutral"}
+                hint="By design — the deterministic simulator writes every row"
+              />
+            )}
+          />
+        </div>
+      </section>
+
+      {/* ---------------- Where to go next ---------------------------------- */}
+      <section>
+        <h2 className="t-eyebrow mb-3 text-[var(--color-ink-faint)]">
+          The walkthrough &mdash; four steps, then the evidence
+        </h2>
+        <JudgePath />
+      </section>
+
+      {/* ---------------- Static loop explanation --------------------------- */}
+      <section>
+        <h2 className="t-h1 text-[var(--color-ink)]">The closed loop, end to end</h2>
+        <p className="t-body-sm mb-3 mt-1 text-[var(--color-ink-muted)]">
+          A language model reasons at exactly two points. It never writes a transaction row.
+        </p>
+        <Card>
+          <ClosedLoopFlow />
+        </Card>
+      </section>
 
       {/* ---------------- Static: where AEGIS fits -------------------------- */}
-      <Card>
-        <div className="mb-3">
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">Where AEGIS fits</h2>
-          <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-            Offline adversarial validation and hardening infrastructure for fraud-model teams.
-          </p>
-        </div>
+      <section>
+        <h2 className="t-h1 text-[var(--color-ink)]">Where AEGIS fits</h2>
+        <p className="t-body-sm mb-3 mt-1 text-[var(--color-ink-muted)]">
+          Offline adversarial validation for fraud-model teams. It is never in the authorization
+          path.
+        </p>
+        <Card>
+          <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              {
+                t: "Live payment systems",
+                d: "Authorization keeps running. AEGIS is not in this path.",
+                tone: "muted" as const,
+              },
+              {
+                t: "Historical logs + fraud labels",
+                d: "Pseudonymized, batch, after the fact.",
+                tone: "muted" as const,
+              },
+              {
+                t: "AEGIS offline adversarial testing",
+                d: "Red-team generation, confrontation, LOAFO.",
+                tone: "accent" as const,
+              },
+              {
+                t: "Hard positives + generalization report",
+                d: "What escaped, and whether hardening transfers.",
+                tone: "accent" as const,
+              },
+              {
+                t: "Next validation / retraining cycle",
+                d: "Owned by fraud data-science and model-risk.",
+                tone: "muted" as const,
+              },
+            ].map((step, i) => (
+              <li
+                key={step.t}
+                className={`rounded-lg border p-2.5 ${
+                  step.tone === "accent"
+                    ? "border-[var(--color-accent-500)] bg-[var(--color-accent-100)]"
+                    : "border-[var(--color-border)] bg-[var(--color-surface-sunken)]"
+                }`}
+              >
+                <p className="t-label flex items-center gap-1.5 text-[var(--color-ink)]">
+                  <span className="t-mono-sm text-[var(--color-ink-faint)]">{i + 1}</span>
+                  {step.t}
+                </p>
+                <p className="mt-1 text-[10.5px] leading-snug text-[var(--color-ink-muted)]">
+                  {step.d}
+                </p>
+              </li>
+            ))}
+          </ol>
 
-        <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            {
-              t: "Live payment systems",
-              d: "Authorization keeps running. AEGIS is not in this path.",
-              tone: "muted" as const,
-            },
-            {
-              t: "Historical transaction logs + fraud labels",
-              d: "Pseudonymized, batch, after the fact.",
-              tone: "muted" as const,
-            },
-            {
-              t: "AEGIS offline adversarial testing",
-              d: "Red-team generation, defender confrontation, LOAFO.",
-              tone: "accent" as const,
-            },
-            {
-              t: "Hard-positive set + generalization report",
-              d: "What escaped, and whether hardening transfers.",
-              tone: "accent" as const,
-            },
-            {
-              t: "Next model validation / retraining cycle",
-              d: "Owned by the fraud data-science and model-risk teams.",
-              tone: "muted" as const,
-            },
-          ].map((step, i) => (
-            <li
-              key={step.t}
-              className={`rounded-lg border p-2.5 ${
-                step.tone === "accent"
-                  ? "border-[var(--color-accent-500)] bg-[var(--color-accent-100)]"
-                  : "border-[var(--color-border)] bg-[var(--color-surface-sunken)]"
-              }`}
-            >
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold leading-tight text-[var(--color-ink)] sm:text-xs">
-                <span className="text-[10px] tabular-nums text-[var(--color-ink-faint)]">
-                  {i + 1}
-                </span>
-                {step.t}
-              </p>
-              <p className="mt-1 text-[10px] leading-snug text-[var(--color-ink-muted)]">
-                {step.d}
-              </p>
-            </li>
-          ))}
-        </ol>
+          <Details className="mt-3" summary="Deployment constraints and data governance">
+            <ul className="space-y-1.5">
+              <li>
+                <strong className="text-[var(--color-ink)]">
+                  AEGIS is not in the authorization path.
+                </strong>{" "}
+                It never scores a live payment, and this demo replays persisted experiment
+                artifacts rather than connecting to live scoring.
+              </li>
+              <li>
+                Intended to run offline alongside fraud model-risk, validation and data-science
+                workflows.
+              </li>
+              <li>
+                The prototype uses synthetic / reference payment data (PaySim) throughout, and the
+                Defender feature vector contains no PAN or cardholder identity fields.{" "}
+                <strong className="text-[var(--color-ink)]">
+                  A real deployment would require institution-specific data governance and privacy
+                  controls.
+                </strong>
+              </li>
+            </ul>
+          </Details>
+        </Card>
+      </section>
 
-        <ul className="mt-3 grid grid-cols-1 gap-1.5 text-[11px] leading-snug text-[var(--color-ink-muted)] sm:grid-cols-2">
-          <li>
-            &bull; <strong className="text-[var(--color-ink)]">AEGIS is not in the
-            authorization path.</strong> It never scores a live payment.
-          </li>
-          <li>
-            &bull; This demo is <strong className="text-[var(--color-ink)]">not connected to live
-            payment scoring</strong> &mdash; it replays persisted experiment artifacts.
-          </li>
-          <li>
-            &bull; Intended to run offline alongside fraud model-risk, validation and
-            data-science workflows.
-          </li>
-          <li>
-            &bull; The prototype uses synthetic / reference payment data (PaySim) throughout.
-          </li>
-          <li className="sm:col-span-2">
-            &bull; The current prototype uses synthetic/reference data and its Defender
-            feature vector does not include PAN or cardholder identity fields.{" "}
-            <strong className="text-[var(--color-ink)]">
-              A real deployment would require institution-specific data governance and privacy
-              controls.
-            </strong>
-          </li>
-        </ul>
-      </Card>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="neutral">Research prototype</Badge>
+        <Badge variant="neutral">Synthetic PaySim corpus</Badge>
+        <Badge variant="neutral">Read-only</Badge>
+      </div>
 
       <Details summary="What these numbers are, and what they are not">
         Every figure on this page is read live from a persisted artifact; none is written into the
