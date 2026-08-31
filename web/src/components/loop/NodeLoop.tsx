@@ -55,9 +55,12 @@ const NODES: {
   anchor: "middle" | "start" | "end";
   tx: number;
   ty: number;
+  /** Stack sub-lines above the title. Needed where the label sits above
+   *  its node -- otherwise the sub-line runs into the circle. */
+  subAbove?: boolean;
   genai?: boolean;
 }[] = [
-  { id: "identify", n: 1, cx: 240, cy: 82, team: "red", title: "Identify", sub: ["attack blueprint"], anchor: "middle", tx: 240, ty: 50, genai: true },
+  { id: "identify", n: 1, cx: 240, cy: 82, team: "red", title: "Identify", sub: ["attack blueprint"], anchor: "middle", tx: 240, ty: 50, subAbove: true, genai: true },
   { id: "generate", n: 2, cx: 347.38, cy: 134, team: "red", title: "Generate", sub: ["synthetic", "campaign"], anchor: "start", tx: 378.38, ty: 124 },
   { id: "defend", n: 3, cx: 347.38, cy: 238, team: "blue", title: "Defend", sub: ["risk scores"], anchor: "start", tx: 378.38, ty: 235.5 },
   { id: "evaluate", n: 4, cx: 240, cy: 290, team: "neutral", title: "Evaluate", sub: ["caught / escaped"], anchor: "middle", tx: 240, ty: 330 },
@@ -259,7 +262,11 @@ export function NodeLoop({ active, generations }: NodeProps) {
             <text
               key={line}
               x={n.tx}
-              y={n.ty + 15 + i * 15}
+              y={
+                n.subAbove
+                  ? n.ty - 15 * ((n.sub?.length ?? 1) - i)
+                  : n.ty + 15 + i * 15
+              }
               textAnchor={n.anchor}
               fontSize="12"
               fill="var(--color-ink-muted)"
