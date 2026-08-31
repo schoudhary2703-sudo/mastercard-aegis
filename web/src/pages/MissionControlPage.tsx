@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchBenchmark, fetchGenAI, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { ClosedLoopFlow } from "../components/loop/ClosedLoopFlow";
+import { NodeLoop, NodeLoopLegend, type LoopGeneration } from "../components/loop/NodeLoop";
 import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { Details } from "../components/ui/Details";
@@ -45,6 +45,32 @@ function pct(value: number | null | undefined, digits = 1): string {
 
 function num(value: number | null | undefined, digits = 3): string {
   return typeof value === "number" ? value.toFixed(digits) : "—";
+}
+
+/**
+ * The defender generations, formatted for the ring's centre panel.
+ *
+ * Built from the persisted model_comparison rather than written into the
+ * component: the ring animates through whatever generations the artifact
+ * actually contains, and shows nothing if it contains none.
+ */
+function generationsFrom(
+  comparison: { baseline_v1?: unknown; defender_v2?: unknown; defender_v3?: unknown } | null | undefined,
+): LoopGeneration[] {
+  if (!comparison) return [];
+  const entries: [string, { precision?: number | null; recall?: number | null; false_positive_rate?: number | null } | null][] = [
+    ["v1", (comparison.baseline_v1 ?? null) as never],
+    ["v2", (comparison.defender_v2 ?? null) as never],
+    ["v3", (comparison.defender_v3 ?? null) as never],
+  ];
+  return entries
+    .filter(([, e]) => e != null)
+    .map(([label, e]) => ({
+      label,
+      precision: pct(e?.precision),
+      recall: pct(e?.recall),
+      fpr: typeof e?.false_positive_rate === "number" ? `${(e.false_positive_rate * 100).toFixed(3)}%` : "—",
+    }));
 }
 
 function compactInt(value: number | null | undefined): string {
@@ -101,7 +127,8 @@ export function MissionControlPage() {
   return (
     <div className="space-y-8">
       {/* ---------------- Static hero: renders with no API call ------------- */}
-      <header className="rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-elevated)] sm:p-8">
+      <header className="grid gap-8 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-elevated)] sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
+        <div className="min-w-0">
         <p className="t-eyebrow text-[var(--color-accent-600)]">
           AEGIS &middot; Adversarial Evaluation &amp; Generative Immune System
         </p>
@@ -127,6 +154,23 @@ export function MissionControlPage() {
           >
             Skip to the results
           </Link>
+        </div>
+        </div>
+
+        {/* The loop, in the hero rather than a screen below it. It is the one
+            figure that explains the whole system, and the console's only
+            motion -- burying it under the fold wasted both. */}
+        <div className="min-w-0">
+          <NodeLoop
+            generations={
+              benchmark.status === "ready"
+                ? generationsFrom(benchmark.data.model_comparison)
+                : []
+            }
+          />
+          <Details className="mt-2" summary="Reading the ring">
+            <NodeLoopLegend />
+          </Details>
         </div>
       </header>
 
@@ -234,17 +278,6 @@ export function MissionControlPage() {
           The walkthrough &mdash; four steps, then the evidence
         </h2>
         <JudgePath />
-      </section>
-
-      {/* ---------------- Static loop explanation --------------------------- */}
-      <section>
-        <h2 className="t-h1 text-[var(--color-ink)]">The closed loop, end to end</h2>
-        <p className="t-body-sm mb-3 mt-1 text-[var(--color-ink-muted)]">
-          A language model reasons at exactly two points. It never writes a transaction row.
-        </p>
-        <Card>
-          <ClosedLoopFlow />
-        </Card>
       </section>
 
       {/* ---------------- Static: where AEGIS fits -------------------------- */}

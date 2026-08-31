@@ -167,6 +167,49 @@ body {
   }
 }
 
+/* ---- The loop signal ----------------------------------------------------
+ * The one animated element in the console, on the Overview ring. It is not
+ * decoration: the dot is red while an attack is in flight and green after the
+ * midpoint, once the escape has become hardening data, which states the
+ * loop's thesis in a single gesture.
+ *
+ * Gated behind prefers-reduced-motion: no-preference, so a reader who has
+ * asked for stillness gets a static diagram with no dot rather than a
+ * suppressed-but-present one. The step-end tint means the colour flips once
+ * per half-lap instead of smearing through muddy intermediate hues.
+ * ------------------------------------------------------------------------ */
+@keyframes aegis-signal {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes aegis-signal-tint {
+  0% {
+    fill: var(--color-risk-high-600);
+  }
+  50% {
+    fill: var(--color-risk-low-600);
+  }
+}
+.aegis-signal-dot {
+  /* Hidden by default so the dot never parks at the origin for readers whose
+     motion preference suppresses the animation. */
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .aegis-signal-dot {
+    opacity: 1;
+    offset-path: path("M240 82A124 104 0 0 1 240 290A124 104 0 0 1 240 82");
+    offset-rotate: 0deg;
+    animation:
+      aegis-signal 7s linear infinite,
+      aegis-signal-tint 7s step-end infinite;
+  }
+}
+
 /* A card that responds to the pointer. Used where the whole surface is a
    link -- the judge-path cards, the step footer -- so a clickable card is
    distinguishable from a static one without adding a visible affordance. */
