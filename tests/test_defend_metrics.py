@@ -20,6 +20,7 @@ from aegis.defend.metrics import (
     measure_scoring_latency,
     recall_at_fpr,
     roc_auc,
+    threshold_at_fpr_budget,
     tune_threshold_for_f1,
 )
 from aegis.shared.enums import AttackFamily, DataSplit, EvaluationProtocol
@@ -315,3 +316,141 @@ def test_measure_scoring_latency_empty_input():
     latency = measure_scoring_latency(detector, X)
     assert latency.samples == 0
     assert not math.isnan(latency.mean_ms)
+
+
+# --- threshold_at_fpr_budget -------------------------------------------
+
+
+def _brute_force_threshold_at_fpr_budget(
+    y_true: np.ndarray, scores: np.ndarray, budget: float
+) -> float:
+    """Sweep every observed score, keep the affordable one with the best recall.
+
+    Independent O(n^2) restatement of the rule, used to prove the vectorized
+    implementation rather than asserting its output by inspection - the same
+    technique `_brute_force_tune_threshold_for_f1` uses above.
+    """
+    best_threshold = float(np.nextafter(float(np.max(scores)), np.inf))
+    best_recall = -1.0
+    for candidate in sorted({float(s) for s in scores}, reverse=True):
+        predicted = (scores >= candidate).astype(int)
+        fp = int(((predicted == 1) & (y_true == 0)).sum())
+        tn = int(((predicted == 0) & (y_true == 0)).sum())
+        tp = int(((predicted == 1) & (y_true == 1)).sum())
+        fn = int(((predicted == 0) & (y_true == 1)).sum())
+        fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+        if fpr > budget:
+            continue
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        # Strict `>` keeps the first (highest) threshold on ties, matching the
+        # documented tie-break.
+        if recall > best_recall:
+            best_recall = recall
+            best_threshold = candidate
+    return best_threshold
+
+
+@pytest.mark.parametrize(
+    ("y_true", "scores", "budget"),
+    [
+        (np.array([1, 0, 1, 0, 0]), np.array([0.9, 0.8, 0.7, 0.6, 0.1]), 0.0),
+        (np.array([1, 0, 1, 0, 0]), np.array([0.9, 0.8, 0.7, 0.6, 0.1]), 0.34),
+        (np.array([1, 0, 1, 0, 0]), np.array([0.9, 0.8, 0.7, 0.6, 0.1]), 1.0),
+        (np.array([1, 1, 0, 0]), np.array([0.9, 0.4, 0.3, 0.1]), 0.5),
+        (np.array([1, 0, 1, 0]), np.array([0.5, 0.5, 0.5, 0.5]), 0.5),  # all-tied
+        (np.array([1, 1, 1, 1]), np.array([0.9, 0.1, 0.5, 0.3]), 0.0),  # no negatives
+        (np.array([0, 0, 0, 0]), np.array([0.9, 0.1, 0.5, 0.3]), 0.25),  # no positives
+        (
+            np.random.default_rng(11).integers(0, 2, size=200),
+            np.random.default_rng(11).random(200),
+            0.05,
+        ),
+    ],
+)
+def test_threshold_at_fpr_budget_matches_brute_force_exactly(y_true, scores, budget):
+    assert threshold_at_fpr_budget(y_true, scores, budget) == pytest.approx(
+        _brute_force_threshold_at_fpr_budget(y_true, scores, budget)
+    )
+
+
+@pytest.mark.parametrize("budget", [0.0, 0.001, 0.01, 0.05, 0.2])
+def test_threshold_at_fpr_budget_never_breaches_the_budget(budget):
+    rng = np.random.default_rng(23)
+    y_true = (rng.random(2_000) < 0.02).astype(int)
+    scores = np.clip(rng.random(2_000) + y_true * 0.4, 0.0, 1.0)
+
+    threshold = threshold_at_fpr_budget(y_true, scores, budget)
+    predicted = (scores >= threshold).astype(int)
+    fp = int(((predicted == 1) & (y_true == 0)).sum())
+    tn = int(((predicted == 0) & (y_true == 0)).sum())
+    achieved_fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+
+    assert achieved_fpr <= budget + 1e-12
+
+
+def test_threshold_at_fpr_budget_recovers_the_documented_recall_at_that_budget():
+    """The chosen threshold's recall must equal `recall_at_fpr` for the same budget.
+
+    This is the property the whole change rests on: the reported
+    `recall_at_fixed_fpr` figure is only honest if the model is actually
+    *operated* at a threshold that achieves it.
+    """
+    rng = np.random.default_rng(29)
+    y_true = (rng.random(5_000) < 0.03).astype(int)
+    scores = np.clip(rng.random(5_000) + y_true * 0.5, 0.0, 1.0)
+
+    for budget in (0.001, 0.005, 0.01, 0.05):
+        threshold = threshold_at_fpr_budget(y_true, scores, budget)
+        predicted = (scores >= threshold).astype(int)
+        tp = int(((predicted == 1) & (y_true == 1)).sum())
+        fn = int(((predicted == 0) & (y_true == 1)).sum())
+        achieved_recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        assert achieved_recall == pytest.approx(recall_at_fpr(y_true, scores, budget))
+
+
+def test_threshold_at_fpr_budget_beats_f1_tuning_on_recall_at_a_real_budget():
+    """The motivating result, as an executable assertion.
+
+    On an imbalanced split resembling PaySim's test set, the F1-optimal
+    threshold sacrifices substantial recall relative to operating at an
+    explicit 0.5% false-positive budget.
+    """
+    rng = np.random.default_rng(31)
+    y_true = (rng.random(20_000) < 0.004).astype(int)
+    scores = np.clip(rng.normal(0.3, 0.15, 20_000) + y_true * 0.45, 0.0, 1.0)
+
+    f1_threshold = tune_threshold_for_f1(y_true, scores)
+    budget_threshold = threshold_at_fpr_budget(y_true, scores, 0.005)
+
+    def recall_of(threshold: float) -> float:
+        predicted = (scores >= threshold).astype(int)
+        tp = int(((predicted == 1) & (y_true == 1)).sum())
+        fn = int(((predicted == 0) & (y_true == 1)).sum())
+        return tp / (tp + fn) if (tp + fn) > 0 else 0.0
+
+    assert budget_threshold < f1_threshold
+    assert recall_of(budget_threshold) > recall_of(f1_threshold)
+
+
+def test_threshold_at_fpr_budget_empty_scores_returns_default():
+    assert threshold_at_fpr_budget(np.array([]), np.array([]), 0.01) == 0.5
+
+
+def test_threshold_at_fpr_budget_flags_nothing_when_budget_is_unaffordable():
+    """Top-scoring row is a false positive and the budget cannot absorb it."""
+    y_true = np.array([0, 1, 1])
+    scores = np.array([0.9, 0.8, 0.7])
+    threshold = threshold_at_fpr_budget(y_true, scores, 0.0)
+    assert threshold > 0.9
+    assert not (scores >= threshold).any()
+
+
+def test_threshold_at_fpr_budget_rejects_mismatched_lengths():
+    with pytest.raises(ValueError, match="same length"):
+        threshold_at_fpr_budget(np.array([1, 0]), np.array([0.5]), 0.01)
+
+
+@pytest.mark.parametrize("budget", [-0.1, 1.5])
+def test_threshold_at_fpr_budget_rejects_out_of_range_budget(budget):
+    with pytest.raises(ValueError, match="false-positive rate"):
+        threshold_at_fpr_budget(np.array([1, 0]), np.array([0.9, 0.1]), budget)
