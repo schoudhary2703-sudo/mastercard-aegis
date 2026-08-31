@@ -1,0 +1,36 @@
+# Render Blueprint for the AEGIS read-only artifact API.
+#
+# This is the backend half of the live judge demo; the frontend is the static
+# `web/dist/` bundle on Vercel (see docs/DEPLOYMENT.md "Live demo topology").
+# The service only ever READS the JSON evidence bundle at
+# submission/artifacts/ -- it cannot retrain, score, or mutate anything
+# (docs/ARCHITECTURE.md).
+#
+# Apply with:  render blueprint launch   (or connect the repo in the Render UI)
+services:
+  - type: web
+    name: mastercard-aegis
+    runtime: python
+    plan: free            # NOTE: the free plan spins down after ~15 min idle
+                          # (~30-60s cold start). `.github/workflows/keepalive.yml`
+                          # pings it every 10 min so a judge never lands on a cold
+                          # instance; for the judging window, upgrade to a paid
+                          # instance or an external uptime pinger as well.
+    region: oregon
+    buildCommand: pip install -e ".[api]"
+    startCommand: uvicorn aegis.api.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      # The API reads everything under this one directory. The tracked
+      # submission/artifacts/ bundle is real JSON evidence only -- no model
+      # weights, no PaySim data -- so a clean checkout serves real numbers
+      # with no extra upload.
+      - key: AEGIS_ARTIFACTS_ROOT
+        value: submission/artifacts
+      # Must match the deployed frontend origin exactly (scheme + host, no
+      # trailing slash). Comma-separate if you add a preview domain.
+      - key: AEGIS_API_CORS_ORIGINS
+        value: https://mastercard-aegis.vercel.app
