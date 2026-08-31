@@ -55,3 +55,5 @@ Thumbs.db
 # evidence only; never `model.json` or `features/` (still excluded here).
 !submission/artifacts/
 !submission/artifacts/**
+
+.claude/
