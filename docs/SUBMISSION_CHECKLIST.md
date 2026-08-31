@@ -76,9 +76,11 @@ submitting. The API and UI they depend on are verified working (item 8).
   string-matching the served production bundle for markers from each UI pass
   ("Stress-test fraud models", "Where AEGIS fits", "Leave One Attack Family
   Out", "Recorded hardening snapshots", "LOAFO evaluation evidence").
-- [ ] **Re-run this check immediately before submitting**, from a clean
-  browser session, after any further push: Overview, Attack Lab, Evolution
-  and Results all load real data rather than an error state.
+- [x] Re-verified from a clean production browser session (Milestone 5A):
+  Overview, Attack Lab, Evolution and Results all load real data, no error
+  state, no console errors, at 1440px and 375px. Production is serving the
+  Results y-axis fix (ticks render `0% / 25% / 50% / 75% / 100%`).
+  **Re-run once more after any further push.**
 - [ ] Note for the demo: the API is on a free tier and cold-starts in roughly
   25 seconds. The Overview hero, closed-loop diagram and "Where AEGIS fits"
   render immediately regardless, but warm the API by loading the site once
@@ -117,46 +119,66 @@ submitting. The API and UI they depend on are verified working (item 8).
 - [x] Reviewed individually: no clipped headings, no horizontal overflow,
   no misleading metric context. Mule-network structuring's 0% held-out
   result is visible in `04_results.png` and was deliberately not cropped out.
-- [ ] Re-capture if the UI changes again before submission.
+- [x] Verified against production (Milestone 5A): fresh 1440px captures of
+  all four screens are **byte-identical** (SHA-256) to the committed files,
+  and all four are embedded unchanged in the walkthrough `.docx`.
+  Re-capture only if the UI changes again.
 
 ## 7. Demo smoke test
 
 Run this immediately before presenting, on the actual machine/URL you will
 present from:
 
-- [ ] `GET /api/health` returns `{"status": "ok"}`.
-- [ ] `/` (Overview) renders its static hero, closed-loop diagram and
-  "Where AEGIS fits" panel **before** any API response arrives -- confirm
-  by loading it against a cold or stopped backend once.
-- [ ] `/` (Overview) then populates all three evidence cards -- attack
-  landscape (14 / 3 / 55,000), GenAI coverage (3/3), and Defender v3
-  (PR-AUC, recall @ 0.1% FPR, FPR, LOAFO 58.3% "partial generalization")
-  -- with no error or empty state.
-- [ ] `/co-evolution` shows all six real closed-loop stages as "Real", not
-  "Not run".
-- [ ] `/attack-lab` (Attack Lab) shows all three family tabs, the GenAI
-  bounded-mutation panel (proposed / applied / rejected), and the recorded
-  confrontation's scenario-identity block; "Run replay" streams events.
-- [ ] `/final-benchmark` (Results) shows the "Partial generalization"
-  verdict, the LOAFO table, the fresh-scenario family chart **with bars
-  actually drawn** (all three family pairs), the model comparison, and
-  non-empty hardest-survivor cards.
-- [ ] Click through to one real attack blueprint on `/attack-taxonomy` and
-  confirm its confrontation results render.
-- [ ] Open the browser console and confirm no errors on any of the above
-  pages.
-- [ ] Confirm the mock-demo panels (Co-Evolution's "Run round" button,
-  Attack Studio's "Generate batch") still work independently of the API,
-  as a fallback if the live API becomes unreachable mid-demo.
+All of the following were performed against **production** during Milestone
+5A. Re-run them on the machine/URL you actually present from.
+
+- [x] `GET /api/health` returns `{"status": "ok"}` (plus `benchmark`,
+  `genai`, `landscape`, `experiments`, `evolution`, `attacks`, `evaluation`,
+  `hardest-evasions`, `detections/recent` -- all HTTP 200).
+- [x] `/` (Overview) renders its static hero, closed-loop diagram and
+  "Where AEGIS fits" panel **before** any API response arrives -- proven by
+  stubbing `/api/*` to never resolve and confirming all static content still
+  rendered while the evidence numbers were absent.
+- [x] `/` (Overview) then populates all three evidence cards -- 14 / 3 /
+  55,000, GenAI 3/3, and Defender v3 (PR-AUC 0.904, recall @ 0.1% FPR 85.2%,
+  FPR 0.0216%, LOAFO 58.3% "partial generalization") -- no error or empty
+  state, and no generic 58% "Defender recall" anywhere.
+- [x] `/co-evolution` shows all six real closed-loop stages as "Real".
+- [x] `/attack-lab` shows all three family tabs, the bounded-mutation panel
+  (6 proposed / 5 applied / 1 rejected with its verbatim reason), and the
+  recorded confrontation's scenario-identity block; "Run replay" streamed
+  0/15 -> 15/15 with the loop stage advancing.
+- [x] `/final-benchmark` shows the "Partial generalization" verdict, the
+  LOAFO table, the family chart with all bars drawn and a full `100%`
+  y-axis label, the model comparison, and non-empty hardest-survivor cards.
+- [x] `/attack-taxonomy` renders 14 identified / 3 deeply simulated with
+  three working "Open in Attack Lab" links into the deep-simulated families.
+- [x] Browser console shows no errors on any of the above pages.
+- [x] Mock-demo panels still work independently of the API (Co-Evolution's
+  "Run round 0" advanced to "Run round 1" and is labelled simulated).
 
 ## 8. Final verification summary
 
-Verification performed as part of this hardening pass (see the report
-below for exact commands and results): full `pytest`, `ruff check .`,
-strict `mypy`, frontend `tsc -b`, `oxlint`, `npm run build`, and a browser
-smoke test against a live API + dev server. Re-run all of these on your
-final commit before submitting -- this checklist item is not satisfied by
-a verification pass on an earlier commit.
+Re-run on your final commit before submitting -- this item is not satisfied
+by a verification pass on an earlier commit.
+
+Results on the current HEAD (Milestone 5A):
+
+- [x] `pytest` -- full suite passes, exit 0, zero failures.
+- [x] `ruff check .` -- "All checks passed!".
+- [x] Frontend `tsc -b`, `oxlint`, `npm run build` -- all clean (7 oxlint
+  warnings, the long-standing pre-existing set).
+- [x] Browser smoke test against **production** (not a dev server) -- see
+  item 7.
+- [ ] `mypy` -- **does not currently run to completion in this environment**,
+  and this is not an AEGIS code defect. `pyproject.toml` pins
+  `python_version = "3.10"`, but this `.venv` is Python 3.14.7 with numpy
+  2.5.2, whose bundled stubs use PEP 695 `type` statements (3.12+). mypy
+  errors inside `numpy/__init__.pyi` and stops before checking any project
+  file. Pre-existing and unrelated to the submission materials; it affects
+  no deployed behaviour, no evidence artifact and no claim. Resolve by
+  running mypy on a Python matching the pinned target, or by bumping
+  `python_version` -- **after** submission, since the product is frozen.
 
 ## 9. Submission assets / links
 
