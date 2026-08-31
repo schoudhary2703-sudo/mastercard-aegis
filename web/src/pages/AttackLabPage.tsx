@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { fetchExperiments, fetchGenAI } from "../api/client";
+import { fetchExperiments, fetchGenAI, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO, GenAIGuidedGenerationDTO, GenAIResponseDTO } from "../api/types";
 import { GenAIAnalystPanel } from "../components/genai/GenAIAnalystPanel";
@@ -10,7 +10,9 @@ import { OutcomeBadge, ReplayStream } from "../components/lab/ReplayStream";
 import { ScoreBoard } from "../components/lab/ScoreBoard";
 import { useReplay } from "../components/lab/useReplay";
 import { ClosedLoopFlow, type LoopStageId } from "../components/loop/ClosedLoopFlow";
+import { FraudLandscape } from "../components/landscape/FraudLandscape";
 import { ApiStateSection } from "../components/real/ApiStateSection";
+import { RealDataBadge } from "../components/real/RealBadge";
 import { Card } from "../components/ui/Card";
 import { Details } from "../components/ui/Details";
 
@@ -341,6 +343,8 @@ export function AttackLabPage() {
   const genaiFetch = useCallback((s: AbortSignal) => fetchGenAI(s), []);
   const experiments = useApiResource(experimentsFetch, [], (d) => d.experiments.length === 0);
   const genai = useApiResource(genaiFetch, []);
+  const landscapeFetch = useCallback((s: AbortSignal) => fetchLandscape(s), []);
+  const landscape = useApiResource(landscapeFetch, []);
 
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
 
@@ -702,6 +706,48 @@ export function AttackLabPage() {
           )
         }
       />
+
+      {/* --- Fidelity: the criterion this step exists to argue -------------
+          Moved here from Identify, which was arguing attack *diversity* and
+          had grown to nearly four screens carrying evidence for a criterion
+          it does not own. */}
+      <section className="border-t border-[var(--color-border)] pt-8">
+        <h2 className="t-h1 text-[var(--color-ink)]">Is the generated traffic realistic?</h2>
+        <p className="t-body-sm mb-4 mt-1 max-w-2xl text-[var(--color-ink-muted)]">
+          One generation-only benchmark run &mdash; no scoring, no fitting, no retraining &mdash;
+          and the fidelity decomposition behind it.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <div className="mb-2.5 flex items-center justify-between gap-3">
+              <h3 className="t-eyebrow text-[var(--color-ink-faint)]">Generation at scale</h3>
+              <RealDataBadge />
+            </div>
+            <Card>
+              <ApiStateSection
+                state={landscape}
+                emptyTitle="No scale benchmark yet"
+                emptyBody="Run scripts/run_generation_scale_benchmark.py."
+                render={(data) => <FraudLandscape landscape={data} section="scale" />}
+              />
+            </Card>
+          </div>
+
+          {/* The scale panel above already carries each family's headline
+              fidelity score. This is the component decomposition behind it --
+              real evidence, but a deep dive, so it opens on demand rather
+              than adding a screen of tables to the default view. */}
+          <Details summary="Fidelity breakdown — distributional, behavioural and structural components">
+            <ApiStateSection
+              state={landscape}
+              emptyTitle="No fidelity breakdown yet"
+              emptyBody="Run scripts/run_generation_scale_benchmark.py."
+              render={(data) => <FraudLandscape landscape={data} section="fidelity" />}
+            />
+          </Details>
+        </div>
+      </section>
     </div>
   );
 }
