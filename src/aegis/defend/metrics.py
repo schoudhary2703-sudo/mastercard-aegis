@@ -71,8 +71,9 @@ def roc_auc(y_true: np.ndarray, scores: np.ndarray) -> float | None:
 
 def _pr_curve_points(
     y_true: np.ndarray, scores: np.ndarray
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Precision, recall, FPR at every distinct-score cutoff, threshold descending."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Precision, recall, FPR and the cutoff score itself at every distinct-score
+    cutoff, threshold descending."""
     order = np.argsort(-scores, kind="mergesort")
     y_sorted = y_true[order]
     scores_sorted = scores[order]
@@ -97,14 +98,15 @@ def _pr_curve_points(
     )
     recall = tps / n_pos if n_pos > 0 else np.zeros_like(tps, dtype=float)
     fpr = fps / n_neg if n_neg > 0 else np.zeros_like(fps, dtype=float)
-    return precision, recall, fpr
+    thresholds = scores_sorted[cutoffs] if n > 0 else np.array([], dtype=float)
+    return precision, recall, fpr, thresholds
 
 
 def average_precision(y_true: np.ndarray, scores: np.ndarray) -> float | None:
     """PR-AUC, sklearn's step-function definition: sum((R_n - R_{n-1}) * P_n)."""
     if y_true.sum() == 0:
         return None
-    precision, recall, _ = _pr_curve_points(y_true, scores)
+    precision, recall, _, _ = _pr_curve_points(y_true, scores)
     recall_prev = np.concatenate(([0.0], recall[:-1]))
     return float(np.sum((recall - recall_prev) * precision))
 
@@ -113,7 +115,7 @@ def recall_at_fpr(y_true: np.ndarray, scores: np.ndarray, budget: float) -> floa
     """Highest recall achievable while false-positive rate stays at or below `budget`."""
     if y_true.sum() == 0:
         return 0.0
-    _, recall, fpr = _pr_curve_points(y_true, scores)
+    _, recall, fpr, _ = _pr_curve_points(y_true, scores)
     mask = fpr <= budget
     if not mask.any():
         return 0.0
@@ -171,6 +173,55 @@ def tune_threshold_for_f1(y_true: np.ndarray, scores: np.ndarray) -> float:
     # explicit tie-break loop needed.
     best_index = int(np.argmax(f1))
     return float(scores_sorted[cutoffs[best_index]])
+
+
+def threshold_at_fpr_budget(y_true: np.ndarray, scores: np.ndarray, budget: float) -> float:
+    """Lowest threshold whose false-positive rate stays within `budget`.
+
+    This is the operating-point rule a payment system actually runs on:
+    review capacity and customer-friction tolerance fix the false-positive
+    budget first, and the threshold is whatever extracts the most recall
+    inside it. `tune_threshold_for_f1` instead maximizes F1, which on a
+    ~0.4%-positive split silently buys precision the business never asked for
+    at a steep cost in caught fraud - on the real PaySim test split the
+    F1-optimal point scores recall 0.779 at FPR 0.0002, while this rule at
+    the agreed 0.005 budget reaches recall 0.933 on the identical model
+    (see `recall_at_fixed_fpr` in any `EvaluationResult`).
+
+    Uses the same exact-candidate, O(n log n) cumulative-scan construction as
+    `tune_threshold_for_f1` (via `_pr_curve_points`), so it is equally safe on
+    a ~943k-row validation split.
+
+    Ties on the best recall favor the *higher* threshold, matching
+    `tune_threshold_for_f1`'s convention: identical recall for fewer false
+    positives is strictly better.
+
+    When no cutoff satisfies the budget - possible when the single
+    highest-scoring row is a false positive and the budget is tighter than one
+    negative - the returned threshold sits just above the maximum observed
+    score, flagging nothing. Respecting the budget is the contract; returning
+    a threshold that breaches it would not be.
+    """
+    if len(y_true) != len(scores):
+        msg = f"y_true and scores must be the same length, got {len(y_true)} and {len(scores)}"
+        raise ValueError(msg)
+    if not 0.0 <= budget <= 1.0:
+        msg = f"budget must be a false-positive rate in [0, 1], got {budget}"
+        raise ValueError(msg)
+    if len(scores) == 0:
+        return 0.5
+
+    _, recall, fpr, thresholds = _pr_curve_points(y_true, scores)
+    affordable = fpr <= budget
+    if not affordable.any():
+        return float(np.nextafter(float(np.max(scores)), np.inf))
+
+    # `thresholds` descends, so among rows tied on the best affordable recall
+    # `argmax`'s first-occurrence behavior already returns the highest
+    # threshold - the same tie-break `tune_threshold_for_f1` documents.
+    candidate_recall = np.where(affordable, recall, -np.inf)
+    best_index = int(np.argmax(candidate_recall))
+    return float(thresholds[best_index])
 
 
 def compute_classification_metrics(
@@ -291,5 +342,6 @@ __all__ = [
     "measure_scoring_latency",
     "recall_at_fpr",
     "roc_auc",
+    "threshold_at_fpr_budget",
     "tune_threshold_for_f1",
 ]

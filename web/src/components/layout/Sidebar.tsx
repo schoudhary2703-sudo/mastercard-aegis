@@ -1,92 +1,147 @@
 import { NavLink } from "react-router-dom";
-import {
-  BenchmarkIcon,
-  DetectionIcon,
-  EvaluationIcon,
-  LoopIcon,
-  OverviewIcon,
-  StudioIcon,
-  TaxonomyIcon,
-} from "./icons";
+import { LOOP_STEPS, OVERVIEW_STEP, RESULTS_STEP, type JourneyStep } from "../../nav/journey";
+import { Logo } from "./Logo";
+import { StudioIcon } from "./icons";
 
 /**
- * Navigation follows the judge story: four primary screens, with the older
- * exploratory pages demoted to a visually quieter secondary group so they
- * stay reachable without competing for attention.
+ * Navigation is the walkthrough.
+ *
+ * A judge scoring against the rubric should never have to guess which screen
+ * answers which criterion, so the loop steps are numbered 1-4 in reading
+ * order and every entry comes from `nav/journey.ts` -- the same list that
+ * drives the Overview cards and the per-page "Next" footer.
+ *
+ * Everything simulated lives behind one visually quiet link at the bottom.
+ * Nothing in the numbered path is a browser toy.
  */
-export const PRIMARY_NAV = [
-  { to: "/", label: "Overview", icon: OverviewIcon, end: true },
-  { to: "/attack-lab", label: "Attack Lab", icon: StudioIcon },
-  { to: "/co-evolution", label: "Evolution", icon: LoopIcon },
-  { to: "/final-benchmark", label: "Results", icon: BenchmarkIcon },
-];
 
-export const SECONDARY_NAV = [
-  { to: "/attack-taxonomy", label: "Taxonomy", icon: TaxonomyIcon },
-  { to: "/live-detection", label: "Detections", icon: DetectionIcon },
-  { to: "/evaluation", label: "Evaluation", icon: EvaluationIcon },
-  { to: "/attack-studio", label: "Studio (demo)", icon: StudioIcon },
-];
 
-function linkClasses(isActive: boolean, primary: boolean): string {
-  const base = "flex items-center gap-2.5 rounded-lg px-3 transition-standard";
-  const size = primary ? "py-2 text-sm font-medium" : "py-1.5 text-xs";
-  if (isActive) return `${base} ${size} bg-[var(--color-navy-800)] text-white`;
-  return `${base} ${size} text-[var(--color-navy-300)] hover:bg-[var(--color-navy-900)] hover:text-white`;
+function linkClasses(isActive: boolean): string {
+  const base = "group flex items-center gap-3 rounded-lg px-3 py-2 transition-standard";
+  if (isActive) return `${base} bg-[var(--color-navy-800)] text-white`;
+  return `${base} text-[var(--color-navy-300)] hover:bg-[var(--color-navy-900)] hover:text-white`;
+}
+
+function StepBadge({ step, active }: { step: number; active: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums transition-standard ${
+        active
+          ? "bg-[var(--color-accent-600)] text-white"
+          : "bg-[var(--color-navy-800)] text-[var(--color-navy-300)] group-hover:text-white"
+      }`}
+    >
+      {step}
+    </span>
+  );
+}
+
+function JourneyLink({ item, onNavigate }: { item: JourneyStep; onNavigate?: () => void }) {
+  const { to, label, hint, icon: Icon, end, step } = item;
+  return (
+    <NavLink to={to} end={end} onClick={onNavigate} className={({ isActive }) => linkClasses(isActive)}>
+      {({ isActive }) => (
+        <>
+          {step != null ? <StepBadge step={step} active={isActive} /> : <Icon />}
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-medium leading-tight">{label}</span>
+            {/* Wraps to two lines rather than truncating. These hints are full
+                sentences and the single-line clip landed mid-word -- "The GenAI
+                fraud surface, ma..." tells a reader less than nothing. The same
+                strings feed the Overview cards, so shortening the copy to fit
+                240px would have degraded the place it displays fine. */}
+            <span className="mt-0.5 block line-clamp-2 text-[10.5px] leading-snug text-[var(--color-navy-300)] opacity-70">
+              {hint}
+            </span>
+          </span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+function NavGroup({
+  heading,
+  items,
+  onNavigate,
+}: {
+  heading?: string;
+  items: JourneyStep[];
+  onNavigate?: () => void;
+}) {
+  return (
+    <div className="mt-5 first:mt-0">
+      {heading && (
+        <p className="t-eyebrow mb-2 px-3 text-[var(--color-navy-300)] opacity-60">{heading}</p>
+      )}
+      <nav className="space-y-0.5">
+        {items.map((item) => (
+          <JourneyLink key={item.to} item={item} onNavigate={onNavigate} />
+        ))}
+      </nav>
+    </div>
+  );
 }
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <>
-      <nav className="space-y-0.5 px-3">
-        {PRIMARY_NAV.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            onClick={onNavigate}
-            className={({ isActive }) => linkClasses(isActive, true)}
-          >
-            <Icon />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+    <div className="px-3">
+      <NavGroup items={[OVERVIEW_STEP]} onNavigate={onNavigate} />
+      <NavGroup heading="The closed loop" items={LOOP_STEPS} onNavigate={onNavigate} />
+      <NavGroup heading="Evidence" items={[RESULTS_STEP]} onNavigate={onNavigate} />
 
-      <p className="mt-5 px-6 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy-300)]/70">
-        More
-      </p>
-      <nav className="mt-1 space-y-0.5 px-3">
-        {SECONDARY_NAV.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            onClick={onNavigate}
-            className={({ isActive }) => linkClasses(isActive, false)}
-          >
-            <Icon />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-    </>
+      <div className="mt-6 border-t border-[var(--color-border)] pt-3">
+        <NavLink
+          to="/sandbox"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[11.5px] transition-standard ${
+              isActive
+                ? "bg-[var(--color-navy-800)] text-white"
+                : "text-[var(--color-navy-300)] opacity-70 hover:bg-[var(--color-navy-900)] hover:text-white hover:opacity-100"
+            }`
+          }
+        >
+          <StudioIcon />
+          <span className="min-w-0 flex-1">
+            <span className="block leading-tight">Sandbox</span>
+            <span className="block truncate text-[10px] leading-tight opacity-70">
+              Simulated · not evidence
+            </span>
+          </span>
+        </NavLink>
+      </div>
+    </div>
   );
 }
 
 export function Sidebar() {
   return (
-    <aside className="hidden h-full w-56 shrink-0 flex-col overflow-y-auto bg-[var(--color-navy-950)] text-[var(--color-navy-300)] lg:flex">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-accent-500)] text-sm font-bold text-white">
-          A
+    <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-navy-950)] text-[var(--color-navy-300)] lg:flex">
+      <div className="flex items-center gap-3 px-5 py-5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent-600)] text-white">
+          <Logo className="h-5 w-5" />
         </div>
-        <div>
-          <p className="text-sm font-semibold text-white">AEGIS</p>
-          <p className="text-[11px] text-[var(--color-navy-300)]">Adversarial Defense</p>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold tracking-wide text-white">AEGIS</p>
+          <p className="t-eyebrow text-[var(--color-navy-300)]">Defense console</p>
         </div>
       </div>
-      <div className="flex-1">
+
+      <div className="flex-1 overflow-y-auto pb-4">
         <SidebarNav />
+      </div>
+
+      <div className="border-t border-[var(--color-border)] px-5 py-4">
+        <p className="flex items-center gap-2 text-[11.5px] font-medium text-[var(--color-defend-500)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-defend-500)]" />
+          Live pipeline artifacts
+        </p>
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-[var(--color-navy-300)] opacity-80">
+          Every figure in the numbered path is read from a persisted file. Nothing is computed in
+          the browser.
+        </p>
       </div>
     </aside>
   );

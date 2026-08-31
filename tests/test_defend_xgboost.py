@@ -256,3 +256,123 @@ def test_fit_actually_uses_quantile_dmatrix_for_hist_tree_method(monkeypatch):
     XGBoostDetector(seed=1, num_boost_round=10).fit(X, y)
     assert calls["quantile"] == 1
     assert calls["plain"] == 0
+
+
+# --- early stopping ----------------------------------------------------
+def test_fit_without_eval_set_uses_every_round():
+    """Backward compatibility: no `eval_set` means no early stopping."""
+    X, y, _ = _fixture_frame()
+    detector = XGBoostDetector(num_boost_round=40).fit(X, y)
+    assert detector.best_iteration is None
+    # (0, 0) is XGBoost's "score with all trees".
+    assert detector._predict_range() == (0, 0)
+
+
+def test_fit_with_eval_set_stops_early_and_records_best_iteration():
+    X, y, _ = _fixture_frame(n=400, seed=3)
+    X_train, y_train = X.iloc[:280], y[:280]
+    X_validation, y_validation = X.iloc[280:], y[280:]
+
+    detector = XGBoostDetector(num_boost_round=400, early_stopping_rounds=10).fit(
+        X_train, y_train, meta={"eval_set": (X_validation, y_validation)}
+    )
+
+    assert detector.best_iteration is not None
+    assert detector.best_iteration < 399, "early stopping never triggered"
+    assert detector._predict_range() == (0, detector.best_iteration + 1)
+
+
+def test_early_stopped_model_scores_with_best_iteration_not_the_overfit_tail():
+    """XGBoost keeps the rejected trees; scoring must exclude them."""
+    X, y, _ = _fixture_frame(n=400, seed=4)
+    X_train, y_train = X.iloc[:280], y[:280]
+    X_validation, y_validation = X.iloc[280:], y[280:]
+
+    detector = XGBoostDetector(num_boost_round=400, early_stopping_rounds=10).fit(
+        X_train, y_train, meta={"eval_set": (X_validation, y_validation)}
+    )
+    best = detector.best_iteration
+    assert best is not None
+
+    scored = detector.score(X_validation)
+    truncated = detector._booster.inplace_predict(
+        X_validation[detector.feature_names].to_numpy(dtype=np.float64),
+        iteration_range=(0, best + 1),
+    )
+    all_trees = detector._booster.inplace_predict(
+        X_validation[detector.feature_names].to_numpy(dtype=np.float64), iteration_range=(0, 0)
+    )
+    assert np.allclose(scored, np.clip(truncated, 0.0, 1.0))
+    assert not np.allclose(truncated, all_trees), (
+        "fixture did not build trees past best_iteration, so this asserts nothing"
+    )
+
+
+def test_save_load_preserves_best_iteration_and_scores(tmp_model_dir):
+    X, y, _ = _fixture_frame(n=400, seed=5)
+    X_train, y_train = X.iloc[:280], y[:280]
+    X_validation, y_validation = X.iloc[280:], y[280:]
+
+    detector = XGBoostDetector(num_boost_round=400, early_stopping_rounds=10).fit(
+        X_train, y_train, meta={"eval_set": (X_validation, y_validation)}
+    )
+    detector.save(str(tmp_model_dir))
+    restored = XGBoostDetector.load(str(tmp_model_dir))
+
+    assert restored.best_iteration == detector.best_iteration
+    assert np.allclose(restored.score(X_validation), detector.score(X_validation))
+
+
+# --- sample weighting --------------------------------------------------
+def test_fit_accepts_sample_weight_and_it_changes_the_model():
+    X, y, _ = _fixture_frame()
+    unweighted = XGBoostDetector(num_boost_round=30).fit(X, y)
+
+    weights = np.ones(len(y), dtype=float)
+    weights[y == 1] = 25.0
+    weighted = XGBoostDetector(num_boost_round=30).fit(X, y, meta={"sample_weight": weights})
+
+    assert not np.allclose(unweighted.score(X), weighted.score(X))
+    # Up-weighting positives must push their scores up, not merely perturb them.
+    assert weighted.score(X)[y == 1].mean() > unweighted.score(X)[y == 1].mean()
+
+
+def test_fit_rejects_misaligned_sample_weight():
+    X, y, _ = _fixture_frame()
+    with pytest.raises(ValueError, match="sample_weight length"):
+        XGBoostDetector(num_boost_round=5).fit(X, y, meta={"sample_weight": np.ones(len(y) - 1)})
+
+
+# --- scoring path equivalence ------------------------------------------
+def test_score_is_bit_identical_to_the_dmatrix_path():
+    """`inplace_predict` on a float64 array must not change any score.
+
+    The switch away from DMatrix is a latency optimization; if it moved a
+    single score it would silently invalidate every frozen threshold.
+    """
+    import xgboost as xgb
+
+    X, y, _ = _fixture_frame(n=300, seed=6)
+    detector = XGBoostDetector(num_boost_round=60).fit(X, y)
+    names = detector.feature_names
+
+    via_dmatrix = detector._booster.predict(xgb.DMatrix(X[names], feature_names=names))
+    assert np.array_equal(detector.score(X), np.clip(via_dmatrix, 0.0, 1.0))
+
+
+def test_score_handles_nan_features_identically_to_the_dmatrix_path():
+    """NaN is a real feature value here (cold-start account history)."""
+    import xgboost as xgb
+
+    X, y, _ = _fixture_frame(n=300, seed=7)
+    names = list(X.columns)
+    detector = XGBoostDetector(num_boost_round=60).fit(X, y)
+
+    probe = X.copy()
+    probe.iloc[0, probe.columns.get_loc("temporal.source_avg_amount_before")] = np.nan
+    probe.iloc[1, probe.columns.get_loc("temporal.seconds_since_source_previous_txn")] = np.nan
+
+    via_dmatrix = detector._booster.predict(xgb.DMatrix(probe[names], feature_names=names))
+    scored = detector.score(probe)
+    assert np.array_equal(scored, np.clip(via_dmatrix, 0.0, 1.0))
+    assert np.isfinite(scored).all()

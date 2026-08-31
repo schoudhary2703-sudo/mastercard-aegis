@@ -42,8 +42,13 @@
   --color-risk-high-600: #c22a2a;
   --color-risk-high-100: #fbe2e2;
 
-  --shadow-card: 0 1px 2px rgba(16, 24, 39, 0.04), 0 1px 1px rgba(16, 24, 39, 0.03);
-  --shadow-elevated: 0 4px 16px rgba(16, 24, 39, 0.08), 0 1px 2px rgba(16, 24, 39, 0.04);
+  /* Elevation. Three real steps rather than one near-invisible one: a flat
+     card, a card that reacts to the pointer, and the one lead surface per
+     screen. Uniform hairline shadows on every box are what makes a page read
+     as a generated dashboard instead of a designed one. */
+  --shadow-card: 0 1px 2px rgba(16, 24, 39, 0.05), 0 0 0 1px rgba(16, 24, 39, 0.02);
+  --shadow-hover: 0 4px 12px rgba(16, 24, 39, 0.07), 0 1px 3px rgba(16, 24, 39, 0.05);
+  --shadow-elevated: 0 8px 28px rgba(16, 24, 39, 0.09), 0 2px 6px rgba(16, 24, 39, 0.05);
 }
 
 html {
@@ -70,6 +75,161 @@ body {
 /* Restrained motion only -- state transitions, never decorative loops. */
 .transition-standard {
   transition: all 160ms ease;
+}
+
+/* ---- Type scale ---------------------------------------------------------
+ * Every heading size was previously an inline guess, so nothing shared a
+ * rhythm and no two screens agreed on what a heading was. One scale, used
+ * everywhere, is the single largest difference between a page that reads as
+ * generated and one that reads as designed.
+ *
+ * Numerals are monospaced and tabular wherever a figure is the point, so
+ * columns of metrics align and a changing value does not reflow its row.
+ * ------------------------------------------------------------------------ */
+.t-display {
+  font-size: 38px;
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.021em;
+  text-wrap: balance;
+}
+.t-h1 {
+  font-size: 24px;
+  line-height: 1.22;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  text-wrap: balance;
+}
+.t-h2 {
+  font-size: 17px;
+  line-height: 1.32;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+}
+.t-body {
+  font-size: 14.5px;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+.t-body-sm {
+  font-size: 13px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+.t-label {
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.t-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.t-stat {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+.t-stat-xl {
+  font-family: var(--font-mono);
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.t-mono-sm {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .t-display {
+    font-size: 28px;
+  }
+  .t-h1 {
+    font-size: 20px;
+  }
+  .t-stat-xl {
+    font-size: 32px;
+  }
+  .t-stat {
+    font-size: 24px;
+  }
+}
+
+/* ---- The loop signal ----------------------------------------------------
+ * The one animated element in the console, on the Overview ring. It is not
+ * decoration: the dot is red while an attack is in flight and green after the
+ * midpoint, once the escape has become hardening data, which states the
+ * loop's thesis in a single gesture.
+ *
+ * Gated behind prefers-reduced-motion: no-preference, so a reader who has
+ * asked for stillness gets a static diagram with no dot rather than a
+ * suppressed-but-present one. The step-end tint means the colour flips once
+ * per half-lap instead of smearing through muddy intermediate hues.
+ * ------------------------------------------------------------------------ */
+@keyframes aegis-signal {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes aegis-signal-tint {
+  0% {
+    fill: var(--color-risk-high-600);
+  }
+  50% {
+    fill: var(--color-risk-low-600);
+  }
+}
+.aegis-signal-dot {
+  /* Hidden by default so the dot never parks at the origin for readers whose
+     motion preference suppresses the animation. */
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .aegis-signal-dot {
+    opacity: 1;
+    offset-path: path("M240 82A124 104 0 0 1 240 290A124 104 0 0 1 240 82");
+    offset-rotate: 0deg;
+    animation:
+      aegis-signal 7s linear infinite,
+      aegis-signal-tint 7s step-end infinite;
+  }
+}
+
+/* A card that responds to the pointer. Used where the whole surface is a
+   link -- the judge-path cards, the step footer -- so a clickable card is
+   distinguishable from a static one without adding a visible affordance. */
+.card-interactive {
+  transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-hover);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transition-standard,
+  .card-interactive {
+    transition: none;
+  }
+  .card-interactive:hover {
+    transform: none;
+  }
 }
 
 ::-webkit-scrollbar {

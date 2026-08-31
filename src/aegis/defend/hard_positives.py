@@ -30,10 +30,14 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from aegis.features.io import load_transactions_jsonl
 from aegis.shared.contracts import Transaction
 from aegis.shared.enums import DataSplit, FraudLabel
+
+if TYPE_CHECKING:  # pragma: no cover
+    import numpy as np
 
 HARD_POSITIVES_FILENAME = "hard_positives.jsonl"
 PROVENANCE_FILENAME = "provenance.json"
@@ -225,6 +229,110 @@ def _promote_one(
     return txn.model_copy(update={"split": DataSplit.TRAIN, "metadata": merged_metadata})
 
 
+DEFAULT_PROMOTED_POSITIVE_MASS_SHARE = 0.05
+"""Share of total positive gradient mass the promoted fraud rows should carry.
+
+Promotion moves a handful of rows: the shipped artifacts under
+`submission/artifacts/data/hardening/` promoted between 6 and 22 fraud rows
+into a PaySim training split holding thousands of positives. Unweighted, that
+is a fraction of a percent of the positive class - far below the noise floor
+of retraining, which is why two hardening rounds moved the test metrics
+*down* rather than up. Nothing was learned from the evasions; the deltas were
+run-to-run variance.
+
+0.05 makes the promoted rows a real but non-dominant part of what the model
+fits: enough gradient to change the decision boundary near the evasion,
+little enough that the model is still overwhelmingly fitted to the real
+PaySim fraud it must keep catching. It is deliberately a *share of positive
+mass*, not a fixed multiplier - a fixed multiplier means something different
+at 6 promoted rows than at 600, whereas the share is stable as the loop
+scales up."""
+
+
+def promoted_sample_weights(
+    y_train: np.ndarray,
+    promoted_row_count: int,
+    *,
+    positive_mass_share: float = DEFAULT_PROMOTED_POSITIVE_MASS_SHARE,
+) -> np.ndarray:
+    """Per-row training weights giving promoted fraud rows a meaningful share.
+
+    `y_train` is the full training label vector, with the promoted rows
+    occupying the **last** `promoted_row_count` positions - the order both
+    training paths produce, since hard positives are appended to the base
+    split (`scripts/train_baseline_detector.py`, and
+    `materialize_split_features_with_extra` for the streaming path).
+
+    Only promoted rows whose ground truth is fraud are up-weighted. A
+    promoted scenario also carries legitimate warm-up rows, which exist to
+    give the fraud rows realistic account history rather than a cold start;
+    they are ordinary negatives and are left at weight 1.0.
+
+    Weight is solved so promoted positives end up holding
+    `positive_mass_share` of all positive weight::
+
+        w * H / (P + w * H) = share   =>   w = share * P / (H * (1 - share))
+
+    where `P` is base positive count and `H` promoted positive count. Returns
+    all-ones - i.e. the previous unweighted behavior - when there is nothing
+    to weight, so callers need no special-casing.
+    """
+    import numpy as np
+
+    labels = np.asarray(y_train)
+    weights = np.ones(len(labels), dtype=float)
+    if promoted_row_count <= 0 or len(labels) == 0:
+        return weights
+    if promoted_row_count > len(labels):
+        msg = f"promoted_row_count {promoted_row_count} exceeds training row count {len(labels)}"
+        raise HardPositiveValidationError(msg)
+    if not 0.0 <= positive_mass_share < 1.0:
+        msg = f"positive_mass_share must be in [0, 1), got {positive_mass_share}"
+        raise HardPositiveValidationError(msg)
+
+    boundary = len(labels) - promoted_row_count
+    promoted_positive = np.zeros(len(labels), dtype=bool)
+    promoted_positive[boundary:] = labels[boundary:] == 1
+
+    n_promoted_positive = int(promoted_positive.sum())
+    n_base_positive = int((labels[:boundary] == 1).sum())
+
+    # A promotion always contains at least one fraud row -- `promote_hard_positives`
+    # rejects a scenario without one. So an empty tail means the last
+    # `promoted_row_count` rows are not the promoted rows: either the
+    # materializer stopped appending them last, or `promoted_row_count`
+    # disagrees with what was actually appended (the two are bound only by a
+    # comment in `scripts/train_baseline_detector.py`).
+    #
+    # Returning all-ones here would silently restore the unweighted behaviour
+    # this function exists to replace -- the exact failure that let two
+    # hardening rounds ship as no-ops. Fail loudly instead.
+    if n_promoted_positive == 0:
+        msg = (
+            f"expected fraud rows in the last {promoted_row_count} training rows "
+            "(promoted rows must be appended last), found none. Either the "
+            "feature materializer changed its append order, or promoted_row_count "
+            "does not match the rows actually appended."
+        )
+        raise HardPositiveValidationError(msg)
+
+    # Both remaining cases are legitimately unweightable rather than wrong: with
+    # no base positives there is no mass to take a share of, and a zero share is
+    # the caller explicitly opting out.
+    if n_base_positive == 0 or positive_mass_share == 0.0:
+        return weights
+
+    solved = (positive_mass_share * n_base_positive) / (
+        n_promoted_positive * (1.0 - positive_mass_share)
+    )
+    # Clamped at 1.0: if a promotion is already large enough to exceed the
+    # target share on its own, the solved weight drops below 1 and would
+    # *demote* the very rows being promoted. The share is a floor on their
+    # influence, not a cap.
+    weights[promoted_positive] = max(solved, 1.0)
+    return weights
+
+
 def assert_no_duplicate_transaction_ids(transactions: Iterable[Transaction]) -> None:
     """Raise if any two promoted rows share a `transaction_id`."""
     seen: set[str] = set()
@@ -314,6 +422,7 @@ def write_hard_positive_artifact(
 
 
 __all__ = [
+    "DEFAULT_PROMOTED_POSITIVE_MASS_SHARE",
     "HARD_POSITIVES_FILENAME",
     "PROVENANCE_FILENAME",
     "HardPositiveArtifact",
@@ -324,5 +433,6 @@ __all__ = [
     "assert_no_duplicate_transaction_ids",
     "assert_no_id_overlap_with_jsonl",
     "promote_hard_positives",
+    "promoted_sample_weights",
     "write_hard_positive_artifact",
 ]

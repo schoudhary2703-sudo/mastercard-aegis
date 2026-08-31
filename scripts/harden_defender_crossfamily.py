@@ -61,6 +61,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from aegis.defend.acceptance import (
+    DEFAULT_OPERATING_FPR_BUDGET,
+    DEFAULT_TOLERANCE,
+    AcceptanceCriteria,
+    AcceptanceDecision,
+    evaluate_acceptance,
+)
 from aegis.defend.hard_positives import (
     HardPositiveArtifact,
     HardPositivePromotion,
@@ -139,6 +146,9 @@ class CrossFamilyHardenConfig:
     row. `None` uses the wall clock (default for a real run); tests pass a
     fixed value so the written hard-positive artifact is byte-for-byte
     reproducible, per AGENTS.md SS6."""
+    acceptance_criteria: AcceptanceCriteria | None = None
+    """What v3 must satisfy against *both* v2 and v1 to count as a promotion.
+    `None` uses `AcceptanceCriteria()` defaults."""
 
     def sources(self) -> list[HardPositiveSource]:
         return [
@@ -168,6 +178,20 @@ class CrossFamilyHardenResult:
     regression_report: dict[str, object]
     regression_report_path: Path
     handoff_path: Path
+    acceptance_vs_v1: AcceptanceDecision
+    acceptance_vs_v2: AcceptanceDecision
+    acceptance_path: Path
+
+    @property
+    def accepted(self) -> bool:
+        """Cleared only if it regresses neither the predecessor nor the baseline.
+
+        Gating on v2 alone is what let v3 ship while sitting below the untouched
+        v1 on PR-AUC and recall: each round only ever had to beat the round
+        before it, so the loop could drift away from the baseline one tolerable
+        step at a time.
+        """
+        return self.acceptance_vs_v1.accepted and self.acceptance_vs_v2.accepted
 
 
 def run_crossfamily_hardening(config: CrossFamilyHardenConfig) -> CrossFamilyHardenResult:
@@ -262,6 +286,41 @@ def run_crossfamily_hardening(config: CrossFamilyHardenConfig) -> CrossFamilyHar
         json.dumps(regression_report, indent=2, sort_keys=True), encoding="utf-8"
     )
 
+    # Gate against both prior generations. v2 is the model this replaces; v1 is
+    # the untouched baseline the whole loop is measured against, and skipping it
+    # is precisely how a chain of individually-tolerable rounds ends up below
+    # where it started.
+    acceptance_vs_v2 = evaluate_acceptance(
+        incumbent=defender_v2_evaluation,
+        candidate=training_result.test_evaluation,
+        criteria=config.acceptance_criteria,
+    )
+    acceptance_vs_v1 = evaluate_acceptance(
+        incumbent=baseline_v1_evaluation,
+        candidate=training_result.test_evaluation,
+        criteria=config.acceptance_criteria,
+    )
+    accepted = acceptance_vs_v1.accepted and acceptance_vs_v2.accepted
+    acceptance_path = training_result.artifact_dir / "acceptance.json"
+    acceptance_path.write_text(
+        json.dumps(
+            {
+                "accepted": accepted,
+                "policy": (
+                    "a candidate must regress neither the generation it replaces "
+                    "nor the untouched baseline"
+                ),
+                "vs_defender_v2": acceptance_vs_v2.to_dict(),
+                "vs_baseline_v1": acceptance_vs_v1.to_dict(),
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    print(f"vs defender_v2 -> {acceptance_vs_v2.summary}")
+    print(f"vs baseline_v1 -> {acceptance_vs_v1.summary}")
+
     # -- Phase D: Codex handoff ---------------------------------------------
     handoff_path = training_result.artifact_dir / "codex_handoff.json"
     handoff_path.write_text(
@@ -289,6 +348,9 @@ def run_crossfamily_hardening(config: CrossFamilyHardenConfig) -> CrossFamilyHar
         regression_report=regression_report,
         regression_report_path=regression_report_path,
         handoff_path=handoff_path,
+        acceptance_vs_v1=acceptance_vs_v1,
+        acceptance_vs_v2=acceptance_vs_v2,
+        acceptance_path=acceptance_path,
     )
 
 
@@ -507,6 +569,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--chunk-size", type=int, default=_DEFAULT_CHUNK_SIZE)
     parser.add_argument("--nthread", type=int, default=None)
+    parser.add_argument(
+        "--acceptance-tolerance",
+        type=float,
+        default=DEFAULT_TOLERANCE,
+        help=(
+            "absolute regression allowed per gated metric before v3 is rejected "
+            f"(default {DEFAULT_TOLERANCE})"
+        ),
+    )
+    parser.add_argument(
+        "--operating-fpr-budget",
+        type=float,
+        default=DEFAULT_OPERATING_FPR_BUDGET,
+        help=(
+            "false-positive budget whose recall the gate compares "
+            f"(default {DEFAULT_OPERATING_FPR_BUDGET})"
+        ),
+    )
+    parser.add_argument(
+        "--allow-regression",
+        action="store_true",
+        help=(
+            "exit 0 even when the acceptance gate rejects v3. The rejection is still "
+            "recorded in acceptance.json -- this only stops it failing the process."
+        ),
+    )
     return parser
 
 
@@ -529,6 +617,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         low_memory=args.low_memory,
         chunk_size=args.chunk_size,
         nthread=args.nthread,
+        acceptance_criteria=AcceptanceCriteria(
+            tolerance=args.acceptance_tolerance,
+            operating_fpr_budget=args.operating_fpr_budget,
+        ),
     )
     result = run_crossfamily_hardening(config)
 
@@ -554,6 +646,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(f"v1 vs v2 vs v3 regression: {result.regression_report_path}")
     print(f"Codex handoff: {result.handoff_path}")
+    print(f"Acceptance gate: {result.acceptance_path}")
+    print(f"  vs defender_v2 -> {result.acceptance_vs_v2.summary}")
+    print(f"  vs baseline_v1 -> {result.acceptance_vs_v1.summary}")
+
+    if not result.accepted and not args.allow_regression:
+        print()
+        print(
+            "Rejected by the acceptance gate. Artifacts were written for inspection; "
+            "re-run with --allow-regression to ship anyway."
+        )
+        return 1
     return 0
 
 
