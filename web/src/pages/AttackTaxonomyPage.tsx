@@ -1,14 +1,11 @@
 import { useCallback } from "react";
 import { fetchAttacks, fetchLandscape } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
-import { BlueprintPanel } from "../components/attack/BlueprintPanel";
 import { FraudLandscape } from "../components/landscape/FraudLandscape";
 import { Card, CardHeader } from "../components/ui/Card";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { MockDataBadge, RealDataBadge } from "../components/real/RealBadge";
+import { RealDataBadge } from "../components/real/RealBadge";
 import { RealAttackExplorer } from "../components/real/RealAttackExplorer";
-import { BASE_BLUEPRINTS } from "../mock/blueprints";
-import { ATTACK_FAMILIES } from "../types/aegis";
 
 export function AttackTaxonomyPage() {
   const attacksFetch = useCallback((signal: AbortSignal) => fetchAttacks(signal), []);
@@ -74,21 +71,6 @@ export function AttackTaxonomyPage() {
         />
       </Card>
 
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">Illustrative reference blueprints</h2>
-          <MockDataBadge />
-        </div>
-        <p className="mb-3 text-xs text-[var(--color-ink-muted)]">
-          One canonical, hand-written blueprint per family for orientation -- not fitted to any real
-          run. See "Real attacks observed" above for what the pipeline actually produced.
-        </p>
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-          {ATTACK_FAMILIES.map((f) => (
-            <BlueprintPanel key={f.id} blueprint={BASE_BLUEPRINTS[f.id]} />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

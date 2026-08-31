@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { NextStep } from "./NextStep";
 import { Sidebar, SidebarNav } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
@@ -38,6 +39,11 @@ export function AppShell() {
         <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5 lg:px-6">
           <div className="mx-auto max-w-[1280px]">
             <Outlet />
+            {/* The walkthrough drives itself: one correct next screen, always
+                directly under the content the reader just finished. */}
+            <div className="mt-12">
+              <NextStep />
+            </div>
           </div>
         </main>
       </div>

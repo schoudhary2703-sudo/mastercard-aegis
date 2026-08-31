@@ -3,15 +3,10 @@ import { Link } from "react-router-dom";
 import { fetchEvolution, fetchExperiments } from "../api/client";
 import { useApiResource } from "../api/useApiResource";
 import type { ExperimentDTO } from "../api/types";
-import { AttackFamilySelector } from "../components/attack/AttackFamilySelector";
 import { OutcomeBadge } from "../components/lab/ReplayStream";
-import { LoopDiagram } from "../components/loop/LoopDiagram";
 import { ApiStateSection } from "../components/real/ApiStateSection";
-import { MockDataBadge } from "../components/real/RealBadge";
 import { RealEvolutionTimeline } from "../components/real/RealEvolutionTimeline";
 import { Card } from "../components/ui/Card";
-import { Details } from "../components/ui/Details";
-import { useLoop } from "../state/LoopContext";
 
 /**
  * Evolution answers one question: *what happened during the loop?*
@@ -165,8 +160,6 @@ function EscapeSummary({ experiments }: { experiments: ExperimentDTO[] }) {
 }
 
 export function CoEvolutionPage() {
-  const { family, setFamily, rounds, runNextRound, latest } = useLoop();
-
   const evolutionFetch = useCallback((s: AbortSignal) => fetchEvolution(s), []);
   const experimentsFetch = useCallback((s: AbortSignal) => fetchExperiments(s), []);
 
@@ -262,43 +255,6 @@ export function CoEvolutionPage() {
         so they are stated once, in the place that interprets them.
       </p>
 
-      <Details summary="Interactive browser demo (simulated, not real data)">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <MockDataBadge />
-            <button
-              type="button"
-              onClick={runNextRound}
-              disabled={rounds.length >= 6}
-              className="rounded-lg bg-[var(--color-accent-600)] px-3 py-1.5 text-xs font-semibold text-white transition-standard hover:bg-[var(--color-accent-500)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {rounds.length === 0
-                ? "Run round 0"
-                : rounds.length >= 6
-                  ? "Demo complete"
-                  : `Run round ${rounds.length}`}
-            </button>
-            {latest && (
-              <span className="text-[11px] tabular-nums text-[var(--color-ink-muted)]">
-                R{latest.roundIndex} · recall{" "}
-                {(latest.evaluation.overall.recall * 100).toFixed(0)}%
-              </span>
-            )}
-          </div>
-          {/* LoopDiagram lays six fixed-width stages in a row; give it its own
-              scroll context so it cannot clip inside this panel at 375px. */}
-          <div className="overflow-x-auto pb-1">
-            <div className="min-w-[500px]">
-              <LoopDiagram active={latest ? "retrain" : "identify"} compact />
-            </div>
-          </div>
-          <AttackFamilySelector value={family} onChange={setFamily} />
-          <p>
-            A deterministic client-side toy, kept as a fallback if the API becomes unreachable
-            mid-demo. It shares no code and no numbers with the real pipeline above.
-          </p>
-        </div>
-      </Details>
     </div>
   );
 }
