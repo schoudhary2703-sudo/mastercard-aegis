@@ -1,4 +1,5 @@
 import { Navigate, Route, HashRouter, Routes } from "react-router-dom";
+import { useWarmup } from "./api/useWarmup";
 import { AppShell } from "./components/layout/AppShell";
 import { AttackTaxonomyPage } from "./pages/AttackTaxonomyPage";
 import { CoEvolutionPage } from "./pages/CoEvolutionPage";
@@ -11,6 +12,9 @@ import { SandboxPage } from "./pages/SandboxPage";
 import { LoopProvider } from "./state/LoopContext";
 
 export default function App() {
+  // Fire-and-forget /api/health ping at mount so a spun-down Render instance
+  // starts waking before the reader navigates anywhere.
+  useWarmup();
   return (
     <LoopProvider>
       <HashRouter>
