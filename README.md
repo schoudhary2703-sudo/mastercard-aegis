@@ -5,10 +5,18 @@
 **Adversarial Evaluation & Generative Immune System for payments.**
 Mastercard Innovation Challenge 2026.
 
+[![check](https://github.com/Pranav9441/mastercard-aegis/actions/workflows/check.yml/badge.svg)](https://github.com/Pranav9441/mastercard-aegis/actions/workflows/check.yml)
+![python](https://img.shields.io/badge/python-3.10%2B-blue)
+![tests](https://img.shields.io/badge/tests-561%20passing-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-lightgrey)
+
 **[Live demo](https://mastercard-aegis.vercel.app)** ·
 [API](https://mastercard-aegis.onrender.com/api/health) ·
-[Repository](https://github.com/tensorforgee/mastercard-aegis) ·
-[60-second walkthrough](docs/JUDGE_DEMO_60S.md)
+[60-second walkthrough](docs/JUDGE_DEMO_60S.md) ·
+[Claims audit](docs/CLAIMS_AUDIT.md)
+
+> **Attribution.** This is a fork of
+> [tensorforgee/mastercard-aegis](https://github.com/tensorforgee/mastercard-aegis).
 
 GenAI reasons about emerging attacks and detector blind spots; deterministic
 simulators generate every transaction row; a frozen XGBoost defender scores
@@ -16,13 +24,15 @@ them; fraud that escapes becomes adversarial evidence — and **LOAFO** then
 tests whether hardening actually transfers to an attack family the model has
 never seen.
 
+[![AEGIS Overview screen](submission/screenshots/01_overview.png)](https://mastercard-aegis.vercel.app)
+
 ### Headline evidence
 
 Every figure below is read from a persisted artifact **tracked in this
 repository**, so it is checkable from a clean clone with no dataset download
 and no pipeline run.
 
-| | | Source |
+| Measure | Result | Source |
 | --- | --- | --- |
 | Attack vectors identified | **14** (3 deeply simulated, 11 research-identified only) | [`attack_taxonomy.json`](submission/artifacts/data/reports/attack_taxonomy.json) |
 | Synthetic transactions generated | **55,000** across 3,000 scenarios, seed-reproducible | [`generation_scale_benchmark.json`](submission/artifacts/data/reports/generation_scale_benchmark.json) |
@@ -38,19 +48,60 @@ and no pipeline run.
 > each — directional, not statistically powered). Two of three families
 > transferred; mule-network structuring did not.
 
+### Run it in 30 seconds
+
+No PaySim download, no training run. The tracked evidence bundle at
+[`submission/artifacts/`](submission/artifacts) is enough to bring up the full
+UI against real persisted results:
+
+```bash
+python -m pip install -e ".[api]"
+AEGIS_ARTIFACTS_ROOT=submission/artifacts uvicorn aegis.api.app:app --port 8000
+cd web && npm install && npm run dev      # http://localhost:5173
+```
+
+Reproducing the whole pipeline from the PaySim corpus is
+[further down](#how-to-run-locally).
+
+### Start here
+
+| If you are… | Go to |
+| --- | --- |
+| A judge or reviewer | [Headline evidence](#headline-evidence), then [`docs/JUDGE_DEMO_60S.md`](docs/JUDGE_DEMO_60S.md) |
+| A fraud modeller | [Defender progression](#blue-defender-progression-v1---v2---v3) and [LOAFO](#loafo-does-hardening-generalize-or-just-memorize) |
+| Here to run it | [Run it in 30 seconds](#run-it-in-30-seconds) |
+| Checking our claims | [`docs/CLAIMS_AUDIT.md`](docs/CLAIMS_AUDIT.md) and [Limitations](#limitations) |
+| Contributing code | [`AGENTS.md`](AGENTS.md) — ownership rules are binding |
+
 ### The closed loop
 
 ```mermaid
-flowchart LR
-    A["1 GenAI Attack Analyst"] --> B["2 Structured Blueprint"]
-    B --> C["3 Deterministic Simulator"]
-    C --> D["4 XGBoost Defender"]
-    D --> E["5 Caught / Escaped"]
-    E --> F["6 GenAI Blind-Spot Analyst"]
-    F --> G["7 Bounded Mutation Proposal"]
-    G --> H["8 Deterministic Next Generation"]
-    H --> D
+flowchart TD
+    subgraph RED["RED TEAM"]
+        direction TB
+        A["1 · GenAI Attack Analyst"] --> B["2 · Structured Blueprint"]
+        B --> C["3 · Deterministic Simulator"]
+        F["6 · GenAI Blind-Spot Analyst"] --> G["7 · Bounded Mutation Proposal"]
+        G --> H["8 · Deterministic Next Generation"]
+    end
+    subgraph BLUE["BLUE TEAM"]
+        direction TB
+        D["4 · XGBoost Defender (frozen)"] --> E["5 · Caught / Escaped"]
+    end
+    C --> D
+    E --> F
+    H -- "regenerate, rescore" --> D
+
+    classDef red fill:#fff4e5,stroke:#b26b00,color:#5c3600;
+    classDef blue fill:#e8f0fe,stroke:#1a56b3,color:#0d2d5e;
+    classDef genai stroke-width:3px,stroke-dasharray:0;
+    class A,B,C,F,G,H red;
+    class D,E blue;
+    class A,F genai;
 ```
+
+Stages **1** and **6** (bold outline) are the only points where a language
+model reasons.
 
 GenAI reasons at exactly **two** points — stages 1 and 6 — and never writes a
 transaction row. Stage 7 is the Blind-Spot Analyst's proposal after a
@@ -181,7 +232,7 @@ python scripts/prepare_paysim.py data/raw/paysim/<your-file>.csv --seed 20260101
 This produces one deterministic, versioned `train.jsonl` /
 `validation.jsonl` / `test.jsonl` split under `data/processed/paysim/<run-id>/`
 -- entity- and time-based, never touched by a generator or a detector after
-assignment (see [`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) SS1).
+assignment (see [`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) section 1).
 Every training and confrontation script below reads from this one prepared
 run, so every model in the progression is comparable on the identical
 untouched test split.
@@ -239,7 +290,7 @@ all, AEGIS runs **Leave-One-Attack-Family-Out (LOAFO)**: three folds, each
 trained on two families' hard positives with the third contributing **zero**
 training rows, then scored on one fresh, real, previously-unseen scenario of
 that held-out family (`scripts/run_loafo_benchmark.py`,
-[`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) SS6). Defender v3 is
+[`docs/EVALUATION_RULES.md`](docs/EVALUATION_RULES.md) section 6). Defender v3 is
 scored on the identical fresh scenario as a memorization reference.
 
 | Held out | Trained on | LOAFO recall | Defender v3 recall (same scenario) | Verdict |
@@ -247,6 +298,8 @@ scored on the identical fresh scenario as a memorization reference.
 | `adaptive_detector_evasion` | Synthetic + Mule | 75% | 100% | strong |
 | `mule_network_structuring` | Synthetic + Adaptive | **0%** | 42% | weak |
 | `synthetic_identity_bustout` | Mule + Adaptive | 100% | 100% | strong |
+
+![Results — LOAFO verdict and per-family chart](submission/screenshots/04_results.png)
 
 Mean LOAFO recall: **58.3%**. Two of three families transfer well from the
 other two; mule-network structuring does not transfer at all in this
@@ -287,6 +340,12 @@ export ANTHROPIC_API_KEY=...    # never committed
 python scripts/run_genai_analysis.py attack-analyst --scenario synthetic-identity-bustout
 ```
 
+![Attack Lab — bounded mutation proposals](submission/screenshots/02_attack_lab.png)
+
+*Attack Lab. The Blind-Spot Analyst proposed 6 mutations for this scenario: 5
+applied, 1 **rejected** by the deterministic bounds check. Refusals are
+persisted, not silently clamped.*
+
 Full contract, artifact format, configuration, and the exact claims this
 supports: [`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md).
 
@@ -296,11 +355,16 @@ supports: [`docs/GENAI_LAYER.md`](docs/GENAI_LAYER.md).
 `data/` and serves them read-only:
 
 ```
-GET /api/overview            GET /api/evaluation
+GET /api/health               GET /api/overview
+GET /api/landscape            GET /api/genai
 GET /api/attacks              GET /api/attacks/:id
 GET /api/detections/recent    GET /api/evolution
+GET /api/evaluation           GET /api/experiments
 GET /api/hardest-evasions     GET /api/benchmark
 ```
+
+All twelve are read-only. None of them trains, retrains, re-runs a generator,
+or mutates an artifact.
 
 `web/` (React + Vite) is an eight-screen UI, four of them primary:
 **Overview** (`/`), **Attack Lab** (`/attack-lab`), **Evolution**
@@ -437,6 +501,17 @@ no-backend fallback path: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 Runtime dependencies are pydantic, numpy, pandas, and xgboost; `fastapi` +
 `uvicorn` behind the optional `api` extra. Nothing else, on purpose.
+
+**561 passing tests** (14 skipped) across unit, integration and contract
+suites, run in CI on every push. Among them is the assertion that each LOAFO fold's held-out
+family contributes **zero** training rows — verified by inspecting the promoted
+rows themselves, not by trusting an empty source list. `mypy` runs strict on
+`src/`.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). PaySim is a third-party dataset under its own
+terms and is not redistributed here.
 
 ## Non-goals
 
